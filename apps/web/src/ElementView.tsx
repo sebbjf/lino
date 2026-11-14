@@ -8,7 +8,7 @@ const LABELS = { image: 'Image', note: 'Note', color: 'Color' }
 type Props = { el: BoardElement; selected: boolean; zoom: number }
 
 export const ElementView = memo(function ElementView({ el, selected, zoom }: Props) {
-  const { update, select, remove, duplicate, reorder } = useBoard.getState()
+  const { update, select, remove, duplicate, reorder, checkpoint } = useBoard.getState()
   // a freshly added empty note opens straight into editing
   const [editing, setEditing] = useState(() => selected && el.type === 'note' && !el.text)
   const colorInput = useRef<HTMLInputElement>(null)
@@ -20,6 +20,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
   }, [selected, editing])
 
   const open = () => {
+    checkpoint()
     if (el.type === 'note') setEditing(true)
     if (el.type === 'color') colorInput.current?.showPicker()
   }
@@ -31,12 +32,14 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
     if (editing) return
     e.currentTarget.focus()
     const { x, y } = el
+    checkpoint()
     drag(e, (dx, dy) => update(el.id, { x: x + dx / zoom, y: y + dy / zoom }))
   }
 
   const onResize = (e: PointerEvent) => {
     e.stopPropagation()
     const box = { ...el }
+    checkpoint()
     // images keep their aspect ratio; Shift toggles it
     drag(e, (dx, dy, ev) => update(el.id, resize(box, dx / zoom, dy / zoom, (el.type === 'image') !== ev.shiftKey)))
   }
@@ -45,6 +48,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
     e.stopPropagation()
     const box = { ...el }
     const v = useBoard.getState().view
+    checkpoint()
     drag(e, (_dx, _dy, ev) =>
       update(el.id, { rotation: angleTo(box, (ev.clientX - v.x) / v.zoom, (ev.clientY - v.y) / v.zoom, ev.shiftKey) }),
     )
@@ -54,6 +58,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
     if (e.target !== e.currentTarget) return
     const mod = e.metaKey || e.ctrlKey
     const step = e.shiftKey ? 10 : 1
+    if (e.key.startsWith('Arrow')) checkpoint()
     switch (e.key) {
       case 'Delete':
       case 'Backspace':

@@ -24,6 +24,21 @@ export function App() {
     return () => window.removeEventListener('paste', onPaste)
   }, [])
 
+  // Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo; text fields keep their native undo
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || (e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return
+      const key = e.key.toLowerCase()
+      const { undo, redo } = useBoard.getState()
+      if (key === 'z' && !e.shiftKey) undo()
+      else if ((key === 'z' && e.shiftKey) || key === 'y') redo()
+      else return
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   useEffect(() => {
     if (!notice) return
     const t = setTimeout(() => useBoard.getState().notify(null), 4000)
