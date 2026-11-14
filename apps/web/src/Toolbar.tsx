@@ -9,6 +9,7 @@ import {
   PlusSignIcon,
   RedoIcon,
   StickyNote01Icon,
+  SwatchIcon,
   UndoIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
@@ -53,7 +54,7 @@ function Tool({ label, icon, onClick, shortcut, disabled, pressed }: ToolProps) 
 
 const Divider = () => <Separator orientation="vertical" className="mx-1 h-5 self-center" />
 
-export function Toolbar() {
+export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean; onTogglePalette: () => void }) {
   const selectedId = useBoard((s) => s.selectedId)
   const zoom = useBoard((s) => s.view.zoom)
   const canUndo = useBoard((s) => s.past.some((p) => p !== s.elements))
@@ -108,6 +109,8 @@ export function Toolbar() {
       </Button>
       <Tool label="Zoom in" icon={PlusSignIcon} onClick={() => zoomTo(zoom * 1.25)} />
 
+      <Divider />
+      <Tool label="Palette" icon={SwatchIcon} pressed={paletteOpen} onClick={onTogglePalette} />
     </div>
   )
 }

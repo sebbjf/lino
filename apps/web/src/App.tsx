@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Canvas } from './Canvas.tsx'
+import { PalettePanel } from './PalettePanel.tsx'
 import { addImages } from './image.ts'
 import { useBoard } from './store.ts'
 import { Toolbar } from './Toolbar.tsx'
@@ -8,6 +9,7 @@ import { Toolbar } from './Toolbar.tsx'
 export function App() {
   const empty = useBoard((s) => s.elements.length === 0)
   const notice = useBoard((s) => s.notice)
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   // paste images onto the board, or plain text as a note
   useEffect(() => {
@@ -62,7 +64,8 @@ export function App() {
         <div role="status" aria-live="polite" className="fixed bottom-20 left-1/2 -translate-x-1/2">
           {notice && <p className="rounded-full bg-foreground px-4 py-2 text-sm text-background shadow-lg">{notice}</p>}
         </div>
-        <Toolbar />
+        {paletteOpen && <PalettePanel onClose={() => setPaletteOpen(false)} />}
+        <Toolbar paletteOpen={paletteOpen} onTogglePalette={() => setPaletteOpen((o) => !o)} />
       </main>
     </TooltipProvider>
   )

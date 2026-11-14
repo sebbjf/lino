@@ -1,8 +1,9 @@
+import type { ColorMeta } from './colors.ts'
 import { useBoard, type BoardElement, type View } from './store.ts'
 
 // One local board for now; key it by board id when there are several.
 const KEY = 'local'
-type Saved = { elements: BoardElement[]; view: View }
+type Saved = { elements: BoardElement[]; view: View; colorMeta?: Record<string, ColorMeta> }
 
 let dbPromise: Promise<IDBDatabase> | undefined
 function db() {
@@ -26,12 +27,12 @@ async function run<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => I
 
 export async function loadBoard() {
   const saved = await run<Saved | undefined>('readonly', (s) => s.get(KEY))
-  if (saved) useBoard.setState({ elements: saved.elements, view: saved.view })
+  if (saved) useBoard.setState({ elements: saved.elements, view: saved.view, colorMeta: saved.colorMeta ?? {} })
 }
 
 function save() {
-  const { elements, view } = useBoard.getState()
-  return run('readwrite', (s) => s.put({ elements, view } satisfies Saved, KEY)).catch(() =>
+  const { elements, view, colorMeta } = useBoard.getState()
+  return run('readwrite', (s) => s.put({ elements, view, colorMeta } satisfies Saved, KEY)).catch(() =>
     useBoard.getState().notify('Could not save the board in this browser.'),
   )
 }
@@ -40,7 +41,7 @@ function save() {
 export function startAutosave() {
   let timer: ReturnType<typeof setTimeout> | undefined
   useBoard.subscribe((s, prev) => {
-    if (s.elements === prev.elements && s.view === prev.view) return
+    if (s.elements === prev.elements && s.view === prev.view && s.colorMeta === prev.colorMeta) return
     clearTimeout(timer)
     timer = setTimeout(save, 300)
   })

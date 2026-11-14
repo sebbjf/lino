@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { ColorMeta } from './colors.ts'
 import type { Box } from './geometry.ts'
 
 export type BoardElement =
@@ -17,6 +18,10 @@ type State = {
   selectedId: string | null
   view: View
   notice: string | null
+  /** Palette edits keyed by normalized hex. Not part of undo history. */
+  colorMeta: Record<string, ColorMeta>
+  setColorMeta: (hex: string, patch: ColorMeta) => void
+  restoreHiddenColors: () => void
   // undo history: whole elements arrays, cheap because updates share unchanged objects
   past: BoardElement[][]
   future: BoardElement[][]
@@ -55,6 +60,7 @@ export const useBoard = create<State>()((set, get) => ({
   selectedId: null,
   view: { x: 0, y: 0, zoom: 1 },
   notice: null,
+  colorMeta: {},
   past: [],
   future: [],
 
@@ -114,4 +120,11 @@ export const useBoard = create<State>()((set, get) => ({
   select: (selectedId) => set({ selectedId }),
   setView: (view) => set({ view }),
   notify: (notice) => set({ notice }),
+
+  setColorMeta: (hex, patch) => set((s) => ({ colorMeta: { ...s.colorMeta, [hex]: { ...s.colorMeta[hex], ...patch } } })),
+
+  restoreHiddenColors: () =>
+    set((s) => ({
+      colorMeta: Object.fromEntries(Object.entries(s.colorMeta).map(([hex, m]) => [hex, { ...m, hidden: false }])),
+    })),
 }))
