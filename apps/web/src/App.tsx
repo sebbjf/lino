@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { Canvas } from './Canvas.tsx'
 import { addImages } from './image.ts'
 import { useBoard } from './store.ts'
@@ -46,21 +47,23 @@ export function App() {
   }, [notice])
 
   return (
-    <main>
-      <h1 className="sr-only">Lino board</h1>
-      <Canvas />
-      {empty && (
-        <div className="pointer-events-none fixed inset-0 grid place-items-center px-4 text-center">
-          <div>
-            <p className="font-serif text-3xl text-stone-800">Start with a reference</p>
-            <p className="mt-2 text-sm text-stone-500">Drop or paste images, or add a note or a color.</p>
+    <TooltipProvider delay={400}>
+      <main>
+        <h1 className="sr-only">Lino board</h1>
+        <Canvas />
+        {empty && (
+          <div className="pointer-events-none fixed inset-0 grid place-items-center px-4 text-center">
+            <div>
+              <p className="font-heading text-4xl text-foreground">Start with a reference</p>
+              <p className="mt-2 text-sm text-muted-foreground">Drop or paste images, or add a note or a color.</p>
+            </div>
           </div>
+        )}
+        <div role="status" aria-live="polite" className="fixed bottom-20 left-1/2 -translate-x-1/2">
+          {notice && <p className="rounded-full bg-foreground px-4 py-2 text-sm text-background shadow-lg">{notice}</p>}
         </div>
-      )}
-      <div role="status" aria-live="polite" className="fixed bottom-20 left-1/2 -translate-x-1/2">
-        {notice && <p className="rounded-full bg-stone-800 px-4 py-2 text-sm text-white shadow-lg">{notice}</p>}
-      </div>
-      <Toolbar />
-    </main>
+        <Toolbar />
+      </main>
+    </TooltipProvider>
   )
 }

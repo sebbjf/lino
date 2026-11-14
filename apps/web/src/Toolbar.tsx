@@ -1,29 +1,64 @@
-import { useRef, type ReactNode } from 'react'
+import {
+  Copy01Icon,
+  Delete02Icon,
+  Image01Icon,
+  LayerBringForwardIcon,
+  LayerSendBackwardIcon,
+  MinusSignIcon,
+  PaintBoardIcon,
+  PlusSignIcon,
+  RedoIcon,
+  StickyNote01Icon,
+  UndoIcon,
+} from '@hugeicons/core-free-icons'
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
+import { useRef } from 'react'
+import { Button } from '@/components/ui/button'
+import { Kbd } from '@/components/ui/kbd'
+import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { zoomAt } from './geometry.ts'
 import { addImages } from './image.ts'
 import { useBoard } from './store.ts'
 
-function Button({ label, shortcut, onClick, children }: { label: string; shortcut?: string; onClick: () => void; children: ReactNode }) {
+type ToolProps = { label: string; icon: IconSvgElement; onClick: () => void; shortcut?: string; disabled?: boolean; pressed?: boolean }
+
+/** shortcut is written for display ("Ctrl+Z"); aria-keyshortcuts wants "Control+Z". */
+function Tool({ label, icon, onClick, shortcut, disabled, pressed }: ToolProps) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={shortcut ? `${label} (${shortcut})` : label}
-      aria-keyshortcuts={shortcut}
-      onClick={onClick}
-      className="rounded-full px-3 py-1.5 text-sm text-stone-700 transition-colors hover:bg-stone-100 focus-visible:outline-2 focus-visible:outline-[var(--color-focus)]"
-    >
-      {children}
-    </button>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={label}
+            aria-keyshortcuts={shortcut?.replace('Ctrl', 'Control')}
+            aria-pressed={pressed}
+            className={pressed ? 'bg-muted' : undefined}
+            disabled={disabled}
+            onClick={onClick}
+          />
+        }
+      >
+        <HugeiconsIcon icon={icon} strokeWidth={1.8} />
+      </TooltipTrigger>
+      <TooltipContent>
+        {label}
+        {shortcut && <Kbd>{shortcut}</Kbd>}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
-const Divider = () => <span aria-hidden className="mx-1 h-5 w-px bg-stone-200" />
+const Divider = () => <Separator orientation="vertical" className="mx-1 h-5 self-center" />
 
 export function Toolbar() {
   const selectedId = useBoard((s) => s.selectedId)
   const zoom = useBoard((s) => s.view.zoom)
-  const { add, duplicate, reorder, remove } = useBoard.getState()
+  const canUndo = useBoard((s) => s.past.some((p) => p !== s.elements))
+  const canRedo = useBoard((s) => s.future.length > 0)
+  const { add, duplicate, reorder, remove, undo, redo } = useBoard.getState()
   const fileInput = useRef<HTMLInputElement>(null)
 
   const zoomTo = (z: number) => {
@@ -35,11 +70,11 @@ export function Toolbar() {
     <div
       role="toolbar"
       aria-label="Board tools"
-      className="fixed bottom-6 left-1/2 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center overflow-x-auto rounded-full border border-stone-200 bg-white/90 p-1 shadow-lg shadow-stone-900/5 backdrop-blur"
+      className="fixed bottom-6 left-1/2 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-full border bg-card/90 p-1.5 [scrollbar-width:none] shadow-soft backdrop-blur"
     >
-      <Button label="Add image" onClick={() => fileInput.current?.click()}>Image</Button>
-      <Button label="Add note" onClick={() => add({ type: 'note', text: '', w: 220, h: 140 })}>Note</Button>
-      <Button label="Add color" onClick={() => add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 })}>Color</Button>
+      <Tool label="Add image" icon={Image01Icon} onClick={() => fileInput.current?.click()} />
+      <Tool label="Add note" icon={StickyNote01Icon} onClick={() => add({ type: 'note', text: '', w: 220, h: 140 })} />
+      <Tool label="Add color" icon={PaintBoardIcon} onClick={() => add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 })} />
       <input
         ref={fileInput}
         type="file"
@@ -52,22 +87,27 @@ export function Toolbar() {
         }}
       />
 
+      <Divider />
+      <Tool label="Undo" icon={UndoIcon} shortcut="Ctrl+Z" disabled={!canUndo} onClick={undo} />
+      <Tool label="Redo" icon={RedoIcon} shortcut="Ctrl+Shift+Z" disabled={!canRedo} onClick={redo} />
+
       {selectedId && (
         <>
           <Divider />
-          <Button label="Duplicate" shortcut="Control+D" onClick={() => duplicate(selectedId)}>Duplicate</Button>
-          <Button label="Bring forward" shortcut="]" onClick={() => reorder(selectedId, 'forward')}>Forward</Button>
-          <Button label="Send backward" shortcut="[" onClick={() => reorder(selectedId, 'backward')}>Backward</Button>
-          <Button label="Delete" shortcut="Delete" onClick={() => remove(selectedId)}>Delete</Button>
+          <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" onClick={() => duplicate(selectedId)} />
+          <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" onClick={() => reorder(selectedId, 'forward')} />
+          <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" onClick={() => reorder(selectedId, 'backward')} />
+          <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" onClick={() => remove(selectedId)} />
         </>
       )}
 
       <Divider />
-      <Button label="Zoom out" onClick={() => zoomTo(zoom / 1.25)}>−</Button>
-      <Button label="Reset zoom" onClick={() => zoomTo(1)}>
-        <span className="tabular-nums">{Math.round(zoom * 100)}%</span>
+      <Tool label="Zoom out" icon={MinusSignIcon} onClick={() => zoomTo(zoom / 1.25)} />
+      <Button variant="ghost" size="sm" aria-label="Reset zoom to 100%" className="tabular-nums" onClick={() => zoomTo(1)}>
+        {Math.round(zoom * 100)}%
       </Button>
-      <Button label="Zoom in" onClick={() => zoomTo(zoom * 1.25)}>+</Button>
+      <Tool label="Zoom in" icon={PlusSignIcon} onClick={() => zoomTo(zoom * 1.25)} />
+
     </div>
   )
 }

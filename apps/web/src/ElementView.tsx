@@ -113,7 +113,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
         width: el.w,
         height: el.h,
         transform: `translate(${el.x}px, ${el.y}px) rotate(${el.rotation}deg)`,
-        boxShadow: selected ? `0 0 0 ${2 / zoom}px var(--color-focus)` : undefined,
+        boxShadow: selected ? `0 0 0 ${2 / zoom}px var(--color-primary)` : undefined,
         cursor: editing ? 'auto' : 'move',
       }}
       onPointerDown={onPointerDown}
@@ -122,11 +122,11 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
       onFocus={() => select(el.id)}
     >
       {el.type === 'image' && (
-        <img src={el.src} alt="" draggable={false} className="pointer-events-none size-full rounded-2xl object-cover shadow-sm" />
+        <img src={el.src} alt="" draggable={false} className="pointer-events-none size-full rounded-2xl object-cover shadow-soft" />
       )}
 
       {el.type === 'note' && (
-        <div className="size-full overflow-hidden rounded-2xl bg-white p-4 text-[15px] leading-relaxed text-stone-800 shadow-sm">
+        <div className="size-full overflow-hidden rounded-2xl bg-card p-4 text-[15px] leading-relaxed text-card-foreground shadow-soft">
           {editing ? (
             <textarea
               autoFocus
@@ -140,14 +140,14 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
               onPointerDown={(e) => e.stopPropagation()}
             />
           ) : (
-            <p className="whitespace-pre-wrap break-words">{el.text || <span className="text-stone-500">Empty note</span>}</p>
+            <p className="whitespace-pre-wrap break-words">{el.text || <span className="text-muted-foreground">Empty note</span>}</p>
           )}
         </div>
       )}
 
       {el.type === 'color' && (
-        <div className="relative size-full rounded-2xl shadow-sm" style={{ background: el.hex }}>
-          <span className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-0.5 font-mono text-xs text-stone-700">
+        <div className="relative size-full rounded-2xl shadow-soft" style={{ background: el.hex }}>
+          <span className="absolute bottom-2 left-2 rounded-full bg-card/90 px-2 py-0.5 font-mono text-xs text-card-foreground">
             {el.hex}
           </span>
           <input
@@ -166,13 +166,13 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
         <>
           <div
             aria-hidden
-            className="absolute left-1/2 rounded-full border-stone-400 bg-white"
+            className="absolute left-1/2 rounded-full border-ring bg-card"
             style={{ width: handle, height: handle, top: -28 / zoom, marginLeft: -handle / 2, borderWidth: 1.5 / zoom, cursor: 'grab' }}
             onPointerDown={onRotate}
           />
           <div
             aria-hidden
-            className="absolute rounded-full border-stone-400 bg-white"
+            className="absolute rounded-full border-ring bg-card"
             style={{ width: handle, height: handle, right: -handle / 2, bottom: -handle / 2, borderWidth: 1.5 / zoom, cursor: 'nwse-resize' }}
             onPointerDown={onResize}
           />
