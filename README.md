@@ -16,6 +16,6 @@ pnpm test
 
 ## Board shortcuts
 
-Select an element (click or Tab), then: arrows move it (Shift ×10), `Delete` removes it, `Ctrl+D` duplicates,
-`[` / `]` move it a layer down/up (`Ctrl` for back/front), `Enter` edits a note or opens the color picker.
+`Ctrl+Z` undoes, `Ctrl+Shift+Z` or `Ctrl+Y` redoes. Select an element (click or Tab), then: arrows move it (Shift ×10), `Delete` removes it, `Ctrl+D` duplicates,
+`[` / `]` move it a layer down/up (`Ctrl` for back/front), `Enter` edits a note or opens the color picker (also by clicking its hex label). The palette button opens the board palette: rename, pin or remove colors.
 Wheel pans, `Ctrl` + wheel zooms, dragging the background pans. Shift while resizing toggles aspect lock, while rotating snaps to 15°.
