@@ -1,0 +1,45 @@
+import { expect, test } from 'vitest'
+import { angleTo, resize, rotateVec, zoomAt, type Box } from './geometry.ts'
+
+// world position of the box's local top-left corner
+function topLeft(b: Box) {
+  const v = rotateVec(-b.w / 2, -b.h / 2, b.rotation)
+  return { x: b.x + b.w / 2 + v.x, y: b.y + b.h / 2 + v.y }
+}
+
+test('resize keeps the opposite corner fixed at any rotation', () => {
+  for (const rotation of [0, 30, 90, -135]) {
+    const box = { x: 10, y: 20, w: 100, h: 50, rotation }
+    const out = resize(box, 40, -15, false)
+    expect(topLeft(out).x).toBeCloseTo(topLeft(box).x)
+    expect(topLeft(out).y).toBeCloseTo(topLeft(box).y)
+  }
+})
+
+test('resize unrotated grows by the delta and respects min size', () => {
+  expect(resize({ x: 0, y: 0, w: 100, h: 50, rotation: 0 }, 20, 10, false)).toMatchObject({ x: 0, y: 0, w: 120, h: 60 })
+  expect(resize({ x: 0, y: 0, w: 100, h: 50, rotation: 0 }, -500, -500, false)).toMatchObject({ w: 24, h: 24 })
+})
+
+test('resize with keepAspect preserves ratio', () => {
+  const out = resize({ x: 0, y: 0, w: 200, h: 100, rotation: 0 }, 100, 0, true)
+  expect(out.w / out.h).toBeCloseTo(2)
+  expect(out.w).toBeCloseTo(300)
+  expect(resize({ x: 0, y: 0, w: 200, h: 100, rotation: 0 }, -1000, -1000, true).h).toBeCloseTo(24)
+})
+
+test('angleTo points top edge at the cursor, with snapping', () => {
+  const box = { x: 0, y: 0, w: 100, h: 100, rotation: 0 }
+  expect(angleTo(box, 50, -100, false)).toBeCloseTo(0)
+  expect(angleTo(box, 200, 50, false)).toBeCloseTo(90)
+  expect(angleTo(box, 50, 200, false)).toBeCloseTo(-180)
+  expect(angleTo(box, 200, 40, true)).toBe(90)
+})
+
+test('zoomAt keeps the point under the cursor', () => {
+  const v = { x: 30, y: -10, zoom: 1 }
+  const out = zoomAt(v, 200, 100, 2)
+  expect((200 - out.x) / out.zoom).toBeCloseTo((200 - v.x) / v.zoom)
+  expect((100 - out.y) / out.zoom).toBeCloseTo((100 - v.y) / v.zoom)
+  expect(zoomAt(v, 0, 0, 100).zoom).toBe(4)
+})
