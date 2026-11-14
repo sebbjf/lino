@@ -1,4 +1,6 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ColorFields } from './ColorFields.tsx'
 import { drag } from './drag.ts'
 import { angleTo, resize } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
@@ -11,7 +13,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
   const { update, select, remove, duplicate, reorder, checkpoint } = useBoard.getState()
   // a freshly added empty note opens straight into editing
   const [editing, setEditing] = useState(() => selected && el.type === 'note' && !el.text)
-  const colorInput = useRef<HTMLInputElement>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
 
   // keep keyboard focus on the selected element (e.g. after duplicate or add)
@@ -22,11 +24,12 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
   const open = () => {
     checkpoint()
     if (el.type === 'note') setEditing(true)
-    if (el.type === 'color') colorInput.current?.showPicker()
+    if (el.type === 'color') setPickerOpen(true)
   }
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return
+    // React bubbles events from portals (the colour popover) through here; ignore those
+    if (e.button !== 0 || !e.currentTarget.contains(e.target as Node)) return
     e.stopPropagation()
     select(el.id)
     if (editing) return
@@ -86,6 +89,10 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
         open()
         break
       case 'Escape':
+        if (pickerOpen) {
+          setPickerOpen(false)
+          break
+        }
         select(null)
         e.currentTarget.blur()
         break
@@ -117,7 +124,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
         cursor: editing ? 'auto' : 'move',
       }}
       onPointerDown={onPointerDown}
-      onDoubleClick={open}
+      onDoubleClick={(e) => e.currentTarget.contains(e.target as Node) && open()}
       onKeyDown={onKeyDown}
       onFocus={() => select(el.id)}
     >
@@ -147,18 +154,31 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
 
       {el.type === 'color' && (
         <div className="relative size-full rounded-2xl shadow-soft" style={{ background: el.hex }}>
-          <span className="absolute bottom-2 left-2 rounded-full bg-card/90 px-2 py-0.5 font-mono text-xs text-card-foreground">
-            {el.hex}
-          </span>
-          <input
-            ref={colorInput}
-            type="color"
-            tabIndex={-1}
-            aria-label="Pick color"
-            className="pointer-events-none absolute inset-0 size-full opacity-0"
-            value={el.hex}
-            onChange={(e) => update(el.id, { hex: e.target.value })}
-          />
+          <Popover
+            open={pickerOpen}
+            onOpenChange={(open) => {
+              if (open) checkpoint()
+              setPickerOpen(open)
+            }}
+          >
+            <PopoverTrigger
+              aria-label={`Edit color ${el.hex}`}
+              className="absolute bottom-2 left-2 cursor-pointer rounded-full bg-card/90 px-2 py-0.5 font-mono text-xs text-card-foreground"
+              tabIndex={-1}
+              onPointerDown={(e) => {
+                // keep focus (and keyboard shortcuts) on the element itself; Enter opens the picker for keyboard users
+                e.stopPropagation()
+                e.preventDefault()
+                select(el.id)
+                root.current!.focus({ preventScroll: true })
+              }}
+            >
+              {el.hex}
+            </PopoverTrigger>
+            <PopoverContent side="right" align="start" className="w-60" finalFocus={root}>
+              <ColorFields hex={el.hex} onChange={(hex) => update(el.id, { hex })} />
+            </PopoverContent>
+          </Popover>
         </div>
       )}
 

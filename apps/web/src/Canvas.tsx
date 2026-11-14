@@ -29,7 +29,7 @@ export function Canvas() {
   }, [])
 
   const onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0 && e.button !== 1) return
+    if ((e.button !== 0 && e.button !== 1) || !e.currentTarget.contains(e.target as Node)) return
     const { select, setView } = useBoard.getState()
     select(null)
     ;(document.activeElement as HTMLElement | null)?.blur()
