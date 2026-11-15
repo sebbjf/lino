@@ -1,9 +1,10 @@
 import type { ColorMeta } from './colors.ts'
-import { useBoard, type BoardElement, type View } from './store.ts'
+import { useBoard, type BoardElement, type ExportPrefs, type View } from './store.ts'
+import type { BoardStyle } from './style.ts'
 
 // One local board for now; key it by board id when there are several.
 const KEY = 'local'
-type Saved = { elements: BoardElement[]; view: View; colorMeta?: Record<string, ColorMeta> }
+type Saved = { elements: BoardElement[]; view: View; colorMeta?: Record<string, ColorMeta>; board?: BoardStyle; exportPrefs?: ExportPrefs }
 
 let dbPromise: Promise<IDBDatabase> | undefined
 function db() {
@@ -32,12 +33,18 @@ export async function loadBoard() {
   const elements = saved.elements.map((e) =>
     e.type === 'link' && e.status === 'loading' ? { ...e, status: 'error' as const, error: 'Reading was interrupted.' } : e,
   )
-  useBoard.setState({ elements, view: saved.view, colorMeta: saved.colorMeta ?? {} })
+  useBoard.setState((s) => ({
+    elements,
+    view: saved.view,
+    colorMeta: saved.colorMeta ?? {},
+    board: saved.board ?? {},
+    exportPrefs: saved.exportPrefs ?? s.exportPrefs,
+  }))
 }
 
 function save() {
-  const { elements, view, colorMeta } = useBoard.getState()
-  return run('readwrite', (s) => s.put({ elements, view, colorMeta } satisfies Saved, KEY)).catch(() =>
+  const { elements, view, colorMeta, board, exportPrefs } = useBoard.getState()
+  return run('readwrite', (s) => s.put({ elements, view, colorMeta, board, exportPrefs } satisfies Saved, KEY)).catch(() =>
     useBoard.getState().notify('Could not save the board in this browser.'),
   )
 }
@@ -46,7 +53,8 @@ function save() {
 export function startAutosave() {
   let timer: ReturnType<typeof setTimeout> | undefined
   useBoard.subscribe((s, prev) => {
-    if (s.elements === prev.elements && s.view === prev.view && s.colorMeta === prev.colorMeta) return
+    const keys = ['elements', 'view', 'colorMeta', 'board', 'exportPrefs'] as const
+    if (keys.every((k) => s[k] === prev[k])) return
     clearTimeout(timer)
     timer = setTimeout(save, 300)
   })

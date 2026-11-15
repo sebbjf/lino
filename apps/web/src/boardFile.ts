@@ -1,5 +1,6 @@
 import type { ColorMeta } from './colors.ts'
 import { fitView } from './geometry.ts'
+import { CORNERS, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
 import { useBoard, type BoardElement } from './store.ts'
 
 const MAX_FILE = 50 * 1024 * 1024
@@ -18,6 +19,34 @@ const isHttp = (v: unknown): v is string => {
   }
 }
 
+const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T => list.includes(v as T)
+
+/** Known style fields only; anything else is dropped. */
+function styleOf(e: Record<string, unknown>) {
+  return {
+    ...(oneOf(CORNERS, e.corner) && { corner: e.corner }),
+    ...(typeof e.shadow === 'boolean' && { shadow: e.shadow }),
+    ...(isNum(e.opacity) && { opacity: Math.min(1, Math.max(MIN_OPACITY, e.opacity)) }),
+  }
+}
+
+function noteStyleOf(e: Record<string, unknown>) {
+  return {
+    ...(isStr(e.bg, 9) && HEX.test(e.bg) && { bg: e.bg }),
+    ...(oneOf(NOTE_SIZES, e.size) && { size: e.size }),
+    ...(oneOf(NOTE_FONTS, e.font) && { font: e.font }),
+  }
+}
+
+export function boardStyleOf(raw: unknown): BoardStyle {
+  if (!raw || typeof raw !== 'object') return {}
+  const b = raw as Record<string, unknown>
+  return {
+    ...(isStr(b.bg, 9) && HEX.test(b.bg) && { bg: b.bg }),
+    ...(oneOf(PATTERNS, b.pattern) && { pattern: b.pattern }),
+  }
+}
+
 /**
  * Rebuilds one element from untrusted JSON, keeping only known fields, or null if it is not usable.
  * Strict on URLs: a file may come from someone else, and links open on Enter.
@@ -26,12 +55,12 @@ function toElement(raw: unknown): BoardElement | null {
   if (!raw || typeof raw !== 'object') return null
   const e = raw as Record<string, unknown>
   if (!isNum(e.x) || !isNum(e.y) || !isNum(e.w) || !isNum(e.h) || e.w <= 0 || e.h <= 0) return null
-  const box = { id: crypto.randomUUID(), x: e.x, y: e.y, w: e.w, h: e.h, rotation: isNum(e.rotation) ? e.rotation : 0 }
+  const box = { id: crypto.randomUUID(), x: e.x, y: e.y, w: e.w, h: e.h, rotation: isNum(e.rotation) ? e.rotation : 0, ...styleOf(e) }
   switch (e.type) {
     case 'image':
       return isStr(e.src, Infinity) && DATA_IMAGE.test(e.src) ? { ...box, type: 'image', src: e.src } : null
     case 'note':
-      return isStr(e.text) ? { ...box, type: 'note', text: e.text } : null
+      return isStr(e.text) ? { ...box, type: 'note', text: e.text, ...noteStyleOf(e) } : null
     case 'color':
       return isStr(e.hex, 9) && HEX.test(e.hex) ? { ...box, type: 'color', hex: e.hex } : null
     case 'link': {
@@ -58,7 +87,7 @@ function toElement(raw: unknown): BoardElement | null {
 
 /** Parses a board file (or a shared-board snapshot). Unusable elements are dropped and counted. */
 export function parseBoardFile(text: string) {
-  let data: { elements?: unknown; colorMeta?: unknown } | null
+  let data: { elements?: unknown; colorMeta?: unknown; board?: unknown } | null
   try {
     data = JSON.parse(text)
   } catch {
@@ -76,7 +105,7 @@ export function parseBoardFile(text: string) {
         ...(typeof m.hidden === 'boolean' && { hidden: m.hidden }),
       }
     }
-  return { elements, colorMeta, skipped: data.elements.length - elements.length }
+  return { elements, colorMeta, board: boardStyleOf(data.board), skipped: data.elements.length - elements.length }
 }
 
 function download(blob: Blob, name: string) {
@@ -90,8 +119,8 @@ function download(blob: Blob, name: string) {
 
 /** Downloads the board as a .lino.json file that importBoardFile reads back. */
 export function exportBoardFile() {
-  const { elements, colorMeta } = useBoard.getState()
-  const body = JSON.stringify({ app: 'lino', version: 1, elements, colorMeta })
+  const { elements, colorMeta, board } = useBoard.getState()
+  const body = JSON.stringify({ app: 'lino', version: 1, elements, colorMeta, board })
   download(new Blob([body], { type: 'application/json' }), `lino-board-${new Date().toISOString().slice(0, 10)}.lino.json`)
 }
 
@@ -100,9 +129,9 @@ export async function importBoardFile(file: File) {
   const { notify } = useBoard.getState()
   try {
     if (file.size > MAX_FILE) throw new Error('That file is larger than 50 MB.')
-    const { elements, colorMeta, skipped } = parseBoardFile(await file.text())
+    const { elements, colorMeta, board, skipped } = parseBoardFile(await file.text())
     if (!elements.length) throw new Error('That board file has nothing to show.')
-    useBoard.getState().replaceBoard(elements, colorMeta)
+    useBoard.getState().replaceBoard(elements, colorMeta, board)
     useBoard.getState().setView(fitView(elements, innerWidth, innerHeight))
     const note = skipped ? ` ${skipped} unreadable ${skipped === 1 ? 'item was' : 'items were'} skipped.` : ''
     notify(`Board imported.${note} Ctrl+Z brings the old one back.`)

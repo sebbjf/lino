@@ -1,8 +1,8 @@
 import { boundsOf } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
+import { NOTE_TEXT, RADIUS, textOn, type BoardStyle } from './style.ts'
 
 const PAD = 48
-const RADIUS = 25 // rounded-2xl with the theme radius
 const MAX_SIDE = 8000 // browsers refuse much larger canvases
 
 /** Greedy word wrap; `measure` returns a string's width. */
@@ -48,7 +48,7 @@ function lines(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
 }
 
 /** Renders the whole board (not just the viewport) to a PNG with the current theme. Selection and handles are left out. */
-export async function boardPng(elements: BoardElement[], scale = 2): Promise<Blob> {
+export async function boardPng(elements: BoardElement[], scale = 2, board: BoardStyle = {}): Promise<Blob> {
   const css = getComputedStyle(document.documentElement)
   const v = (name: string) => css.getPropertyValue(name).trim()
   const theme = { bg: v('--background'), card: v('--card'), fg: v('--card-foreground'), muted: v('--muted-foreground'), border: v('--border') }
@@ -63,7 +63,7 @@ export async function boardPng(elements: BoardElement[], scale = 2): Promise<Blo
   canvas.height = Math.ceil((b.h + PAD * 2) * k)
   const ctx = canvas.getContext('2d')!
   ctx.scale(k, k)
-  ctx.fillStyle = theme.bg
+  ctx.fillStyle = board.bg ?? theme.bg
   ctx.fillRect(0, 0, b.w + PAD * 2, b.h + PAD * 2)
   ctx.translate(PAD - b.x, PAD - b.y)
 
@@ -81,19 +81,24 @@ export async function boardPng(elements: BoardElement[], scale = 2): Promise<Blo
     ctx.translate(el.x + w / 2, el.y + h / 2)
     ctx.rotate((el.rotation * Math.PI) / 180)
     ctx.translate(-w / 2, -h / 2)
+    ctx.globalAlpha = el.opacity ?? 1
+    const radius = Math.min(RADIUS[el.corner ?? 'soft'], w / 2, h / 2)
+    const noteBg = el.type === 'note' ? el.bg : undefined
 
     // soft shadow, then clip to the rounded card
     ctx.save()
-    ctx.shadowColor = 'rgb(0 0 0 / 0.08)'
-    ctx.shadowBlur = 24
-    ctx.shadowOffsetY = 6
-    ctx.fillStyle = el.type === 'color' ? el.hex : theme.card
+    if (el.shadow !== false) {
+      ctx.shadowColor = 'rgb(0 0 0 / 0.08)'
+      ctx.shadowBlur = 24
+      ctx.shadowOffsetY = 6
+    }
+    ctx.fillStyle = el.type === 'color' ? el.hex : (noteBg ?? theme.card)
     ctx.beginPath()
-    ctx.roundRect(0, 0, w, h, RADIUS)
+    ctx.roundRect(0, 0, w, h, radius)
     ctx.fill()
     ctx.restore()
     ctx.beginPath()
-    ctx.roundRect(0, 0, w, h, RADIUS)
+    ctx.roundRect(0, 0, w, h, radius)
     ctx.clip()
     ctx.textBaseline = 'top'
     const img = images.get(el.id)
@@ -101,9 +106,10 @@ export async function boardPng(elements: BoardElement[], scale = 2): Promise<Blo
     if (el.type === 'image' && img) cover(ctx, img, 0, 0, w, h)
 
     if (el.type === 'note') {
-      ctx.fillStyle = theme.fg
-      ctx.font = `15px ${sans}`
-      lines(ctx, el.text, 16, 16, w - 32, 24, Math.floor((h - 32) / 24))
+      const [size, lineH] = NOTE_TEXT[el.size ?? 'md']
+      ctx.fillStyle = (el.bg && textOn(el.bg)) || theme.fg
+      ctx.font = `${size}px ${el.font === 'serif' ? serif : sans}`
+      lines(ctx, el.text, 16, 16 + (lineH - size) / 2, w - 32, lineH, Math.floor((h - 32) / lineH))
     }
 
     if (el.type === 'color') {
@@ -141,10 +147,10 @@ export async function boardPng(elements: BoardElement[], scale = 2): Promise<Blo
 }
 
 export async function downloadPng() {
-  const { elements, notify } = useBoard.getState()
+  const { elements, board, notify } = useBoard.getState()
   if (!elements.length) return
   try {
-    const url = URL.createObjectURL(await boardPng(elements))
+    const url = URL.createObjectURL(await boardPng(elements, 2, board))
     const a = document.createElement('a')
     a.href = url
     a.download = 'lino-board.png'

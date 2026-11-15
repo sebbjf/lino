@@ -37,6 +37,12 @@ const elementSchema = {
     status: { enum: ['ok', 'error'] },
     missing: strings(10, 20),
     error: { type: 'string', maxLength: 300 },
+    corner: { enum: ['square', 'soft', 'round'] },
+    shadow: { type: 'boolean' },
+    opacity: { type: 'number', minimum: 0.2, maximum: 1 },
+    bg: hex,
+    size: { enum: ['sm', 'md', 'lg'] },
+    font: { enum: ['sans', 'serif'] },
   },
   allOf: [
     requires('image', ['src']),
@@ -59,6 +65,11 @@ const boardSchema = {
         additionalProperties: false,
         properties: { name: { type: 'string', maxLength: 60 }, pinned: { type: 'boolean' }, hidden: { type: 'boolean' } },
       },
+    },
+    board: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { bg: hex, pattern: { enum: ['dots', 'grid', 'plain'] } },
     },
   },
 }

@@ -30,6 +30,7 @@ import { zoomAt } from './geometry.ts'
 import { addImages } from './image.ts'
 import { FileMenu } from './FileMenu.tsx'
 import { ShareButton } from './ShareButton.tsx'
+import { StyleMenu } from './StyleMenu.tsx'
 import { useBoard } from './store.ts'
 
 type ToolProps = { label: string; icon: IconSvgElement; onClick: () => void; shortcut?: string; disabled?: boolean; pressed?: boolean }
@@ -162,6 +163,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
       <Tool label="Zoom in" icon={PlusSignIcon} onClick={() => zoomTo(zoom * 1.25)} />
 
       <Divider />
+      {!readOnly && <StyleMenu />}
       <Tool label="Palette" icon={SwatchIcon} pressed={paletteOpen} onClick={onTogglePalette} />
       <FileMenu />
       {!readOnly && <ShareButton />}

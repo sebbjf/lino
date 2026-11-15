@@ -113,6 +113,8 @@ Every push to `main` redeploys both; other branches get preview URLs. The API al
 
 Paste or drop images, links (they become cards with cover, title, fonts and colors) or text (becomes a note). The palette button opens the board palette: rename, pin or hide colors, see the fonts found, and copy everything as CSS or Tailwind.
 
+**Style** (brush icon): with elements selected, set corners (square, soft, round), shadow and opacity; for notes also the color (from the board palette or any color; text switches to dark or light for contrast), text size and typeface. With nothing selected, it styles the board: background color and dots, grid or plain. Styles travel with exports, shares and the PNG. The palette panel also takes a **variable prefix** for the CSS export (`--lino-color-…`; Tailwind keeps `--color-…` so its classes work) and writes colors as **hex or OKLCH**.
+
 **File menu** (folder icon): **Export board** saves a `.lino.json` with every element (images inline) and the palette edits. **Import board** (or dropping a `.lino.json` on the canvas) replaces the board with a file's contents; `Ctrl+Z` brings the old board back. Imported files are checked like shared boards: only http(s) links and `data:image` images, unknown fields dropped, unreadable items skipped and counted.
 
 **Download PNG** (also in the file menu) renders the whole board (not just what is on screen) at 2× with the current theme. It is drawn on a canvas, not screenshotted, so selection outlines never show up.

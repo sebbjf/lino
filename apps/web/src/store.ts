@@ -1,12 +1,17 @@
 import { create } from 'zustand'
 import type { ColorMeta } from './colors.ts'
 import { alignOffsets, distributeOffsets, type AlignMode, type Box, type Guide } from './geometry.ts'
+import type { BoardStyle, ElementStyle, NoteStyle } from './style.ts'
 
+type Base = Box & ElementStyle & { id: string }
 export type BoardElement =
-  | (Box & { id: string; type: 'image'; src: string })
-  | (Box & { id: string; type: 'note'; text: string })
-  | (Box & { id: string; type: 'color'; hex: string })
-  | (Box & { id: string; type: 'link' } & LinkInfo)
+  | (Base & { type: 'image'; src: string })
+  | (Base & { type: 'note'; text: string } & NoteStyle)
+  | (Base & { type: 'color'; hex: string })
+  | (Base & { type: 'link' } & LinkInfo)
+
+/** How the palette is written out. `prefix` goes after `--` in CSS variables (Tailwind needs its own namespaces). */
+export type ExportPrefs = { prefix: string; format: 'hex' | 'oklch' }
 
 export type LinkInfo = {
   url: string
@@ -40,6 +45,11 @@ type State = {
   colorMeta: Record<string, ColorMeta>
   setColorMeta: (hex: string, patch: ColorMeta) => void
   restoreHiddenColors: () => void
+  /** Canvas background and pattern. Not part of undo history. */
+  board: BoardStyle
+  setBoard: (patch: BoardStyle) => void
+  exportPrefs: ExportPrefs
+  setExportPrefs: (patch: Partial<ExportPrefs>) => void
   // undo history: whole elements arrays, cheap because updates share unchanged objects
   past: BoardElement[][]
   future: BoardElement[][]
@@ -50,13 +60,15 @@ type State = {
   /** Adds an element centered on a world point (defaults to the viewport center) and returns its id. */
   add: (el: NewElement, at?: { x: number; y: number }) => string
   update: (id: string, patch: Partial<BoardElement>) => void
+  /** Applies a style patch to several elements. Call checkpoint() first to make it undoable. */
+  restyle: (ids: string[], patch: ElementStyle & NoteStyle) => void
   /** Moves several elements to new positions in one state change. */
   moveMany: (pos: Record<string, { x: number; y: number }>) => void
   remove: (ids: string[]) => void
   duplicate: (ids: string[]) => void
   reorder: (id: string, to: Layer) => void
   /** Swaps in another board's elements as one undo step; palette edits are merged (they have no history). */
-  replaceBoard: (elements: BoardElement[], colorMeta: Record<string, ColorMeta>) => void
+  replaceBoard: (elements: BoardElement[], colorMeta: Record<string, ColorMeta>, board?: BoardStyle) => void
   align: (ids: string[], mode: AlignMode) => void
   distribute: (ids: string[], axis: 'x' | 'y') => void
   /** Selects one element (null clears); `toggle` adds or removes it from the current selection. */
@@ -103,6 +115,8 @@ export const useBoard = create<State>()((set, get) => ({
   readOnly: false,
   guides: [],
   colorMeta: {},
+  board: {},
+  exportPrefs: { prefix: '', format: 'hex' },
   past: [],
   future: [],
 
@@ -134,6 +148,16 @@ export const useBoard = create<State>()((set, get) => ({
   update: (id, patch) =>
     set((s) => ({ elements: s.elements.map((e) => (e.id === id ? ({ ...e, ...patch } as BoardElement) : e)) })),
 
+  restyle: (ids, patch) =>
+    set((s) => ({
+      elements: s.elements.map((e) => {
+        if (!ids.includes(e.id)) return e
+        // note-only fields never land on other element types
+        const { bg: _bg, size: _size, font: _font, ...common } = patch
+        return { ...e, ...(e.type === 'note' ? patch : common) } as BoardElement
+      }),
+    })),
+
   moveMany: (pos) => set((s) => ({ elements: s.elements.map((e) => (pos[e.id] ? { ...e, ...pos[e.id] } : e)) })),
 
   remove: (ids) =>
@@ -151,8 +175,8 @@ export const useBoard = create<State>()((set, get) => ({
     set((s) => ({ ...pushHistory(s), elements: [...s.elements, ...copies], selectedIds: copies.map((c) => c.id) }))
   },
 
-  replaceBoard: (elements, colorMeta) =>
-    set((s) => ({ ...pushHistory(s), elements, selectedIds: [], colorMeta: { ...s.colorMeta, ...colorMeta } })),
+  replaceBoard: (elements, colorMeta, board) =>
+    set((s) => ({ ...pushHistory(s), elements, selectedIds: [], colorMeta: { ...s.colorMeta, ...colorMeta }, ...(board && { board }) })),
 
   align: (ids, mode) => set((s) => shift(s, ids, (els) => alignOffsets(els, mode))),
   distribute: (ids, axis) => set((s) => shift(s, ids, (els) => (els.length < 3 ? els.map(() => ({ dx: 0, dy: 0 })) : distributeOffsets(els, axis)))),
@@ -180,6 +204,9 @@ export const useBoard = create<State>()((set, get) => ({
   notify: (notice) => set({ notice }),
 
   setColorMeta: (hex, patch) => set((s) => ({ colorMeta: { ...s.colorMeta, [hex]: { ...s.colorMeta[hex], ...patch } } })),
+
+  setBoard: (patch) => set((s) => ({ board: { ...s.board, ...patch } })),
+  setExportPrefs: (patch) => set((s) => ({ exportPrefs: { ...s.exportPrefs, ...patch } })),
 
   restoreHiddenColors: () =>
     set((s) => ({

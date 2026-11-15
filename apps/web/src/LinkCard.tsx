@@ -1,6 +1,7 @@
 import { Alert02Icon, Link01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import type { BoardElement } from './store.ts'
+import { surface } from './style.ts'
 
 type Link = Extract<BoardElement, { type: 'link' }>
 
@@ -10,7 +11,7 @@ export function LinkCard({ el }: { el: Link }) {
   const missing = el.missing.filter((m) => m !== 'image')
 
   return (
-    <div className="flex size-full flex-col overflow-hidden rounded-2xl bg-card text-card-foreground shadow-soft">
+    <div className="flex size-full flex-col overflow-hidden rounded-2xl bg-card text-card-foreground shadow-soft" style={surface(el)}>
       {el.image && <img src={el.image} alt="" draggable={false} className="pointer-events-none min-h-0 flex-1 object-cover" />}
       <div className="flex shrink-0 flex-col gap-2 p-4">
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">

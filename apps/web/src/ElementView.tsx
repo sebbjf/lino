@@ -6,6 +6,7 @@ import { drag } from './drag.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
+import { NOTE_TEXT, surface, textOn } from './style.ts'
 
 /** Snap distance in screen pixels. */
 const SNAP_PX = 6
@@ -187,6 +188,8 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       aria-roledescription="board element"
       className="absolute left-0 top-0 rounded-2xl outline-none"
       style={{
+        borderRadius: surface(el).borderRadius,
+        opacity: el.opacity,
         width: el.w,
         height: el.h,
         transform: `translate(${el.x}px, ${el.y}px) rotate(${el.rotation}deg)`,
@@ -204,11 +207,19 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       }}
     >
       {el.type === 'image' && (
-        <img src={el.src} alt="" draggable={false} className="pointer-events-none size-full rounded-2xl object-cover shadow-soft" />
+        <img src={el.src} alt="" draggable={false} className="pointer-events-none size-full rounded-2xl object-cover shadow-soft" style={surface(el)} />
       )}
 
       {el.type === 'note' && (
-        <div className="size-full overflow-hidden rounded-2xl bg-card p-4 text-[15px] leading-relaxed text-card-foreground shadow-soft">
+        <div
+          className={`size-full overflow-hidden rounded-2xl bg-card p-4 text-card-foreground shadow-soft ${el.font === 'serif' ? 'font-heading' : ''}`}
+          style={{
+            ...surface(el),
+            fontSize: NOTE_TEXT[el.size ?? 'md'][0],
+            lineHeight: `${NOTE_TEXT[el.size ?? 'md'][1]}px`,
+            ...(el.bg && { background: el.bg, color: textOn(el.bg) ?? undefined }),
+          }}
+        >
           {editing ? (
             <textarea
               autoFocus
@@ -222,13 +233,13 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
               onPointerDown={(e) => e.stopPropagation()}
             />
           ) : (
-            <p className="whitespace-pre-wrap break-words">{el.text || <span className="text-muted-foreground">Empty note</span>}</p>
+            <p className="whitespace-pre-wrap break-words">{el.text || <span className="opacity-75">Empty note</span>}</p>
           )}
         </div>
       )}
 
       {el.type === 'color' && (
-        <div className="relative size-full rounded-2xl shadow-soft" style={{ background: el.hex }}>
+        <div className="relative size-full rounded-2xl shadow-soft" style={{ ...surface(el), background: el.hex }}>
           <Popover
             open={pickerOpen && !readOnly}
             onOpenChange={(open) => {

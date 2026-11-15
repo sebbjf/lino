@@ -6,6 +6,7 @@ import { importBoardFile, isBoardFile } from './boardFile.ts'
 import { addImages } from './image.ts'
 import { addLink, asUrl } from './link.ts'
 import { useBoard } from './store.ts'
+import { textOn } from './style.ts'
 
 export function Canvas() {
   const elements = useBoard((s) => s.elements)
@@ -15,6 +16,7 @@ export function Canvas() {
   const view = useBoard((s) => s.view)
   const readOnly = useBoard((s) => s.readOnly)
   const guides = useBoard((s) => s.guides)
+  const board = useBoard((s) => s.board)
   const ref = useRef<HTMLDivElement>(null)
 
   // wheel pans, Ctrl/Cmd + wheel (and trackpad pinch) zooms; needs a non-passive listener
@@ -79,6 +81,14 @@ export function Canvas() {
   }
 
   const grid = 24 * view.zoom
+  // on a custom background the dots/lines follow its contrast color, faintly
+  const ink = board.bg ? `color-mix(in srgb, ${textOn(board.bg) ?? '#000'} 18%, transparent)` : 'var(--color-dot)'
+  const pattern = board.pattern ?? 'dots'
+  const backgroundImage = {
+    dots: `radial-gradient(${ink} 1px, transparent 1px)`,
+    grid: `linear-gradient(${ink} 1px, transparent 1px), linear-gradient(90deg, ${ink} 1px, transparent 1px)`,
+    plain: 'none',
+  }[pattern]
 
   return (
     <div
@@ -88,7 +98,8 @@ export function Canvas() {
       aria-describedby="board-help"
       className="fixed inset-0 cursor-grab touch-none select-none overflow-hidden active:cursor-grabbing"
       style={{
-        backgroundImage: 'radial-gradient(var(--color-dot) 1px, transparent 1px)',
+        backgroundColor: board.bg,
+        backgroundImage,
         backgroundSize: `${grid}px ${grid}px`,
         backgroundPosition: `${view.x}px ${view.y}px`,
       }}

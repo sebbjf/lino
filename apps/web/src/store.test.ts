@@ -71,3 +71,18 @@ test('toggle selection, group duplicate/remove and align as one undo step', () =
   board().remove(board().selectedIds)
   expect(ids()).toEqual([a, b])
 })
+
+test('restyle keeps note-only fields off other elements and keeps unmentioned ones', () => {
+  board().add({ type: 'note', text: 'a', w: 10, h: 10 }, at)
+  board().add({ type: 'color', hex: '#000000', w: 10, h: 10 }, at)
+  const [n, c] = ids()
+  board().checkpoint()
+  board().restyle([n, c], { bg: '#fff3b0', corner: 'square' })
+  board().restyle([n], { opacity: 0.5 })
+  const [note, color] = board().elements
+  expect(note).toMatchObject({ bg: '#fff3b0', corner: 'square', opacity: 0.5 })
+  expect(color).toMatchObject({ corner: 'square' })
+  expect(color).not.toHaveProperty('bg')
+  board().undo()
+  expect(board().elements[0]).not.toHaveProperty('corner')
+})

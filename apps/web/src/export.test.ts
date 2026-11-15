@@ -27,3 +27,12 @@ test('exportTheme writes CSS variables and a Tailwind @theme, deduping names', (
   )
   expect(exportTheme('tailwind', [], ['Instrument Serif'])).toBe('@theme {\n  --font-instrument-serif: "Instrument Serif", serif;\n}\n')
 })
+
+test('exportTheme prefixes CSS variables only and can write oklch', () => {
+  const colors = [{ hex: '#ff0000', name: 'Red', pinned: false }]
+  const prefs = { prefix: 'My App', format: 'oklch' as const }
+  expect(exportTheme('css', colors, ['Inter'], prefs)).toBe(
+    ':root {\n  --my-app-color-red: oklch(0.628 0.258 29.2);\n  --my-app-font-inter: "Inter", sans-serif;\n}\n',
+  )
+  expect(exportTheme('tailwind', colors, [], prefs)).toBe('@theme {\n  --color-red: oklch(0.628 0.258 29.2);\n}\n')
+})

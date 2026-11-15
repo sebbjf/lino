@@ -17,7 +17,10 @@ function memoryStore(): BoardStore {
 
 const board = {
   elements: [
-    { id: 'a', type: 'note', text: 'hi', x: 0, y: 0, w: 100, h: 80, rotation: 0 },
+    {
+      id: 'a', type: 'note', text: 'hi', x: 0, y: 0, w: 100, h: 80, rotation: 0,
+      bg: '#fff3b0', size: 'lg', font: 'serif', corner: 'square', shadow: false, opacity: 0.6,
+    },
     { id: 'b', type: 'color', hex: '#aabbcc', x: 10, y: 10, w: 100, h: 100, rotation: 5 },
     {
       id: 'c', type: 'link', url: 'https://example.com/', title: 'Ex', image: null,
@@ -25,6 +28,7 @@ const board = {
     },
   ],
   colorMeta: { '#aabbcc': { name: 'sky', pinned: true } },
+  board: { bg: '#1e3a5f', pattern: 'grid' },
 }
 
 const share = (app: ReturnType<typeof buildApp>, payload: unknown) => app.inject({ method: 'POST', url: '/boards', payload: payload as object })
@@ -54,9 +58,13 @@ test('rejects content that would be unsafe to render', async () => {
     { id: 'i', type: 'image', src: 'data:text/html;base64,PHNjcmlwdD4=', x: 0, y: 0, w: 10, h: 10, rotation: 0 },
     { id: 'i', type: 'image', x: 0, y: 0, w: 10, h: 10, rotation: 0 },
     { ...board.elements[1], hex: 'red;background:url(x)' },
+    { ...board.elements[0], bg: 'red;background:url(x)' },
+    { ...board.elements[0], opacity: 0 },
+    { ...board.elements[0], corner: '9999px' },
   ]
   for (const el of bad) assert.equal((await share(app, { elements: [el] })).statusCode, 400, JSON.stringify(el))
   assert.equal((await share(app, { elements: [] })).statusCode, 400)
+  assert.equal((await share(app, { ...board, board: { bg: 'url(x)' } })).statusCode, 400)
 })
 
 test('too large board is refused', async () => {

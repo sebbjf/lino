@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import { boardFonts, buildPalette } from './colors.ts'
-import { exportTheme, type ExportFormat } from './export.ts'
+import { exportTheme, slug, type ExportFormat } from './export.ts'
 import { useBoard } from './store.ts'
 
 export function PalettePanel({ onClose }: { onClose: () => void }) {
@@ -15,8 +15,10 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
   const { colors, hidden } = useMemo(() => buildPalette(elements, colorMeta), [elements, colorMeta])
   const fonts = useMemo(() => boardFonts(elements), [elements])
 
+  const prefs = useBoard((s) => s.exportPrefs)
+  const { setExportPrefs } = useBoard.getState()
   const copy = (format: ExportFormat) =>
-    navigator.clipboard.writeText(exportTheme(format, colors, fonts)).then(
+    navigator.clipboard.writeText(exportTheme(format, colors, fonts, prefs)).then(
       () => notify(format === 'css' ? 'CSS variables copied.' : 'Tailwind theme copied.'),
       () => notify('Could not copy to the clipboard.'),
     )
@@ -108,15 +110,48 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
       )}
 
       {(colors.length > 0 || fonts.length > 0) && (
-        <section aria-label="Export" className="flex gap-2 border-t pt-3">
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => copy('css')}>
-            <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
-            CSS variables
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => copy('tailwind')}>
-            <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
-            Tailwind
-          </Button>
+        <section aria-label="Export" className="flex flex-col gap-2 border-t pt-3">
+          <div className="flex items-end gap-2">
+            <label className="flex flex-1 flex-col gap-1 text-xs font-medium text-muted-foreground">
+              Variable prefix
+              <Input
+                className="h-8 font-mono"
+                placeholder="none"
+                spellCheck={false}
+                autoComplete="off"
+                maxLength={30}
+                value={prefs.prefix}
+                onChange={(e) => setExportPrefs({ prefix: e.target.value })}
+              />
+            </label>
+            <div role="group" aria-label="Color format" className="flex gap-1">
+              {(['hex', 'oklch'] as const).map((f) => (
+                <Button
+                  key={f}
+                  variant={prefs.format === f ? 'secondary' : 'ghost'}
+                  size="sm"
+                  aria-pressed={prefs.format === f}
+                  className={prefs.format === f ? 'ring-1 ring-ring' : undefined}
+                  onClick={() => setExportPrefs({ format: f })}
+                >
+                  {f === 'hex' ? 'Hex' : 'OKLCH'}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {slug(prefs.prefix, '') ? `CSS writes --${slug(prefs.prefix, '')}-color-…; ` : ''}Tailwind always uses --color-… so its classes work.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => copy('css')}>
+              <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
+              CSS variables
+            </Button>
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => copy('tailwind')}>
+              <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
+              Tailwind
+            </Button>
+          </div>
         </section>
       )}
     </aside>
