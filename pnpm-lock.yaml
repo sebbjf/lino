@@ -190,7 +190,7 @@ importers:
       '@fontsource-variable/figtree':
         specifier: ^5.3.0
         version: 5.3.0
-      '@fontsource-variable/playfair':
+      '@fontsource-variable/newsreader':
         specifier: ^5.3.0
         version: 5.3.0
       '@hugeicons/core-free-icons':
@@ -468,8 +468,8 @@ packages:
   '@fontsource-variable/figtree@5.3.0':
     resolution: {integrity: sha512-VRVodD7OiG7apQwE8/2fMjaqpY/a0qRJqL5HtYj8CKIVps+9amaFcdfKmDIf7iqYQx6iPLlArVXAfKeIZmVcNQ==}
 
-  '@fontsource-variable/playfair@5.3.0':
-    resolution: {integrity: sha512-HK2Sxb9/dWDYHyjjhc3cA2d15qVv70XOhdPte9j7TJYkSVJ1VCDoMA0fZYWHaN3PJN0HDeJII0z9DDTRIcufug==}
+  '@fontsource-variable/newsreader@5.3.0':
+    resolution: {integrity: sha512-rrzYi43qMpbzwuFtf9OkWH8sxAPVPcQQQEwXpPtwaKYeJ8yVg5aLs5kawmo1f2Q1t1M38TLmEKCkGVDsYwgdFw==}
 
   '@hugeicons/core-free-icons@4.4.0':
     resolution: {integrity: sha512-7Mz8bmGoY6tZ6l3C2TXwNMLVSr0I8HPwjjFIERAuJFj3rWwLxdF2ZLkDqdrVuEE1dx5b/VXyIsP4WoSU6Q40KQ==}
@@ -2338,7 +2338,7 @@ snapshots:
 
   '@fontsource-variable/figtree@5.3.0': {}
 
-  '@fontsource-variable/playfair@5.3.0': {}
+  '@fontsource-variable/newsreader@5.3.0': {}
 
   '@hugeicons/core-free-icons@4.4.0': {}
 
