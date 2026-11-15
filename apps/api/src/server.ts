@@ -1,6 +1,6 @@
 import { buildApp } from './app.ts'
 
-const app = buildApp({ logger: true })
+const app = buildApp({ logger: true, trustProxy: process.env.TRUST_PROXY === '1' })
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.once(signal, () => app.close().then(() => process.exit(0)))
