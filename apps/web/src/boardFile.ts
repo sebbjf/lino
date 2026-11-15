@@ -1,6 +1,6 @@
 import type { ColorMeta } from './colors.ts'
 import { fitView } from './geometry.ts'
-import { CORNERS, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
+import { CORNERS, FAMILY, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
 import { useBoard, type BoardElement } from './store.ts'
 
 const MAX_FILE = 50 * 1024 * 1024
@@ -35,6 +35,7 @@ function noteStyleOf(e: Record<string, unknown>) {
     ...(isStr(e.bg, 9) && HEX.test(e.bg) && { bg: e.bg }),
     ...(oneOf(NOTE_SIZES, e.size) && { size: e.size }),
     ...(oneOf(NOTE_FONTS, e.font) && { font: e.font }),
+    ...(isStr(e.family, 60) && FAMILY.test(e.family) && { family: e.family }),
   }
 }
 

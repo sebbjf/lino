@@ -43,6 +43,7 @@ const elementSchema = {
     bg: hex,
     size: { enum: ['sm', 'md', 'lg'] },
     font: { enum: ['sans', 'serif'] },
+    family: { type: 'string', pattern: '^[A-Za-z0-9 _-]{1,60}$' },
   },
   allOf: [
     requires('image', ['src']),

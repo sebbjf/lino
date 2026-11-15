@@ -8,8 +8,23 @@ export type Pattern = 'dots' | 'grid' | 'plain'
 
 /** Optional look of any element; missing fields mean the default (soft corners, shadow, opaque). */
 export type ElementStyle = { corner?: Corner; shadow?: boolean; opacity?: number }
-/** Notes only; `bg` unset means the theme's card color. */
-export type NoteStyle = { bg?: string; size?: NoteSize; font?: NoteFont }
+/** Notes only; `bg` unset means the theme's card color. `family` (a font found on a link) wins over `font`. */
+export type NoteStyle = { bg?: string; size?: NoteSize; font?: NoteFont; family?: string }
+
+/** Font names safe to put in CSS and a Google Fonts URL. */
+export const FAMILY = /^[A-Za-z0-9 _-]{1,60}$/
+
+const loaded = new Set<string>()
+/** Asks Google Fonts for a family once; if it has none, the fallback font shows. */
+export function loadFamily(family: string) {
+  if (loaded.has(family) || !FAMILY.test(family)) return
+  loaded.add(family)
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g, '+')}&display=swap`
+  document.head.append(link)
+}
+
 /** The canvas; `bg` unset means the theme background. */
 export type BoardStyle = { bg?: string; pattern?: Pattern }
 

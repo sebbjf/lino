@@ -3,9 +3,9 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { buildPalette } from './colors.ts'
+import { boardFonts, buildPalette } from './colors.ts'
 import { useBoard } from './store.ts'
-import { CORNERS, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, type ElementStyle, type NoteStyle } from './style.ts'
+import { CORNERS, FAMILY, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, loadFamily, type ElementStyle, type NoteStyle } from './style.ts'
 
 const NAMES: Record<string, string> = {
   square: 'Square',
@@ -116,6 +116,7 @@ function ElementPanel({ ids }: { ids: string[] }) {
     restyle(ids, patch)
   }
   const opacity = Math.round((cur.opacity ?? 1) * 100)
+  const fonts = boardFonts(elements).filter((f) => FAMILY.test(f))
 
   return (
     <>
@@ -144,7 +145,29 @@ function ElementPanel({ ids }: { ids: string[] }) {
         <div className="flex flex-col gap-3 border-t pt-3">
           <Swatches label="Note color" value={note.bg} onStart={checkpoint} onChange={(bg) => restyle(ids, { bg })} />
           <Choice label="Text size" options={NOTE_SIZES} value={note.size ?? 'md'} onChange={(size) => apply({ size })} />
-          <Choice label="Typeface" options={NOTE_FONTS} value={note.font ?? 'sans'} onChange={(font) => apply({ font })} />
+          <Choice label="Typeface" options={NOTE_FONTS} value={note.family ? undefined : (note.font ?? 'sans')} onChange={(font) => apply({ font, family: undefined })} />
+          {fonts.length > 0 && (
+            <Group label="Fonts from your links">
+              <div className="flex flex-wrap gap-1">
+                {fonts.map((f) => (
+                  <Button
+                    key={f}
+                    variant={note.family === f ? 'secondary' : 'ghost'}
+                    size="sm"
+                    aria-pressed={note.family === f}
+                    className={note.family === f ? 'ring-1 ring-ring' : undefined}
+                    style={{ fontFamily: `"${f}", var(--font-sans)` }}
+                    onPointerEnter={() => loadFamily(f)}
+                    onFocus={() => loadFamily(f)}
+                    onClick={() => apply({ family: f })}
+                  >
+                    {f}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Loaded from Google Fonts when it has them; otherwise the default font shows.</p>
+            </Group>
+          )}
         </div>
       )}
     </>

@@ -153,7 +153,7 @@ export const useBoard = create<State>()((set, get) => ({
       elements: s.elements.map((e) => {
         if (!ids.includes(e.id)) return e
         // note-only fields never land on other element types
-        const { bg: _bg, size: _size, font: _font, ...common } = patch
+        const { bg: _bg, size: _size, font: _font, family: _family, ...common } = patch
         return { ...e, ...(e.type === 'note' ? patch : common) } as BoardElement
       }),
     })),

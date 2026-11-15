@@ -1,6 +1,6 @@
 import { boundsOf } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
-import { NOTE_TEXT, RADIUS, textOn, type BoardStyle } from './style.ts'
+import { FAMILY, NOTE_TEXT, RADIUS, textOn, type BoardStyle } from './style.ts'
 
 const PAD = 48
 const MAX_SIDE = 8000 // browsers refuse much larger canvases
@@ -108,7 +108,8 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
     if (el.type === 'note') {
       const [size, lineH] = NOTE_TEXT[el.size ?? 'md']
       ctx.fillStyle = (el.bg && textOn(el.bg)) || theme.fg
-      ctx.font = `${size}px ${el.font === 'serif' ? serif : sans}`
+      const base = el.font === 'serif' ? serif : sans
+      ctx.font = `${size}px ${el.family && FAMILY.test(el.family) ? `"${el.family}", ${base}` : base}`
       lines(ctx, el.text, 16, 16 + (lineH - size) / 2, w - 32, lineH, Math.floor((h - 32) / lineH))
     }
 

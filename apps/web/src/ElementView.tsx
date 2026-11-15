@@ -6,7 +6,7 @@ import { drag } from './drag.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
-import { NOTE_TEXT, surface, textOn } from './style.ts'
+import { FAMILY, NOTE_TEXT, loadFamily, surface, textOn } from './style.ts'
 
 /** Snap distance in screen pixels. */
 const SNAP_PX = 6
@@ -41,6 +41,11 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   const root = useRef<HTMLDivElement>(null)
 
   // keep keyboard focus on the selected element (e.g. after duplicate or add)
+  const family = el.type === 'note' ? el.family : undefined
+  useEffect(() => {
+    if (family) loadFamily(family)
+  }, [family])
+
   useEffect(() => {
     if (solo && !editing && !root.current!.contains(document.activeElement)) root.current!.focus({ preventScroll: true })
   }, [solo, editing])
@@ -218,6 +223,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
             fontSize: NOTE_TEXT[el.size ?? 'md'][0],
             lineHeight: `${NOTE_TEXT[el.size ?? 'md'][1]}px`,
             ...(el.bg && { background: el.bg, color: textOn(el.bg) ?? undefined }),
+            ...(el.family && FAMILY.test(el.family) && { fontFamily: `"${el.family}", var(--font-sans)` }),
           }}
         >
           {editing ? (

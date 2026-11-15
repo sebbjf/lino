@@ -19,7 +19,7 @@ const board = {
   elements: [
     {
       id: 'a', type: 'note', text: 'hi', x: 0, y: 0, w: 100, h: 80, rotation: 0,
-      bg: '#fff3b0', size: 'lg', font: 'serif', corner: 'square', shadow: false, opacity: 0.6,
+      bg: '#fff3b0', size: 'lg', font: 'serif', family: 'Inter', corner: 'square', shadow: false, opacity: 0.6,
     },
     { id: 'b', type: 'color', hex: '#aabbcc', x: 10, y: 10, w: 100, h: 100, rotation: 5 },
     {
@@ -61,6 +61,7 @@ test('rejects content that would be unsafe to render', async () => {
     { ...board.elements[0], bg: 'red;background:url(x)' },
     { ...board.elements[0], opacity: 0 },
     { ...board.elements[0], corner: '9999px' },
+    { ...board.elements[0], family: 'x", serif; } body {' },
   ]
   for (const el of bad) assert.equal((await share(app, { elements: [el] })).statusCode, 400, JSON.stringify(el))
   assert.equal((await share(app, { elements: [] })).statusCode, 400)
