@@ -32,7 +32,7 @@ export function LinkCard({ el }: { el: Link }) {
 
         {el.status === 'ok' && (
           <>
-            <p className="line-clamp-2 font-heading text-lg leading-snug">{el.title ?? host}</p>
+            <p className="line-clamp-2 text-lg leading-snug font-semibold tracking-tight">{el.title ?? host}</p>
             {(el.fonts.length > 0 || el.colors.length > 0) && (
               <div className="flex flex-wrap items-center gap-1.5">
                 {el.colors.map((hex) => (

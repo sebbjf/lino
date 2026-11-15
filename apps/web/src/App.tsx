@@ -67,6 +67,18 @@ export function App() {
       <main>
         <h1 className="sr-only">Lino board</h1>
         <Canvas />
+        <a
+          href="/"
+          aria-label="Lino home"
+          className="fixed top-4 left-4 flex items-center gap-2 rounded-full border bg-card/90 py-1.5 pr-3.5 pl-3 text-sm font-semibold tracking-tight shadow-soft backdrop-blur outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        >
+          <span aria-hidden className="flex -space-x-1">
+            {['bg-foreground/15', 'bg-foreground/35', 'bg-foreground/60', 'bg-foreground'].map((c) => (
+              <span key={c} className={`size-2.5 rounded-full ring-2 ring-card ${c}`} />
+            ))}
+          </span>
+          Lino
+        </a>
         {readOnly && (
           <p className="fixed left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border bg-card/90 px-4 py-1.5 text-sm shadow-soft backdrop-blur">
             <span className="text-muted-foreground">Shared board · read-only</span>
@@ -77,13 +89,13 @@ export function App() {
         )}
         {empty && readOnly && (
           <div className="pointer-events-none fixed inset-0 grid place-items-center px-4 text-center">
-            <p className="font-heading text-4xl text-foreground">This board could not be opened</p>
+            <p className="text-4xl font-semibold tracking-[-0.04em] text-foreground">This board could not be opened</p>
           </div>
         )}
         {empty && !readOnly && (
           <div className="pointer-events-none fixed inset-0 grid place-items-center px-4 text-center">
             <div>
-              <p className="font-heading text-4xl text-foreground">Start with a reference</p>
+              <p className="text-4xl font-semibold tracking-[-0.04em] text-foreground">Start with a reference</p>
               <p className="mt-2 text-sm text-muted-foreground">Drop or paste images or links, or add a note or a color.</p>
             </div>
           </div>

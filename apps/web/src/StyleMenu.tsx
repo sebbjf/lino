@@ -272,7 +272,7 @@ export function StyleMenu() {
         <HugeiconsIcon icon={PaintBrush02Icon} strokeWidth={1.8} />
       </PopoverTrigger>
       <PopoverContent side="top" sideOffset={12} className="w-72 gap-3 p-4">
-        <p className="font-heading text-lg">{ids.length ? 'Style' : 'Board'}</p>
+        <p className="text-lg font-semibold tracking-tight">{ids.length ? 'Style' : 'Board'}</p>
         {ids.length ? <ElementPanel ids={ids} /> : <BoardPanel />}
       </PopoverContent>
     </Popover>

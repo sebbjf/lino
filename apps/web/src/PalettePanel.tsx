@@ -31,7 +31,7 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
       className="fixed right-4 top-4 flex max-h-[calc(100dvh-7rem)] w-[min(20rem,calc(100vw-2rem))] flex-col gap-3 overflow-y-auto rounded-3xl border bg-card p-4 shadow-soft"
     >
       <header className="flex items-center justify-between">
-        <h2 id="palette-title" className="font-heading text-2xl">
+        <h2 id="palette-title" className="text-2xl font-semibold tracking-tight">
           Palette
         </h2>
         <Button variant="ghost" size="icon-sm" aria-label="Close palette" onClick={onClose}>
@@ -111,7 +111,7 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
 
       {fonts.length > 0 && (
         <section aria-labelledby="fonts-title" className="flex flex-col gap-2 border-t pt-3">
-          <h3 id="fonts-title" className="font-heading text-lg">
+          <h3 id="fonts-title" className="text-lg font-semibold tracking-tight">
             Fonts
           </h3>
           <ul className="flex flex-wrap gap-1.5">
