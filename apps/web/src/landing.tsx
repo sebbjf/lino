@@ -310,11 +310,11 @@ function Landing() {
         <main className="relative flex flex-1 flex-col justify-center px-4 pt-8 pb-16 sm:px-8">
           <div className="relative z-10 mx-auto max-w-4xl text-center">
             <h1 className="font-heading text-[clamp(3rem,6vw,5.75rem)] leading-[0.92] tracking-[-0.04em]">
-              Where your ideas <br className="hidden sm:block" />
-              <em>take shape</em>.
+              Your references, <br className="hidden sm:block" />
+              <em>on one board</em>.
             </h1>
             <p className="mx-auto mt-8 max-w-md text-base leading-8 text-muted-foreground">
-              Pin <Tag>images</Tag>, <Tag>notes</Tag> and <Tag>colors</Tag> on one board, and keep the colors you like in a palette.
+              Pin <Tag>images</Tag>, <Tag>notes</Tag> and <Tag>colors</Tag>, and keep the colors you like in a palette.
             </p>
             <div className="mt-10 flex flex-col items-center gap-4">
               <a
@@ -340,7 +340,7 @@ function Landing() {
         <div className={`${container} text-center`}>
           <Eyebrow>The board</Eyebrow>
           <h2 className={h2}>
-            Collect it all. <em>Keep the colors.</em>
+            Collect it all. Keep the colors.
           </h2>
           <p className={`${lead} mx-auto`}>
             Drop in images, jot down notes and add swatches. Every color you add lands in the palette, ready to rename and pin.
@@ -354,7 +354,7 @@ function Landing() {
           <div>
             <Eyebrow>Tokens</Eyebrow>
             <h2 className={h2}>
-              That board, <em>as tokens</em>.
+              That board, as tokens.
             </h2>
             <p className={lead}>
               Rename and pin the colors you keep, and Lino turns them into tokens you can paste into your project. Fonts will
@@ -370,7 +370,7 @@ function Landing() {
         <div className={container}>
           <Eyebrow dark>Private</Eyebrow>
           <h2 className={h2}>
-            Your boards <em>stay with you</em>.
+            Your boards stay with you.
           </h2>
           <p className={`${lead} text-background/60`}>
             Everything you pin is saved in your browser, on this device. There is no account to make, and nothing you add is
@@ -392,7 +392,7 @@ function Landing() {
           <div>
             <Eyebrow>Questions</Eyebrow>
             <h2 className={h2}>
-              Good to <em>know</em>.
+              Good to know.
             </h2>
           </div>
           <div className="border-t border-border">
@@ -418,7 +418,7 @@ function Landing() {
       <section className={`${section} pt-0 sm:pt-0`}>
         <div className={`${container} rounded-3xl border border-border/60 bg-card px-6 py-24 text-center shadow-soft`}>
           <h2 className="font-heading text-[clamp(2.75rem,6vw,4.5rem)] leading-[0.95]">
-            Start your <em>first board</em>.
+            Start your first board.
           </h2>
           <p className={`${lead} mx-auto`}>It opens right away, with nothing to sign up for.</p>
           <a href="/board/" className={`${darkButton} mt-10 px-6 py-3 text-sm`}>
