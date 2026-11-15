@@ -53,7 +53,7 @@ function Card({ className, rotate, children }: { className: string; rotate: numb
       onPointerMove={(e) => start.current && setPos({ x: e.clientX - start.current.x, y: e.clientY - start.current.y })}
       onPointerUp={() => (start.current = null)}
     >
-      {children}
+      <div className="card-drop">{children}</div>
     </div>
   )
 }
