@@ -7,7 +7,7 @@ import { harmonies } from './colors.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
 import { justDropped, useBoard, type BoardElement } from './store.ts'
-import { DEFAULT_DUO, FAMILY, NOTE_TEXT, loadFamily, rgb, surface, textOn } from './style.ts'
+import { DEFAULT_DUO, NOTE_TEXT, loadFamily, noteFontStack, rgb, surface, textOn } from './style.ts'
 
 /** Snap distance in screen pixels. */
 const SNAP_PX = 6
@@ -87,6 +87,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   const [editing, setEditing] = useState(() => selected && el.type === 'note' && !el.text)
   const [pickerOpen, setPickerOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const noteText = useRef<HTMLParagraphElement>(null)
 
   // keep keyboard focus on the selected element (e.g. after duplicate or add)
   // plays once, for an element just added in messy mode
@@ -95,6 +96,21 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   useEffect(() => {
     if (family) loadFamily(family)
   }, [family])
+
+  // a note grows to fit its text (it never shrinks by itself): no inner scrolling, nothing cut off
+  useEffect(() => {
+    const p = noteText.current
+    if (!p || readOnly) return
+    const grow = () => {
+      const need = p.offsetHeight + 32
+      const cur = useBoard.getState().elements.find((o) => o.id === el.id)
+      if (cur && need > cur.h + 0.5) update(el.id, { h: need })
+    }
+    grow()
+    const ro = new ResizeObserver(grow)
+    ro.observe(p)
+    return () => ro.disconnect()
+  }, [el.id, el.w, readOnly, update])
 
   useEffect(() => {
     if (solo && !editing && !root.current!.contains(document.activeElement)) root.current!.focus({ preventScroll: true })
@@ -285,30 +301,38 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
 
       {el.type === 'note' && (
         <div
-          className={`size-full overflow-hidden rounded-2xl bg-card p-4 text-card-foreground shadow-soft ${el.font === 'serif' ? 'font-heading' : ''}`}
+          className="size-full overflow-hidden rounded-2xl bg-card p-4 text-card-foreground shadow-soft"
           style={{
             ...surface(el),
+            fontFamily: noteFontStack(el),
             fontSize: NOTE_TEXT[el.size ?? 'md'][0],
             lineHeight: `${NOTE_TEXT[el.size ?? 'md'][1]}px`,
+            textAlign: el.align,
+            fontWeight: el.bold ? 700 : undefined,
+            fontStyle: el.italic ? 'italic' : undefined,
             ...(el.bg && { background: el.bg, color: textOn(el.bg) ?? undefined }),
-            ...(el.family && FAMILY.test(el.family) && { fontFamily: `"${el.family}", var(--font-sans)` }),
+            ...(el.color && { color: el.color }),
           }}
         >
-          {editing ? (
-            <textarea
-              autoFocus
-              aria-label="Note text"
-              className="size-full resize-none select-text bg-transparent outline-none"
-              value={el.text}
-              placeholder="Write something…"
-              onChange={(e) => update(el.id, { text: e.target.value })}
-              onBlur={() => setEditing(false)}
-              onKeyDown={(e) => e.key === 'Escape' && e.currentTarget.blur()}
-              onPointerDown={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <p className="whitespace-pre-wrap break-words">{el.text || <span className="opacity-75">Empty note</span>}</p>
-          )}
+          {/* the text sizes the note: a hidden copy of it (and the textarea laid over it) tell how tall it must be */}
+          <div className="grid">
+            <p ref={noteText} className={`[grid-area:1/1] whitespace-pre-wrap break-words ${editing ? 'invisible' : ''}`}>
+              {el.text ? `${el.text}​` : editing ? '​' : <span className="opacity-75">Empty note</span>}
+            </p>
+            {editing && (
+              <textarea
+                autoFocus
+                aria-label="Note text"
+                className="[grid-area:1/1] size-full resize-none select-text overflow-hidden bg-transparent outline-none [font:inherit] [text-align:inherit]"
+                value={el.text}
+                placeholder="Write something…"
+                onChange={(e) => update(el.id, { text: e.target.value })}
+                onBlur={() => setEditing(false)}
+                onKeyDown={(e) => e.key === 'Escape' && e.currentTarget.blur()}
+                onPointerDown={(e) => e.stopPropagation()}
+              />
+            )}
+          </div>
         </div>
       )}
 

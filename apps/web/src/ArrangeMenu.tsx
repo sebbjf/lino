@@ -13,6 +13,7 @@ import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { fitView, LAYOUTS, type Layout } from './geometry.ts'
 import { useBoard } from './store.ts'
 
@@ -47,9 +48,12 @@ export function ArrangeMenu() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Arrange the ${target}`} title={`Arrange the ${target}`} />}>
-        <HugeiconsIcon icon={MagicWand01Icon} strokeWidth={1.8} />
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Arrange the ${target}`} />} />}>
+          <HugeiconsIcon icon={MagicWand01Icon} strokeWidth={1.8} />
+        </TooltipTrigger>
+        <TooltipContent>Arrange the {target}</TooltipContent>
+      </Tooltip>
       <PopoverContent side="top" sideOffset={12} className="w-72 gap-1 p-2">
         <p className="px-3 pt-1 pb-2 text-xs text-muted-foreground">Arrange the {target} (Ctrl+Z undoes)</p>
         {LAYOUTS.map((mode) => (

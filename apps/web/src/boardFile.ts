@@ -1,6 +1,6 @@
 import type { ColorMeta } from './colors.ts'
 import { fitView } from './geometry.ts'
-import { CORNERS, DECOS, FAMILY, IMAGE_FILTERS, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
+import { CORNERS, DECOS, FAMILY, IMAGE_FILTERS, MIN_OPACITY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
 import { useBoard, type BoardElement } from './store.ts'
 
 const MAX_FILE = 50 * 1024 * 1024
@@ -34,7 +34,11 @@ function styleOf(e: Record<string, unknown>) {
 function noteStyleOf(e: Record<string, unknown>) {
   return {
     ...(isStr(e.bg, 9) && HEX.test(e.bg) && { bg: e.bg }),
+    ...(isStr(e.color, 9) && HEX.test(e.color) && { color: e.color }),
     ...(oneOf(NOTE_SIZES, e.size) && { size: e.size }),
+    ...(oneOf(NOTE_ALIGNS, e.align) && { align: e.align }),
+    ...(typeof e.bold === 'boolean' && { bold: e.bold }),
+    ...(typeof e.italic === 'boolean' && { italic: e.italic }),
     ...(oneOf(NOTE_FONTS, e.font) && { font: e.font }),
     ...(isStr(e.family, 60) && FAMILY.test(e.family) && { family: e.family }),
   }

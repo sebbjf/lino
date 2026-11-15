@@ -13,7 +13,7 @@ export type BoardElement =
 /** How the palette is written out. `prefix` goes after `--` in CSS variables (Tailwind needs its own namespaces). */
 export type StylePatch = ElementStyle & NoteStyle & ImageStyle
 /** Style fields that belong to one element type only. */
-const OWN: Partial<Record<BoardElement['type'], (keyof StylePatch)[]>> = { note: ['bg', 'size', 'font', 'family'], image: ['filter', 'duo'] }
+const OWN: Partial<Record<BoardElement['type'], (keyof StylePatch)[]>> = { note: ['bg', 'color', 'size', 'font', 'family', 'align', 'bold', 'italic'], image: ['filter', 'duo'] }
 const TYPED = Object.values(OWN).flat()
 const STYLE_KEYS: (keyof StylePatch)[] = ['corner', 'shadow', 'opacity', 'deco', ...TYPED]
 

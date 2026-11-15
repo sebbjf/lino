@@ -2,7 +2,8 @@ import type { CSSProperties } from 'react'
 import { normalizeHex } from './colors.ts'
 
 export type Corner = 'square' | 'soft' | 'round'
-export type NoteSize = 'sm' | 'md' | 'lg'
+export type NoteSize = 'sm' | 'md' | 'lg' | 'xl'
+export type NoteAlign = 'left' | 'center' | 'right'
 export type NoteFont = 'sans' | 'serif'
 export type Pattern = 'dots' | 'grid' | 'plain'
 
@@ -12,8 +13,11 @@ export type Deco = 'tape' | 'pin'
 export const DECOS: Deco[] = ['tape', 'pin']
 /** Tilt range in degrees for elements added in messy mode. */
 export const MESSY_TILT = 5
-/** Notes only; `bg` unset means the theme's card color. `family` (a font found on a link) wins over `font`. */
-export type NoteStyle = { bg?: string; size?: NoteSize; font?: NoteFont; family?: string }
+/**
+ * Notes only; `bg` unset means the theme's card color, `color` unset means whichever of dark or light reads best on it.
+ * `family` (any Google Font, or one found on a link) wins over `font`.
+ */
+export type NoteStyle = { bg?: string; color?: string; size?: NoteSize; font?: NoteFont; family?: string; align?: NoteAlign; bold?: boolean; italic?: boolean }
 
 export type ImageFilter = 'mono' | 'duotone'
 export const IMAGE_FILTERS: ImageFilter[] = ['mono', 'duotone']
@@ -54,18 +58,50 @@ export function loadFamily(family: string) {
   document.head.append(link)
 }
 
+/** Pastel sticky-note colors offered next to the board palette. */
+export const STICKY_COLORS = ['#fff3b0', '#ffd6e0', '#d4f0f0', '#d9f2d0', '#e6dcff', '#ffe0c2']
+
+/** A hand-picked set of Google Fonts for the note picker; any other family can be typed in. */
+export const GOOGLE_FONTS = [
+  'Inter', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Raleway', 'Nunito', 'DM Sans', 'Work Sans', 'Rubik', 'Josefin Sans',
+  'Playfair Display', 'Merriweather', 'Lora', 'DM Serif Display', 'Fraunces', 'Cormorant Garamond', 'Abril Fatface',
+  'Space Grotesk', 'Oswald', 'Bebas Neue', 'Archivo Black', 'Comfortaa', 'Lobster', 'Pacifico',
+  'Caveat', 'Dancing Script', 'Permanent Marker', 'Shadows Into Light', 'Indie Flower',
+  'Special Elite', 'Courier Prime', 'JetBrains Mono', 'Space Mono',
+]
+
+let previewsLoaded = false
+/** One request that draws every picker entry in its own font, using only the glyphs of the names. */
+export function loadFontPreviews() {
+  if (previewsLoaded) return
+  previewsLoaded = true
+  const text = [...new Set(GOOGLE_FONTS.join(''))].join('')
+  const families = GOOGLE_FONTS.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}`).join('&')
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = `https://fonts.googleapis.com/css2?${families}&text=${encodeURIComponent(text)}&display=swap`
+  document.head.append(link)
+}
+
+/** CSS font stack for a note: its Google Font (if valid), else the serif or sans default. */
+export function noteFontStack(n: NoteStyle) {
+  const base = n.font === 'serif' ? 'var(--font-heading)' : 'var(--font-sans)'
+  return n.family && FAMILY.test(n.family) ? `"${n.family}", ${base}` : base
+}
+
 /** The canvas; `bg` unset means the theme background. */
 export type BoardStyle = { bg?: string; pattern?: Pattern; messy?: boolean }
 
 export const CORNERS: Corner[] = ['square', 'soft', 'round']
-export const NOTE_SIZES: NoteSize[] = ['sm', 'md', 'lg']
+export const NOTE_SIZES: NoteSize[] = ['sm', 'md', 'lg', 'xl']
+export const NOTE_ALIGNS: NoteAlign[] = ['left', 'center', 'right']
 export const NOTE_FONTS: NoteFont[] = ['sans', 'serif']
 export const PATTERNS: Pattern[] = ['dots', 'grid', 'plain']
 
 /** Corner radius in px; soft matches rounded-2xl with the theme radius. */
 export const RADIUS: Record<Corner, number> = { square: 0, soft: 25, round: 48 }
 /** Font size and line height in px. */
-export const NOTE_TEXT: Record<NoteSize, [number, number]> = { sm: [13, 20], md: [15, 24], lg: [20, 30] }
+export const NOTE_TEXT: Record<NoteSize, [number, number]> = { sm: [13, 20], md: [15, 24], lg: [20, 30], xl: [30, 38] }
 export const MIN_OPACITY = 0.2
 
 /** Inline styles for an element's surface; they override the default rounded-2xl/shadow-soft classes. */

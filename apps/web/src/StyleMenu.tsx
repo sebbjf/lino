@@ -1,11 +1,14 @@
 import { PaintBrush02Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { boardFonts, buildPalette } from './colors.ts'
+import { boundsOf } from './geometry.ts'
 import { useBoard, type StylePatch } from './store.ts'
-import { CORNERS, DECOS, FAMILY, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, loadFamily, DEFAULT_DUO, IMAGE_FILTERS, type Pattern } from './style.ts'
+import { CORNERS, DECOS, FAMILY, GOOGLE_FONTS, MIN_OPACITY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES, PATTERNS, STICKY_COLORS, loadFamily, loadFontPreviews, DEFAULT_DUO, IMAGE_FILTERS, type Pattern } from './style.ts'
 
 const NAMES: Record<string, string> = {
   square: 'Square',
@@ -14,6 +17,10 @@ const NAMES: Record<string, string> = {
   sm: 'S',
   md: 'M',
   lg: 'L',
+  xl: 'XL',
+  left: 'Left',
+  center: 'Center',
+  right: 'Right',
   sans: 'Sans',
   serif: 'Serif',
   dots: 'Dots',
@@ -57,7 +64,7 @@ function Choice<T extends string>({ label, options, value, onChange }: { label: 
 }
 
 /** "Default", the board palette and a custom color well. `onStart` runs before a change so it undoes as one step. */
-function Swatches({ label, value, onChange, onStart }: { label: string; value: string | undefined; onChange: (hex: string | undefined) => void; onStart?: () => void }) {
+function Swatches({ label, value, onChange, onStart, presets = [] }: { label: string; value: string | undefined; onChange: (hex: string | undefined) => void; onStart?: () => void; presets?: string[] }) {
   const elements = useBoard((s) => s.elements)
   const colorMeta = useBoard((s) => s.colorMeta)
   const palette = useMemo(() => buildPalette(elements, colorMeta).colors.slice(0, 10), [elements, colorMeta])
@@ -77,9 +84,9 @@ function Swatches({ label, value, onChange, onStart }: { label: string; value: s
             onChange(undefined)
           }}
         />
-        {palette.map((c) => (
+        {[...presets.map((hex) => ({ hex, name: 'Sticky' })), ...palette].map((c, i) => (
           <button
-            key={c.hex}
+            key={`${i}-${c.hex}`}
             type="button"
             aria-pressed={value === c.hex}
             aria-label={`${c.name} ${c.hex}`}
@@ -104,6 +111,49 @@ function Swatches({ label, value, onChange, onStart }: { label: string; value: s
         </label>
       </div>
     </Group>
+  )
+}
+
+/** Search the curated Google Fonts, or type any family name Google Fonts has. */
+function FontPicker({ value, onPick }: { value: string | undefined; onPick: (family: string) => void }) {
+  const [q, setQ] = useState('')
+  useEffect(loadFontPreviews, [])
+  const query = q.trim()
+  const shown = GOOGLE_FONTS.filter((f) => f.toLowerCase().includes(query.toLowerCase()))
+  const custom = query && FAMILY.test(query) && !GOOGLE_FONTS.some((f) => f.toLowerCase() === query.toLowerCase())
+  return (
+    <Group label="Google Fonts">
+      <Input aria-label="Search Google Fonts" placeholder="Search or type any family…" value={q} maxLength={60} onChange={(e) => setQ(e.target.value)} />
+      <div className="flex flex-wrap gap-0.5">
+        {shown.map((f) => (
+          <Button
+            key={f}
+            variant={value === f ? 'secondary' : 'ghost'}
+            size="sm"
+            aria-pressed={value === f}
+            className={`h-7 px-2 ${value === f ? 'ring-1 ring-ring' : ''}`}
+            style={{ fontFamily: `"${f}", var(--font-sans)` }}
+            onClick={() => onPick(f)}
+          >
+            {f}
+          </Button>
+        ))}
+        {custom && (
+          <Button variant="outline" size="sm" onClick={() => onPick(query)}>
+            Use “{query}” from Google Fonts
+          </Button>
+        )}
+        {!shown.length && !custom && <p className="px-2 py-1 text-xs text-muted-foreground">No match. Letters, numbers and spaces only.</p>}
+      </div>
+    </Group>
+  )
+}
+
+function Toggle({ label, on, onClick, children }: { label: string; on: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <Button variant={on ? 'secondary' : 'ghost'} size="sm" aria-label={label} aria-pressed={on} className={`flex-1 ${on ? 'ring-1 ring-ring' : ''}`} onClick={onClick}>
+      {children}
+    </Button>
   )
 }
 
@@ -134,7 +184,7 @@ function ElementPanel({ ids }: { ids: string[] }) {
   const fonts = boardFonts(elements).filter((f) => FAMILY.test(f))
 
   return (
-    <>
+    <div className="flex flex-col gap-3 sm:block sm:columns-2 sm:gap-x-6 lg:columns-3 sm:[&>*]:mb-3 sm:[&>*]:break-inside-avoid">
       <div className="flex gap-1">
         <Button variant="outline" size="sm" className="flex-1" aria-keyshortcuts="Control+Alt+C" title="Ctrl+Alt+C" onClick={() => copyStyle(cur.id)}>
           Copy style
@@ -166,7 +216,7 @@ function ElementPanel({ ids }: { ids: string[] }) {
         />
       </Group>
       {allImages && image && (
-        <div className="flex flex-col gap-3 border-t pt-3">
+        <>
           <Choice
             label="Filter"
             options={['none', ...IMAGE_FILTERS] as const}
@@ -179,13 +229,26 @@ function ElementPanel({ ids }: { ids: string[] }) {
               <Swatches label="Highlights" value={duo[1]} onStart={checkpoint} onChange={(hex) => setDuo(1, hex)} />
             </>
           )}
-        </div>
+        </>
       )}
       {allNotes && note && (
-        <div className="flex flex-col gap-3 border-t pt-3">
-          <Swatches label="Note color" value={note.bg} onStart={checkpoint} onChange={(bg) => restyle(ids, { bg })} />
+        <>
+          <Swatches label="Note color" value={note.bg} presets={STICKY_COLORS} onStart={checkpoint} onChange={(bg) => restyle(ids, { bg })} />
+          <Swatches label="Text color" value={note.color} onStart={checkpoint} onChange={(color) => restyle(ids, { color })} />
           <Choice label="Text size" options={NOTE_SIZES} value={note.size ?? 'md'} onChange={(size) => apply({ size })} />
+          <Choice label="Align" options={NOTE_ALIGNS} value={note.align ?? 'left'} onChange={(align) => apply({ align })} />
+          <Group label="Emphasis">
+            <div className="flex gap-1">
+              <Toggle label="Bold" on={!!note.bold} onClick={() => apply({ bold: note.bold ? undefined : true })}>
+                <span className="font-bold">B</span>
+              </Toggle>
+              <Toggle label="Italic" on={!!note.italic} onClick={() => apply({ italic: note.italic ? undefined : true })}>
+                <span className="italic">I</span>
+              </Toggle>
+            </div>
+          </Group>
           <Choice label="Typeface" options={NOTE_FONTS} value={note.family ? undefined : (note.font ?? 'sans')} onChange={(font) => apply({ font, family: undefined })} />
+          <FontPicker value={note.family} onPick={(family) => apply({ family })} />
           {fonts.length > 0 && (
             <Group label="Fonts from your links">
               <div className="flex flex-wrap gap-1">
@@ -208,9 +271,9 @@ function ElementPanel({ ids }: { ids: string[] }) {
               <p className="text-xs text-muted-foreground">Loaded from Google Fonts when it has them; otherwise the default font shows.</p>
             </Group>
           )}
-        </div>
+        </>
       )}
-    </>
+    </div>
   )
 }
 
@@ -260,18 +323,55 @@ function BoardPanel() {
   )
 }
 
+/** If the open panel covers the selection, pans the view so the selection sits in the largest free area beside it. */
+function revealSelection() {
+  const panel = [...document.querySelectorAll<HTMLElement>('[data-slot=popover-content]')].find((p) => p.textContent?.startsWith('Style'))
+  const { selectedIds, elements, view, setView } = useBoard.getState()
+  const sel = elements.filter((e) => selectedIds.includes(e.id))
+  if (!panel || !sel.length) return
+  const P = panel.getBoundingClientRect()
+  const b = boundsOf(sel)
+  const S = { x: b.x * view.zoom + view.x, y: b.y * view.zoom + view.y, w: b.w * view.zoom, h: b.h * view.zoom }
+  const m = 16
+  if (S.x + S.w < P.left - m || S.x > P.right + m || S.y + S.h < P.top - m || S.y > P.bottom + m) return
+  // free areas: above the panel and either side of it (keeping clear of the top-left logo row)
+  const top = 64
+  const areas = [
+    { x: 0, y: top, w: innerWidth, h: P.top - top - m },
+    { x: 0, y: top, w: P.left - m, h: innerHeight - top },
+    { x: P.right + m, y: top, w: innerWidth - P.right - m, h: innerHeight - top },
+  ].filter((a) => a.w > 0 && a.h > 0)
+  const best = areas.sort((a, c) => c.w * c.h - a.w * a.h)[0]
+  if (!best) return
+  setView({ ...view, x: view.x + best.x + best.w / 2 - (S.x + S.w / 2), y: view.y + best.y + best.h / 2 - (S.y + S.h / 2) })
+}
+
 /** Style of the selected elements, or of the board when nothing is selected. */
 export function StyleMenu() {
   const ids = useBoard((s) => s.selectedIds)
   const [open, setOpen] = useState(false)
+  const elements = useBoard((s) => s.elements)
+  // notes and images have a second column of their own options, so the panel is wider and grows sideways instead of scrolling
+  const sel = elements.filter((e) => ids.includes(e.id))
+  const wide = sel.length > 0 && (sel.every((e) => e.type === 'note') || sel.every((e) => e.type === 'image'))
   const target = ids.length ? (ids.length === 1 ? 'element' : `${ids.length} elements`) : 'board'
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Style the ${target}`} title={`Style the ${target}`} />}>
-        <HugeiconsIcon icon={PaintBrush02Icon} strokeWidth={1.8} />
-      </PopoverTrigger>
-      <PopoverContent side="top" sideOffset={12} className="w-72 gap-3 p-4">
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o)
+        // once the panel is laid out, move the selection out from under it
+        if (o) setTimeout(revealSelection, 150)
+      }}
+    >
+      <Tooltip>
+        <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Style the ${target}`} />} />}>
+          <HugeiconsIcon icon={PaintBrush02Icon} strokeWidth={1.8} />
+        </TooltipTrigger>
+        <TooltipContent>Style the {target}</TooltipContent>
+      </Tooltip>
+      <PopoverContent side="top" sideOffset={12} className={`w-72 gap-3 p-4 max-sm:max-h-(--available-height) max-sm:overflow-y-auto ${wide ? 'sm:w-[40rem] lg:w-[58rem] max-w-[calc(100vw-2rem)]' : ''}`}>
         <p className="text-lg font-semibold tracking-tight">{ids.length ? 'Style' : 'Board'}</p>
         {ids.length ? <ElementPanel ids={ids} /> : <BoardPanel />}
       </PopoverContent>

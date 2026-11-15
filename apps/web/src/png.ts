@@ -1,6 +1,6 @@
 import { boundsOf } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
-import { FAMILY, NOTE_TEXT, RADIUS, filterPixels, textOn, type BoardStyle, type Deco, type ImageStyle } from './style.ts'
+import { FAMILY, NOTE_TEXT, RADIUS, filterPixels, loadFamily, textOn, type BoardStyle, type Deco, type ImageStyle } from './style.ts'
 
 const PAD = 48
 const MAX_SIDE = 8000 // browsers refuse much larger canvases
@@ -58,11 +58,14 @@ function filtered(img: HTMLImageElement, s: ImageStyle): Source {
   return c
 }
 
-function lines(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number, maxLines: number) {
+function lines(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number, maxLines: number, align: CanvasTextAlign = 'left') {
+  ctx.textAlign = align
+  const ax = align === 'center' ? x + maxW / 2 : align === 'right' ? x + maxW : x
   const all = wrapText(text, maxW, (s) => ctx.measureText(s).width)
   const shown = all.slice(0, maxLines)
   if (all.length > maxLines) shown[maxLines - 1] += '…'
-  shown.forEach((l, i) => ctx.fillText(l, x, y + i * lineH))
+  shown.forEach((l, i) => ctx.fillText(l, ax, y + i * lineH))
+  ctx.textAlign = 'left'
 }
 
 /** Tape across the top edge or a pin near it, matching the board view. */
@@ -93,6 +96,10 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
   const theme = { bg: v('--background'), card: v('--card'), fg: v('--card-foreground'), muted: v('--muted-foreground'), border: v('--border') }
   const sans = v('--font-sans')
   const serif = v('--font-heading')
+  // Google Fonts used by notes must be loaded before they are drawn on the canvas
+  const families = [...new Set(elements.flatMap((e) => (e.type === 'note' && e.family && FAMILY.test(e.family) ? [e.family] : [])))]
+  families.forEach(loadFamily)
+  await Promise.all(families.map((f) => document.fonts.load(`16px "${f}"`).catch(() => [])))
   await document.fonts.ready
 
   const b = boundsOf(elements)
@@ -147,10 +154,10 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
 
     if (el.type === 'note') {
       const [size, lineH] = NOTE_TEXT[el.size ?? 'md']
-      ctx.fillStyle = (el.bg && textOn(el.bg)) || theme.fg
+      ctx.fillStyle = el.color ?? ((el.bg && textOn(el.bg)) || theme.fg)
       const base = el.font === 'serif' ? serif : sans
-      ctx.font = `${size}px ${el.family && FAMILY.test(el.family) ? `"${el.family}", ${base}` : base}`
-      lines(ctx, el.text, 16, 16 + (lineH - size) / 2, w - 32, lineH, Math.floor((h - 32) / lineH))
+      ctx.font = `${el.italic ? 'italic ' : ''}${el.bold ? '700 ' : ''}${size}px ${el.family && FAMILY.test(el.family) ? `"${el.family}", ${base}` : base}`
+      lines(ctx, el.text, 16, 16 + (lineH - size) / 2, w - 32, lineH, Math.floor((h - 32) / lineH), el.align)
     }
 
     if (el.type === 'color') {

@@ -32,6 +32,18 @@ test('parseBoardFile rejects files that are not boards', () => {
   expect(() => parseBoardFile('null')).toThrow('not a Lino board')
 })
 
+test('parseBoardFile keeps valid note text styles and drops bad ones', () => {
+  const file = JSON.stringify({
+    elements: [
+      { ...box, type: 'note', text: 'a', color: '#112233', align: 'center', bold: true, italic: true, size: 'xl' },
+      { ...box, type: 'note', text: 'b', color: 'red', align: 'justify', bold: 'yes', italic: 1 },
+    ],
+  })
+  const { elements } = parseBoardFile(file)
+  expect(elements[0]).toMatchObject({ color: '#112233', align: 'center', bold: true, italic: true, size: 'xl' })
+  for (const k of ['color', 'align', 'bold', 'italic']) expect(elements[1]).not.toHaveProperty(k)
+})
+
 test('parseBoardFile keeps valid style fields and the board style, drops bad ones', () => {
   const file = JSON.stringify({
     elements: [

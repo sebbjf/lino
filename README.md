@@ -50,7 +50,7 @@ Lino does that step. Paste a link and it reads the page's cover, fonts and color
 
 **Style** (brush icon), with elements selected:
 - Any element: corners (square, soft, round), shadow, opacity, and a **tape** or **pin** decoration. **Copy style** / **Paste style** (`Ctrl+Alt+C` / `Ctrl+Alt+V`) moves a look between elements.
-- Notes: color (from the palette or any color; the text turns dark or light for contrast), text size, sans or serif, or one of the fonts found on your links (loaded from Google Fonts when it has them).
+- Notes: background (sticky pastels, the board palette or any color), text color (automatic for contrast unless set), size S–XL, alignment, bold and italic, and the typeface: sans or serif, any **Google Font** (pick from a curated list or type any family name) or one of the fonts found on your links.
 - Images: **mono** or **duotone** filter, with the duotone's shadow and highlight colors.
 
 With nothing selected, it styles the board: themes, background color, dots/grid/plain, and **messy mode**, where new things drop in slightly tilted. Styles travel with exports, shares and the PNG.

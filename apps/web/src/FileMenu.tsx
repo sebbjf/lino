@@ -3,6 +3,7 @@ import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { exportBoardFile, importBoardFile } from './boardFile.ts'
 import { downloadPng } from './png.ts'
 import { useBoard } from './store.ts'
@@ -32,9 +33,12 @@ export function FileMenu() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="File: import and export" title="Import and export" />}>
-        <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.8} />
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="File: import and export" />} />}>
+          <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.8} />
+        </TooltipTrigger>
+        <TooltipContent>Import and export</TooltipContent>
+      </Tooltip>
       <PopoverContent side="top" sideOffset={12} className="w-72 gap-1 p-2">
         <Item icon={FileExportIcon} label="Export board" hint="A .lino.json file with everything on it" disabled={empty} onClick={run(exportBoardFile)} />
         {!readOnly && (
