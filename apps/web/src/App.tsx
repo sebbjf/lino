@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { BoardsMenu } from './BoardsMenu.tsx'
 import { Canvas } from './Canvas.tsx'
 import { PalettePanel } from './PalettePanel.tsx'
 import { addImages } from './image.ts'
@@ -67,18 +68,21 @@ export function App() {
       <main>
         <h1 className="sr-only">Lino board</h1>
         <Canvas />
-        <a
-          href="/"
-          aria-label="Lino home"
-          className="fixed top-4 left-4 flex items-center gap-2 rounded-full border bg-card/90 py-1.5 pr-3.5 pl-3 text-sm font-semibold tracking-tight shadow-soft backdrop-blur outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        >
-          <span aria-hidden className="flex -space-x-1">
-            {['bg-foreground/15', 'bg-foreground/35', 'bg-foreground/60', 'bg-foreground'].map((c) => (
-              <span key={c} className={`size-2.5 rounded-full ring-2 ring-card ${c}`} />
-            ))}
-          </span>
-          Lino
-        </a>
+        <div className="fixed top-4 left-4 flex items-center gap-2">
+          <a
+            href="/"
+            aria-label="Lino home"
+            className="flex items-center gap-2 rounded-full border bg-card/90 py-1.5 pr-3.5 pl-3 text-sm font-semibold tracking-tight shadow-soft backdrop-blur outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <span aria-hidden className="flex -space-x-1">
+              {['bg-foreground/15', 'bg-foreground/35', 'bg-foreground/60', 'bg-foreground'].map((c) => (
+                <span key={c} className={`size-2.5 rounded-full ring-2 ring-card ${c}`} />
+              ))}
+            </span>
+            Lino
+          </a>
+          {!readOnly && <BoardsMenu />}
+        </div>
         {readOnly && (
           <p className="fixed left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border bg-card/90 px-4 py-1.5 text-sm shadow-soft backdrop-blur">
             <span className="text-muted-foreground">Shared board · read-only</span>

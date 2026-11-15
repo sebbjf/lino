@@ -258,7 +258,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         height: el.h,
         transform: `translate(${el.x}px, ${el.y}px) rotate(${el.rotation}deg)`,
         boxShadow: selected ? `0 0 0 ${2 / zoom}px var(--color-primary)` : undefined,
-        cursor: readOnly ? undefined : editing ? 'auto' : 'move',
+        cursor: readOnly ? undefined : editing ? 'auto' : 'var(--cursor-move)',
       }}
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => e.currentTarget.contains(e.target as Node) && open()}

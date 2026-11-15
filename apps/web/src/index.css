@@ -184,3 +184,9 @@ html.lp {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Cursors with a white halo, so they stay visible on light backgrounds as well as dark ones. */
+:root {
+  --cursor-arrow: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Cpath d=%22M5 3l13 8-5.5 1.5L10 18z%22 fill=%22%23111%22 stroke=%22%23fff%22 stroke-width=%221.6%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E") 5 3, default;
+  --cursor-move: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3%22 stroke=%22%23fff%22 stroke-width=%224.5%22/%3E%3Cpath d=%22M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3%22 stroke=%22%23111%22 stroke-width=%222%22/%3E%3C/svg%3E") 12 12, move;
+}

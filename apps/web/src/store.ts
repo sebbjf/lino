@@ -38,9 +38,13 @@ type DistOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 export type NewElement = DistOmit<BoardElement, 'id' | 'x' | 'y' | 'rotation'>
 
 export type View = { x: number; y: number; zoom: number }
+export type BoardMeta = { id: string; name: string }
 export type Layer = 'forward' | 'backward' | 'front' | 'back'
 
 type State = {
+  /** Every local board (name and id) and the one on screen. The content lives in storage.ts. */
+  boards: BoardMeta[]
+  boardId: string
   elements: BoardElement[] // array order = z-order, last is on top
   /** Selected element ids; the last one is the most recently picked. */
   selectedIds: string[]
@@ -124,6 +128,8 @@ function shift(s: State, ids: string[], offsets: (els: BoardElement[]) => { dx: 
 }
 
 export const useBoard = create<State>()((set, get) => ({
+  boards: [{ id: 'local', name: 'My board' }],
+  boardId: 'local',
   elements: [],
   selectedIds: [],
   view: { x: 0, y: 0, zoom: 1 },

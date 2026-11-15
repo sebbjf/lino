@@ -19,7 +19,8 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | Palette panel (rename, pin, hide colors, fonts, copy export) | [apps/web/src/PalettePanel.tsx](apps/web/src/PalettePanel.tsx) |
 | How the palette is built from the board, hex parsing, image color sampling | [apps/web/src/colors.ts](apps/web/src/colors.ts) |
 | CSS variables / Tailwind `@theme` output | [apps/web/src/export.ts](apps/web/src/export.ts) |
-| Saving/loading the board (IndexedDB, autosave) | [apps/web/src/storage.ts](apps/web/src/storage.ts) |
+| Saving/loading boards (IndexedDB, autosave), creating, switching, renaming, deleting boards | [apps/web/src/storage.ts](apps/web/src/storage.ts) |
+| Board name menu (top left: switch, rename, delete, new board) | [apps/web/src/BoardsMenu.tsx](apps/web/src/BoardsMenu.tsx) |
 | Adding images (resize, read file) | [apps/web/src/image.ts](apps/web/src/image.ts) |
 | Board file export/import (`.lino.json`), validation of imported files | [apps/web/src/boardFile.ts](apps/web/src/boardFile.ts) |
 | File menu (export, import, PNG) | [apps/web/src/FileMenu.tsx](apps/web/src/FileMenu.tsx) |

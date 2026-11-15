@@ -40,6 +40,7 @@ Lino does that step. Paste a link and it reads the page's cover, fonts and color
 - **Pick colors**: eyedropper anywhere on screen (Chromium only) and color **harmonies** (complementary, analogous, triad) from any swatch.
 - **Arrange**: grid, masonry, row, column, circle, plus the playful **sunflower**, **fan** and **collage** layouts. Snapping guides, align and distribute.
 - **Style**: corners, shadow, opacity, tape or pin decorations, mono/duotone image filters, note fonts (including the ones found on your links), and board themes (Paper, Kraft, Night, Blueprint).
+- **Many boards**: create as many as you like, rename and delete them from the name menu at the top left.
 - **Save and share**: autosave to IndexedDB, `.lino.json` export/import, **PNG download** of the whole board, and a read-only **share link**.
 
 <details>

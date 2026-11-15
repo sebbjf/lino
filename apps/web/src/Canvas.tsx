@@ -139,7 +139,7 @@ export function Canvas() {
       role="region"
       aria-label="Board"
       aria-describedby="board-help"
-      className="fixed inset-0 cursor-grab touch-none select-none overflow-hidden active:cursor-grabbing"
+      className="fixed inset-0 cursor-(--cursor-arrow) touch-none select-none overflow-hidden active:cursor-(--cursor-move)"
       style={{
         backgroundColor: board.bg,
         backgroundImage,
