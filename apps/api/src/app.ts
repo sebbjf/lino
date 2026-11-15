@@ -1,32 +1,107 @@
 import Fastify, { type FastifyServerOptions } from 'fastify'
 import { readLink } from './extract.ts'
+import type { BoardStore } from './boards.ts'
 import { BlockedError, type Fetcher } from './fetch.ts'
 
-type Opts = FastifyServerOptions & { fetcher?: Fetcher; readsPerMinute?: number }
+type Opts = FastifyServerOptions & { fetcher?: Fetcher; readsPerMinute?: number; sharesPerHour?: number; boards?: BoardStore }
 
-export function buildApp({ fetcher, readsPerMinute = 30, ...opts }: Opts = {}) {
-  const app = Fastify(opts)
+export const MAX_BOARD_BYTES = 5 * 1024 * 1024
+const SHARE_DAYS = 90
+
+// What a shared board may contain. Strict on purpose: another person's browser renders it.
+const dataImage = { type: 'string', pattern: '^data:image/(png|jpeg|webp|gif);base64,' }
+const hex = { type: 'string', pattern: '^#[0-9a-fA-F]{3,8}$' }
+const strings = (maxItems: number, maxLength: number) => ({ type: 'array', maxItems, items: { type: 'string', maxLength } })
+const requires = (type: string, fields: string[]) => ({ if: { properties: { type: { const: type } } }, then: { required: fields } })
+const elementSchema = {
+  type: 'object',
+  required: ['id', 'type', 'x', 'y', 'w', 'h', 'rotation'],
+  additionalProperties: false,
+  properties: {
+    id: { type: 'string', maxLength: 64 },
+    type: { enum: ['image', 'note', 'color', 'link'] },
+    x: { type: 'number' },
+    y: { type: 'number' },
+    w: { type: 'number', minimum: 1, maximum: 10_000 },
+    h: { type: 'number', minimum: 1, maximum: 10_000 },
+    rotation: { type: 'number' },
+    src: dataImage,
+    text: { type: 'string', maxLength: 10_000 },
+    hex,
+    url: { type: 'string', maxLength: 2048, pattern: '^https?://' },
+    title: { type: ['string', 'null'], maxLength: 500 },
+    image: { anyOf: [dataImage, { type: 'null' }] },
+    fonts: strings(20, 100),
+    colors: { type: 'array', maxItems: 20, items: hex },
+    status: { enum: ['ok', 'error'] },
+    missing: strings(10, 20),
+    error: { type: 'string', maxLength: 300 },
+  },
+  allOf: [
+    requires('image', ['src']),
+    requires('note', ['text']),
+    requires('color', ['hex']),
+    requires('link', ['url', 'title', 'image', 'fonts', 'colors', 'status', 'missing']),
+  ],
+}
+const boardSchema = {
+  type: 'object',
+  required: ['elements'],
+  additionalProperties: false,
+  properties: {
+    elements: { type: 'array', minItems: 1, maxItems: 300, items: elementSchema },
+    colorMeta: {
+      type: 'object',
+      maxProperties: 300,
+      additionalProperties: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { name: { type: 'string', maxLength: 60 }, pinned: { type: 'boolean' }, hidden: { type: 'boolean' } },
+      },
+    },
+  },
+}
+
+// ponytail: in-memory fixed window per IP, one process only; move to Redis or the proxy if the API scales out.
+function rateLimit(max: number, windowMs: number) {
+  const hits = new Map<string, { n: number; reset: number }>()
+  return (ip: string) => {
+    const now = Date.now()
+    const h = hits.get(ip)
+    if (!h || h.reset < now) {
+      if (hits.size > 10_000) hits.clear()
+      hits.set(ip, { n: 1, reset: now + windowMs })
+      return false
+    }
+    return ++h.n > max
+  }
+}
+
+export function buildApp({ fetcher, readsPerMinute = 30, sharesPerHour = 20, boards, ...opts }: Opts = {}) {
+  // base64 images are counted after JSON parsing too; this is the transport cap
+  const app = Fastify({ bodyLimit: MAX_BOARD_BYTES + 512 * 1024, ...opts })
 
   // The web app lives on another origin in production.
   const origin = process.env.CORS_ORIGIN
-  if (origin) app.addHook('onSend', async (_req, reply) => void reply.header('access-control-allow-origin', origin))
+  if (origin) {
+    app.addHook('onSend', async (_req, reply) => void reply.header('access-control-allow-origin', origin))
+    // POST with a JSON body sends a preflight first
+    app.options('*', (_req, reply) =>
+      reply
+        .code(204)
+        .header('access-control-allow-methods', 'GET, POST')
+        .header('access-control-allow-headers', 'content-type')
+        .header('access-control-max-age', '86400')
+        .send(),
+    )
+  }
 
   app.get('/health', { schema: { response: { 200: { type: 'object', properties: { ok: { type: 'boolean' } } } } } }, () => ({
     ok: true,
   }))
 
-  // ponytail: in-memory fixed window per IP, one process only; move to Redis or the proxy if the API scales out.
-  const hits = new Map<string, { n: number; reset: number }>()
-  const limited = (ip: string) => {
-    const now = Date.now()
-    const h = hits.get(ip)
-    if (!h || h.reset < now) {
-      if (hits.size > 10_000) hits.clear()
-      hits.set(ip, { n: 1, reset: now + 60_000 })
-      return false
-    }
-    return ++h.n > readsPerMinute
-  }
+  const limited = rateLimit(readsPerMinute, 60_000)
+  const shareLimited = rateLimit(sharesPerHour, 3_600_000)
 
   app.get<{ Querystring: { url: string } }>(
     '/read',
@@ -51,6 +126,28 @@ export function buildApp({ fetcher, readsPerMinute = 30, ...opts }: Opts = {}) {
         const timeout = (e as Error).name === 'TimeoutError' || (e as Error).name === 'AbortError'
         return reply.code(502).send({ error: timeout ? 'The page took too long to answer.' : 'Could not read that page.' })
       }
+    },
+  )
+
+  app.post<{ Body: unknown }>('/boards', { schema: { body: boardSchema } }, async (req, reply) => {
+    if (!boards) return reply.code(503).send({ error: 'Sharing is not available right now.' })
+    const bytes = Buffer.byteLength(JSON.stringify(req.body))
+    if (bytes > MAX_BOARD_BYTES) return reply.code(413).send({ error: 'This board is too large to share (limit 5 MB).' })
+    if (shareLimited(req.ip)) return reply.code(429).send({ error: 'Too many shares. Try again later.' })
+    const expiresAt = new Date(Date.now() + SHARE_DAYS * 86_400_000)
+    const id = await boards.create(req.body, bytes, expiresAt)
+    return reply.code(201).send({ id, expiresAt: expiresAt.toISOString() })
+  })
+
+  app.get<{ Params: { id: string } }>(
+    '/boards/:id',
+    { schema: { params: { type: 'object', properties: { id: { type: 'string', pattern: '^[A-Za-z0-9_-]{12}$' } } } } },
+    async (req, reply) => {
+      if (!boards) return reply.code(503).send({ error: 'Sharing is not available right now.' })
+      const data = await boards.get(req.params.id)
+      if (!data) return reply.code(404).send({ error: 'This board does not exist or has expired.' })
+      // snapshots never change
+      return reply.header('cache-control', 'public, max-age=86400, immutable').send(data)
     },
   )
 

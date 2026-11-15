@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 COPY src ./src
+COPY drizzle ./drizzle
 ENV NODE_ENV=production
 USER node
 CMD ["node", "src/server.ts"]
