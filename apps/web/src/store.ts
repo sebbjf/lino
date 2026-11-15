@@ -6,6 +6,19 @@ export type BoardElement =
   | (Box & { id: string; type: 'image'; src: string })
   | (Box & { id: string; type: 'note'; text: string })
   | (Box & { id: string; type: 'color'; hex: string })
+  | (Box & { id: string; type: 'link' } & LinkInfo)
+
+export type LinkInfo = {
+  url: string
+  title: string | null
+  image: string | null
+  fonts: string[]
+  colors: string[]
+  status: 'loading' | 'ok' | 'error'
+  /** What the page did not give us (title, image, fonts, colors). */
+  missing: string[]
+  error?: string
+}
 
 type DistOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never
 export type NewElement = DistOmit<BoardElement, 'id' | 'x' | 'y' | 'rotation'>

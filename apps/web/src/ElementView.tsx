@@ -1,11 +1,18 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ColorFields } from './ColorFields.tsx'
+import { LinkCard } from './LinkCard.tsx'
 import { drag } from './drag.ts'
 import { angleTo, resize } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
 
-const LABELS = { image: 'Image', note: 'Note', color: 'Color' }
+const LABELS = { image: 'Image', note: 'Note', color: 'Color', link: 'Link' }
+
+function label(el: BoardElement) {
+  if (el.type === 'color') return `Color ${el.hex}`
+  if (el.type === 'link') return `Link: ${el.title ?? new URL(el.url).hostname}`
+  return LABELS[el.type]
+}
 
 type Props = { el: BoardElement; selected: boolean; zoom: number }
 
@@ -22,9 +29,10 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
   }, [selected, editing])
 
   const open = () => {
-    checkpoint()
+    if (el.type !== 'link') checkpoint()
     if (el.type === 'note') setEditing(true)
     if (el.type === 'color') setPickerOpen(true)
+    if (el.type === 'link') window.open(el.url, '_blank', 'noopener,noreferrer')
   }
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -113,7 +121,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
       ref={root}
       role="group"
       tabIndex={0}
-      aria-label={el.type === 'color' ? `Color ${el.hex}` : LABELS[el.type]}
+      aria-label={label(el)}
       aria-roledescription="board element"
       className="absolute left-0 top-0 rounded-2xl outline-none"
       style={{
@@ -181,6 +189,8 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
           </Popover>
         </div>
       )}
+
+      {el.type === 'link' && <LinkCard el={el} />}
 
       {selected && !editing && (
         <>

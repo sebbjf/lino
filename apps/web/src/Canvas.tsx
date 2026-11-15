@@ -3,6 +3,7 @@ import { drag } from './drag.ts'
 import { ElementView } from './ElementView.tsx'
 import { zoomAt } from './geometry.ts'
 import { addImages } from './image.ts'
+import { addLink, asUrl } from './link.ts'
 import { useBoard } from './store.ts'
 
 export function Canvas() {
@@ -39,9 +40,11 @@ export function Canvas() {
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault()
+    const at = { x: (e.clientX - view.x) / view.zoom, y: (e.clientY - view.y) / view.zoom }
     const files = [...e.dataTransfer.files]
-    if (!files.length) return
-    addImages(files, { x: (e.clientX - view.x) / view.zoom, y: (e.clientY - view.y) / view.zoom })
+    const url = asUrl(e.dataTransfer.getData('text/uri-list').split('\n')[0].trim())
+    if (files.length) addImages(files, at)
+    else if (url) addLink(url, at)
   }
 
   const grid = 24 * view.zoom

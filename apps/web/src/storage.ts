@@ -27,7 +27,12 @@ async function run<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => I
 
 export async function loadBoard() {
   const saved = await run<Saved | undefined>('readonly', (s) => s.get(KEY))
-  if (saved) useBoard.setState({ elements: saved.elements, view: saved.view, colorMeta: saved.colorMeta ?? {} })
+  if (!saved) return
+  // a link still loading when the tab closed will never finish
+  const elements = saved.elements.map((e) =>
+    e.type === 'link' && e.status === 'loading' ? { ...e, status: 'error' as const, error: 'Reading was interrupted.' } : e,
+  )
+  useBoard.setState({ elements, view: saved.view, colorMeta: saved.colorMeta ?? {} })
 }
 
 function save() {
