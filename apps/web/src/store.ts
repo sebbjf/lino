@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ColorMeta } from './colors.ts'
-import type { Box, Guide } from './geometry.ts'
+import { alignOffsets, distributeOffsets, type AlignMode, type Box, type Guide } from './geometry.ts'
 
 export type BoardElement =
   | (Box & { id: string; type: 'image'; src: string })
@@ -28,7 +28,8 @@ export type Layer = 'forward' | 'backward' | 'front' | 'back'
 
 type State = {
   elements: BoardElement[] // array order = z-order, last is on top
-  selectedId: string | null
+  /** Selected element ids; the last one is the most recently picked. */
+  selectedIds: string[]
   view: View
   notice: string | null
   /** Alignment guides shown while dragging. */
@@ -46,13 +47,19 @@ type State = {
   checkpoint: () => void
   undo: () => void
   redo: () => void
-  /** Adds an element centered on a world point (defaults to the viewport center). */
-  add: (el: NewElement, at?: { x: number; y: number }) => void
+  /** Adds an element centered on a world point (defaults to the viewport center) and returns its id. */
+  add: (el: NewElement, at?: { x: number; y: number }) => string
   update: (id: string, patch: Partial<BoardElement>) => void
-  remove: (id: string) => void
-  duplicate: (id: string) => void
+  /** Moves several elements to new positions in one state change. */
+  moveMany: (pos: Record<string, { x: number; y: number }>) => void
+  remove: (ids: string[]) => void
+  duplicate: (ids: string[]) => void
   reorder: (id: string, to: Layer) => void
-  select: (id: string | null) => void
+  align: (ids: string[], mode: AlignMode) => void
+  distribute: (ids: string[], axis: 'x' | 'y') => void
+  /** Selects one element (null clears); `toggle` adds or removes it from the current selection. */
+  select: (id: string | null, toggle?: boolean) => void
+  selectMany: (ids: string[]) => void
   setView: (view: View) => void
   notify: (msg: string | null) => void
 }
@@ -68,13 +75,27 @@ function pushHistory(s: State) {
   return s.past.at(-1) === s.elements ? { future: [] } : { past: [...s.past, s.elements].slice(-HISTORY_LIMIT), future: [] }
 }
 
-function keepSelection(elements: BoardElement[], id: string | null) {
-  return id && elements.some((e) => e.id === id) ? id : null
+function keepSelection(elements: BoardElement[], ids: string[]) {
+  return ids.filter((id) => elements.some((e) => e.id === id))
+}
+
+/** Applies per-element offsets as one undo step. */
+function shift(s: State, ids: string[], offsets: (els: BoardElement[]) => { dx: number; dy: number }[]) {
+  const els = s.elements.filter((e) => ids.includes(e.id))
+  if (els.length < 2) return s
+  const by = new Map(offsets(els).map((o, i) => [els[i].id, o]))
+  return {
+    ...pushHistory(s),
+    elements: s.elements.map((e) => {
+      const o = by.get(e.id)
+      return o && (o.dx || o.dy) ? { ...e, x: e.x + o.dx, y: e.y + o.dy } : e
+    }),
+  }
 }
 
 export const useBoard = create<State>()((set, get) => ({
   elements: [],
-  selectedId: null,
+  selectedIds: [],
   view: { x: 0, y: 0, zoom: 1 },
   notice: null,
   readOnly: false,
@@ -91,38 +112,45 @@ export const useBoard = create<State>()((set, get) => ({
       while (past.at(-1) === s.elements) past.pop()
       const prev = past.pop()
       if (!prev) return { past }
-      return { elements: prev, past, future: [s.elements, ...s.future], selectedId: keepSelection(prev, s.selectedId) }
+      return { elements: prev, past, future: [s.elements, ...s.future], selectedIds: keepSelection(prev, s.selectedIds) }
     }),
 
   redo: () =>
     set((s) => {
       const [next, ...future] = s.future
       if (!next) return s
-      return { elements: next, future, past: [...s.past, s.elements], selectedId: keepSelection(next, s.selectedId) }
+      return { elements: next, future, past: [...s.past, s.elements], selectedIds: keepSelection(next, s.selectedIds) }
     }),
 
   add: (el, at = viewportCenter(get().view)) => {
     const id = crypto.randomUUID()
     const full = { ...el, id, x: at.x - el.w / 2, y: at.y - el.h / 2, rotation: 0 } as BoardElement
-    set((s) => ({ ...pushHistory(s), elements: [...s.elements, full], selectedId: id }))
+    set((s) => ({ ...pushHistory(s), elements: [...s.elements, full], selectedIds: [id] }))
+    return id
   },
 
   update: (id, patch) =>
     set((s) => ({ elements: s.elements.map((e) => (e.id === id ? ({ ...e, ...patch } as BoardElement) : e)) })),
 
-  remove: (id) =>
+  moveMany: (pos) => set((s) => ({ elements: s.elements.map((e) => (pos[e.id] ? { ...e, ...pos[e.id] } : e)) })),
+
+  remove: (ids) =>
     set((s) => ({
       ...pushHistory(s),
-      elements: s.elements.filter((e) => e.id !== id),
-      selectedId: s.selectedId === id ? null : s.selectedId,
+      elements: s.elements.filter((e) => !ids.includes(e.id)),
+      selectedIds: s.selectedIds.filter((id) => !ids.includes(id)),
     })),
 
-  duplicate: (id) => {
-    const src = get().elements.find((e) => e.id === id)
-    if (!src) return
-    const copy = { ...src, id: crypto.randomUUID(), x: src.x + 24, y: src.y + 24 }
-    set((s) => ({ ...pushHistory(s), elements: [...s.elements, copy], selectedId: copy.id }))
+  duplicate: (ids) => {
+    const copies = get()
+      .elements.filter((e) => ids.includes(e.id))
+      .map((src) => ({ ...src, id: crypto.randomUUID(), x: src.x + 24, y: src.y + 24 }))
+    if (!copies.length) return
+    set((s) => ({ ...pushHistory(s), elements: [...s.elements, ...copies], selectedIds: copies.map((c) => c.id) }))
   },
+
+  align: (ids, mode) => set((s) => shift(s, ids, (els) => alignOffsets(els, mode))),
+  distribute: (ids, axis) => set((s) => shift(s, ids, (els) => (els.length < 3 ? els.map(() => ({ dx: 0, dy: 0 })) : distributeOffsets(els, axis)))),
 
   reorder: (id, to) =>
     set((s) => {
@@ -136,7 +164,13 @@ export const useBoard = create<State>()((set, get) => ({
       return { ...pushHistory(s), elements: els }
     }),
 
-  select: (selectedId) => set({ selectedId }),
+  select: (id, toggle) =>
+    set((s) => {
+      if (!id) return { selectedIds: [] }
+      if (!toggle) return { selectedIds: [id] }
+      return { selectedIds: s.selectedIds.includes(id) ? s.selectedIds.filter((x) => x !== id) : [...s.selectedIds, id] }
+    }),
+  selectMany: (selectedIds) => set({ selectedIds }),
   setView: (view) => set({ view }),
   notify: (notice) => set({ notice }),
 

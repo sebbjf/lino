@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { angleTo, resize, rotateVec, zoomAt, fitView, boundsOf, snapMove, type Box } from './geometry.ts'
+import { angleTo, resize, rotateVec, zoomAt, fitView, boundsOf, snapMove, alignOffsets, distributeOffsets, type Box } from './geometry.ts'
 
 // world position of the box's local top-left corner
 function topLeft(b: Box) {
@@ -75,4 +75,19 @@ test('snapMove pulls edges and centers within threshold and reports guides', () 
   expect(b.guides.map((g) => [g.axis, g.pos])).toEqual([['y', 150]])
   // out of range: nothing
   expect(snapMove({ x: 300, y: 300, w: 10, h: 10 }, [other], 6)).toEqual({ dx: 0, dy: 0, guides: [] })
+})
+
+const box = (x: number, y: number, w: number, h: number) => ({ x, y, w, h, rotation: 0 })
+
+test('alignOffsets lines up edges and centers of the selection', () => {
+  const boxes = [box(0, 0, 10, 10), box(50, 20, 30, 10)]
+  expect(alignOffsets(boxes, 'left')).toEqual([{ dx: 0, dy: 0 }, { dx: -50, dy: 0 }])
+  expect(alignOffsets(boxes, 'right')).toEqual([{ dx: 70, dy: 0 }, { dx: 0, dy: 0 }])
+  expect(alignOffsets(boxes, 'vcenter')).toEqual([{ dx: 0, dy: 10 }, { dx: 0, dy: -10 }])
+})
+
+test('distributeOffsets spaces boxes evenly between the outer two', () => {
+  // gaps 0..10 | 12..22 | 90..100 → total 100, sizes 30, gap 35
+  const boxes = [box(90, 0, 10, 10), box(0, 0, 10, 10), box(12, 0, 10, 10)]
+  expect(distributeOffsets(boxes, 'x').map((o) => o.dx)).toEqual([0, 0, 33])
 })

@@ -58,11 +58,13 @@ Shared boards are rendered in other people's browsers, so the body schema is str
 | Action | Keys |
 | --- | --- |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y` |
+| Select several | `Shift`+click, `Shift`+drag on the background (selection box), `Ctrl+A` for all; `Esc` clears |
+| Align / distribute | Toolbar buttons with 2+ selected (distribute needs 3+); aligns visible outlines, rotation included |
 | Align while dragging | Snaps to other elements' edges and centers with guide lines; hold `Alt` to move freely |
-| Move selected | Arrows (`Shift` ×10) |
+| Move selected (whole selection) | Arrows (`Shift` ×10), or drag any selected element |
 | Resize selected | `Alt` + arrows (`Shift` ×10) |
 | Rotate selected 15° | `R` / `Shift+R` |
-| Delete / duplicate | `Delete` / `Ctrl+D` |
+| Delete / duplicate (whole selection) | `Delete` / `Ctrl+D` |
 | Layer down / up | `[` / `]` (`Ctrl` for back / front) |
 | Edit note, open color picker, open link | `Enter` (or double-click) |
 | Pan / zoom | Wheel or drag the background / `Ctrl` + wheel |

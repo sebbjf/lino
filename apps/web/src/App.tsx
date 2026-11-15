@@ -31,13 +31,23 @@ export function App() {
     return () => window.removeEventListener('paste', onPaste)
   }, [])
 
-  // Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo; text fields keep their native undo
+  // Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo, Ctrl/Cmd+A select all; text fields keep their native keys
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || (e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return
+      const t = e.target as HTMLElement
+      if (t.closest('input, textarea, [contenteditable]')) return
+      // after Ctrl+A or a selection box nothing has focus; Delete and Escape still act on the selection
+      if (t === document.body && !e.ctrlKey && !e.metaKey) {
+        const { selectedIds, remove, select, readOnly } = useBoard.getState()
+        if ((e.key === 'Delete' || e.key === 'Backspace') && !readOnly && selectedIds.length) remove(selectedIds)
+        else if (e.key === 'Escape') select(null)
+        return
+      }
+      if (!(e.ctrlKey || e.metaKey)) return
       const key = e.key.toLowerCase()
-      const { undo, redo } = useBoard.getState()
-      if (key === 'z' && !e.shiftKey) undo()
+      const { undo, redo, readOnly, elements, selectMany } = useBoard.getState()
+      if (key === 'a' && !readOnly) selectMany(elements.map((el) => el.id))
+      else if (key === 'z' && !e.shiftKey) undo()
       else if ((key === 'z' && e.shiftKey) || key === 'y') redo()
       else return
       e.preventDefault()

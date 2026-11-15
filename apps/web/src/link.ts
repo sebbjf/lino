@@ -29,8 +29,7 @@ async function coverColors(src: string) {
 export async function addLink(url: string, at?: { x: number; y: number }) {
   const { add, update } = useBoard.getState()
   const pending: LinkInfo = { url, title: null, image: null, fonts: [], colors: [], status: 'loading', missing: [] }
-  add({ type: 'link', ...pending, w: W, h: 120 }, at)
-  const id = useBoard.getState().selectedId!
+  const id = add({ type: 'link', ...pending, w: W, h: 120 }, at)
 
   try {
     const res = await fetch(`${API}/read?url=${encodeURIComponent(url)}`)

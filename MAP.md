@@ -6,11 +6,13 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 
 | I want to change… | File |
 | --- | --- |
-| Board state, undo/redo, add/move/delete/duplicate/reorder elements | [apps/web/src/store.ts](apps/web/src/store.ts) |
+| Board state, selection (`selectedIds`), undo/redo, add/move/delete/duplicate/reorder/align/distribute elements | [apps/web/src/store.ts](apps/web/src/store.ts) |
 | Element types (`image`, `note`, `color`, `link`) | `BoardElement` in [store.ts](apps/web/src/store.ts) |
 | Global shortcuts (undo/redo), paste handling | [apps/web/src/App.tsx](apps/web/src/App.tsx) |
 | Per-element shortcuts (arrows, Delete, Ctrl+D, `[` `]`, Enter) | [apps/web/src/ElementView.tsx](apps/web/src/ElementView.tsx) |
 | Pan, zoom, wheel, drop files/links | [apps/web/src/Canvas.tsx](apps/web/src/Canvas.tsx) |
+| Align / distribute math | `alignOffsets`, `distributeOffsets` in [geometry.ts](apps/web/src/geometry.ts) |
+| Multi-select: Shift+click, group drag | [ElementView.tsx](apps/web/src/ElementView.tsx); selection box in [Canvas.tsx](apps/web/src/Canvas.tsx); Ctrl+A, Delete/Esc without focus in [App.tsx](apps/web/src/App.tsx) |
 | Alignment guides / snapping while dragging | `snapMove` in [geometry.ts](apps/web/src/geometry.ts), used in [ElementView.tsx](apps/web/src/ElementView.tsx), drawn in [Canvas.tsx](apps/web/src/Canvas.tsx) |
 | Drag, resize, rotate math | [geometry.ts](apps/web/src/geometry.ts), [drag.ts](apps/web/src/drag.ts) |
 | Bottom toolbar buttons, zoom buttons | [apps/web/src/Toolbar.tsx](apps/web/src/Toolbar.tsx) |
@@ -52,7 +54,7 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/storage.ts` | IndexedDB load/save, debounced autosave subscribed to the store. |
 | `src/colors.ts` | `normalizeHex`, `buildPalette` (colors from swatches, links, images + user meta), `boardFonts`, `dominantColors`. |
 | `src/export.ts` | `exportTheme('css' \| 'tailwind', colors, fonts)` and slug naming. |
-| `src/geometry.ts` | Box math: rotate, resize with aspect lock, rotation snap, zoom around a point, fit view to content, rotated bounds, `snapMove` (alignment snapping + guides). |
+| `src/geometry.ts` | Box math: rotate, resize with aspect lock, rotation snap, zoom around a point, fit view to content, rotated bounds, `snapMove` (alignment snapping + guides), `alignOffsets`, `distributeOffsets`. |
 | `src/drag.ts` | Pointer-drag helper used by move/resize/rotate. |
 | `src/image.ts` | Read an image file into a data URL and add it to the board. |
 | `src/png.ts` | `boardPng()` draws all elements to a canvas (theme colors, fonts, rotation); `downloadPng()`; `wrapText()`. |

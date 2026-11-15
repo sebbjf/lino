@@ -1,4 +1,12 @@
 import {
+  AlignEndHorizontalIcon,
+  AlignEndVerticalIcon,
+  AlignHorizontalCenterIcon,
+  AlignHorizontalSpaceBetweenIcon,
+  AlignStartHorizontalIcon,
+  AlignStartVerticalIcon,
+  AlignVerticalCenterIcon,
+  AlignVerticalSpaceBetweenIcon,
   Copy01Icon,
   Delete02Icon,
   Download04Icon,
@@ -70,13 +78,14 @@ function moveFocus(e: KeyboardEvent<HTMLDivElement>) {
 const Divider = () => <Separator orientation="vertical" className="mx-1 h-5 self-center" />
 
 export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean; onTogglePalette: () => void }) {
-  const selectedId = useBoard((s) => s.selectedId)
+  const selectedIds = useBoard((s) => s.selectedIds)
+  const selectedId = selectedIds.length === 1 ? selectedIds[0] : null
   const zoom = useBoard((s) => s.view.zoom)
   const canUndo = useBoard((s) => s.past.some((p) => p !== s.elements))
   const canRedo = useBoard((s) => s.future.length > 0)
   const readOnly = useBoard((s) => s.readOnly)
   const empty = useBoard((s) => s.elements.length === 0)
-  const { add, duplicate, reorder, remove, undo, redo } = useBoard.getState()
+  const { add, duplicate, reorder, remove, undo, redo, align, distribute } = useBoard.getState()
   const fileInput = useRef<HTMLInputElement>(null)
 
   const zoomTo = (z: number) => {
@@ -112,13 +121,35 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
           <Tool label="Undo" icon={UndoIcon} shortcut="Ctrl+Z" disabled={!canUndo} onClick={undo} />
           <Tool label="Redo" icon={RedoIcon} shortcut="Ctrl+Shift+Z" disabled={!canRedo} onClick={redo} />
 
-          {selectedId && (
+          {selectedIds.length > 0 && (
             <>
               <Divider />
-              <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" onClick={() => duplicate(selectedId)} />
-              <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" onClick={() => reorder(selectedId, 'forward')} />
-              <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" onClick={() => reorder(selectedId, 'backward')} />
-              <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" onClick={() => remove(selectedId)} />
+              <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" onClick={() => duplicate(selectedIds)} />
+              {selectedId && (
+                <>
+                  <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" onClick={() => reorder(selectedId, 'forward')} />
+                  <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" onClick={() => reorder(selectedId, 'backward')} />
+                </>
+              )}
+              <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" onClick={() => remove(selectedIds)} />
+            </>
+          )}
+
+          {selectedIds.length > 1 && (
+            <>
+              <Divider />
+              <Tool label="Align left" icon={AlignStartVerticalIcon} onClick={() => align(selectedIds, 'left')} />
+              <Tool label="Align centers horizontally" icon={AlignHorizontalCenterIcon} onClick={() => align(selectedIds, 'hcenter')} />
+              <Tool label="Align right" icon={AlignEndVerticalIcon} onClick={() => align(selectedIds, 'right')} />
+              <Tool label="Align top" icon={AlignStartHorizontalIcon} onClick={() => align(selectedIds, 'top')} />
+              <Tool label="Align middles vertically" icon={AlignVerticalCenterIcon} onClick={() => align(selectedIds, 'vcenter')} />
+              <Tool label="Align bottom" icon={AlignEndHorizontalIcon} onClick={() => align(selectedIds, 'bottom')} />
+              {selectedIds.length > 2 && (
+                <>
+                  <Tool label="Distribute horizontally" icon={AlignHorizontalSpaceBetweenIcon} onClick={() => distribute(selectedIds, 'x')} />
+                  <Tool label="Distribute vertically" icon={AlignVerticalSpaceBetweenIcon} onClick={() => distribute(selectedIds, 'y')} />
+                </>
+              )}
             </>
           )}
 

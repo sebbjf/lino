@@ -5,13 +5,13 @@ const at = { x: 0, y: 0 }
 const board = () => useBoard.getState()
 const ids = () => board().elements.map((e) => e.id)
 
-beforeEach(() => useBoard.setState({ elements: [], past: [], future: [], selectedId: null }))
+beforeEach(() => useBoard.setState({ elements: [], past: [], future: [], selectedIds: [] }))
 
 test('undo and redo discrete actions', () => {
   board().add({ type: 'note', text: 'a', w: 10, h: 10 }, at)
   board().add({ type: 'color', hex: '#000000', w: 10, h: 10 }, at)
   const [a, b] = ids()
-  board().remove(a)
+  board().remove([a])
   expect(ids()).toEqual([b])
   board().undo()
   expect(ids()).toEqual([a, b])
@@ -45,9 +45,29 @@ test('a gesture that changed nothing leaves no empty undo step', () => {
 test('a new action clears redo, and undo drops a deleted selection', () => {
   board().add({ type: 'note', text: '', w: 10, h: 10 }, at)
   const [id] = ids()
-  expect(board().selectedId).toBe(id)
+  expect(board().selectedIds).toEqual([id])
   board().undo()
-  expect(board().selectedId).toBeNull()
+  expect(board().selectedIds).toEqual([])
   board().add({ type: 'note', text: '', w: 10, h: 10 }, at)
   expect(board().future).toEqual([])
+})
+
+test('toggle selection, group duplicate/remove and align as one undo step', () => {
+  const a = board().add({ type: 'note', text: 'a', w: 10, h: 10 }, { x: 5, y: 5 })
+  const b = board().add({ type: 'note', text: 'b', w: 10, h: 10 }, { x: 105, y: 45 })
+  board().select(a)
+  board().select(b, true)
+  expect(board().selectedIds).toEqual([a, b])
+  board().select(a, true)
+  expect(board().selectedIds).toEqual([b])
+
+  board().align([a, b], 'top')
+  expect(board().elements.map((e) => e.y)).toEqual([0, 0])
+  board().undo()
+  expect(board().elements.map((e) => e.y)).toEqual([0, 40])
+
+  board().duplicate([a, b])
+  expect(board().elements).toHaveLength(4)
+  board().remove(board().selectedIds)
+  expect(ids()).toEqual([a, b])
 })

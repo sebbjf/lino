@@ -18,7 +18,8 @@ function label(el: BoardElement) {
   return LABELS[el.type]
 }
 
-type Props = { el: BoardElement; selected: boolean; zoom: number }
+/** `solo`: the only selected element, which gets handles and keyboard focus. */
+type Props = { el: BoardElement; selected: boolean; solo: boolean; zoom: number }
 
 /** Tabbing to an element off screen moves the view to it; the canvas never scrolls by itself. */
 function panIntoView(el: BoardElement) {
@@ -30,8 +31,8 @@ function panIntoView(el: BoardElement) {
   setView({ ...view, x: innerWidth / 2 - (el.x + el.w / 2) * view.zoom, y: innerHeight / 2 - (el.y + el.h / 2) * view.zoom })
 }
 
-export const ElementView = memo(function ElementView({ el, selected, zoom }: Props) {
-  const { update, select, remove, duplicate, reorder, checkpoint } = useBoard.getState()
+export const ElementView = memo(function ElementView({ el, selected, solo, zoom }: Props) {
+  const { update, moveMany, select, remove, duplicate, reorder, checkpoint } = useBoard.getState()
   const readOnly = useBoard((s) => s.readOnly)
   // a freshly added empty note opens straight into editing
   const [editing, setEditing] = useState(() => selected && el.type === 'note' && !el.text)
@@ -40,8 +41,14 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
 
   // keep keyboard focus on the selected element (e.g. after duplicate or add)
   useEffect(() => {
-    if (selected && !editing && !root.current!.contains(document.activeElement)) root.current!.focus({ preventScroll: true })
-  }, [selected, editing])
+    if (solo && !editing && !root.current!.contains(document.activeElement)) root.current!.focus({ preventScroll: true })
+  }, [solo, editing])
+
+  /** The elements an action on this one applies to: the whole selection if this is part of it. */
+  const group = () => {
+    const ids = useBoard.getState().selectedIds
+    return ids.includes(el.id) ? ids : [el.id]
+  }
 
   const open = () => {
     if (readOnly && el.type !== 'link') return
@@ -56,28 +63,33 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
     // read-only: let the press reach the canvas so it pans
     if (readOnly || e.button !== 0 || !e.currentTarget.contains(e.target as Node)) return
     e.stopPropagation()
-    select(el.id)
+    // Shift+click adds to or removes from the selection
+    if (e.shiftKey) return select(el.id, true)
+    // pressing a selected element drags the whole selection; any other element becomes the selection
+    if (!useBoard.getState().selectedIds.includes(el.id)) select(el.id)
     if (editing) return
     e.currentTarget.focus()
-    const { x, y } = el
-    // snap the visible (rotated) outline to the other elements' edges and centers; Alt moves freely
-    const own = boundsOf([el])
-    const others = useBoard.getState().elements.flatMap((o) => (o.id === el.id ? [] : [boundsOf([o])]))
+    const ids = group()
+    const els = useBoard.getState().elements
+    const moving = els.filter((o) => ids.includes(o.id))
+    // snap the visible (rotated) outline of what moves to the other elements' edges and centers; Alt moves freely
+    const own = boundsOf(moving)
+    const others = els.flatMap((o) => (ids.includes(o.id) ? [] : [boundsOf([o])]))
     const setGuides = (guides: Guide[]) => useBoard.setState({ guides })
     checkpoint()
     drag(
       e,
       (dx, dy, ev) => {
-        let nx = x + dx / zoom
-        let ny = y + dy / zoom
+        let mx = dx / zoom
+        let my = dy / zoom
         if (ev.altKey) setGuides([])
         else {
-          const s = snapMove({ ...own, x: own.x + nx - x, y: own.y + ny - y }, others, SNAP_PX / zoom)
-          nx += s.dx
-          ny += s.dy
+          const s = snapMove({ ...own, x: own.x + mx, y: own.y + my }, others, SNAP_PX / zoom)
+          mx += s.dx
+          my += s.dy
           setGuides(s.guides)
         }
-        update(el.id, { x: nx, y: ny })
+        moveMany(Object.fromEntries(moving.map((o) => [o.id, { x: o.x + mx, y: o.y + my }])))
       },
       () => setGuides([]),
     )
@@ -118,20 +130,17 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
     switch (e.key) {
       case 'Delete':
       case 'Backspace':
-        remove(el.id)
+        remove(group())
         break
       case 'ArrowLeft':
-        update(el.id, { x: el.x - step })
-        break
       case 'ArrowRight':
-        update(el.id, { x: el.x + step })
-        break
       case 'ArrowUp':
-        update(el.id, { y: el.y - step })
+      case 'ArrowDown': {
+        const [dx, dy] = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key]
+        const ids = group()
+        moveMany(Object.fromEntries(useBoard.getState().elements.filter((o) => ids.includes(o.id)).map((o) => [o.id, { x: o.x + dx, y: o.y + dy }])))
         break
-      case 'ArrowDown':
-        update(el.id, { y: el.y + step })
-        break
+      }
       case 'r':
       case 'R': {
         if (mod) return // Ctrl+R stays reload
@@ -159,7 +168,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
         break
       case 'd':
         if (!mod) return
-        duplicate(el.id)
+        duplicate(group())
         break
       default:
         return
@@ -188,9 +197,10 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
       onDoubleClick={(e) => e.currentTarget.contains(e.target as Node) && open()}
       onKeyDown={onKeyDown}
       onFocus={(e) => {
-        select(el.id)
-        // keyboard focus only: a click on a half-visible element must not jump the view
-        if (e.target === e.currentTarget && e.currentTarget.matches(':focus-visible')) panIntoView(el)
+        // keyboard focus only (Tab): clicks select in onPointerDown, and must not jump the view
+        if (e.target !== e.currentTarget || !e.currentTarget.matches(':focus-visible')) return
+        if (!useBoard.getState().selectedIds.includes(el.id)) select(el.id)
+        panIntoView(el)
       }}
     >
       {el.type === 'image' && (
@@ -249,7 +259,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
 
       {el.type === 'link' && <LinkCard el={el} />}
 
-      {selected && !editing && !readOnly && (
+      {solo && !editing && !readOnly && (
         <>
           <div
             aria-hidden

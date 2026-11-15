@@ -112,3 +112,43 @@ export function snapMove(moving: Rect, others: Rect[], threshold: number) {
   }
   return { dx, dy, guides }
 }
+
+export type AlignMode = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom'
+
+/** Offsets that align boxes' visible outlines to the selection's edge or center, in input order. */
+export function alignOffsets(boxes: Box[], mode: AlignMode) {
+  const all = boundsOf(boxes)
+  return boxes.map((b) => {
+    const r = boundsOf([b])
+    switch (mode) {
+      case 'left':
+        return { dx: all.x - r.x, dy: 0 }
+      case 'hcenter':
+        return { dx: all.x + all.w / 2 - (r.x + r.w / 2), dy: 0 }
+      case 'right':
+        return { dx: all.x + all.w - (r.x + r.w), dy: 0 }
+      case 'top':
+        return { dx: 0, dy: all.y - r.y }
+      case 'vcenter':
+        return { dx: 0, dy: all.y + all.h / 2 - (r.y + r.h / 2) }
+      case 'bottom':
+        return { dx: 0, dy: all.y + all.h - (r.y + r.h) }
+    }
+  })
+}
+
+/** Offsets that space boxes evenly along an axis, keeping the first and last in place. */
+export function distributeOffsets(boxes: Box[], axis: 'x' | 'y') {
+  const size = axis === 'x' ? 'w' : 'h'
+  const rects = boxes.map((b, i) => ({ i, r: boundsOf([b]) })).sort((a, b) => a.r[axis] - b.r[axis])
+  const first = rects[0].r
+  const end = Math.max(...rects.map(({ r }) => r[axis] + r[size]))
+  const gap = (end - first[axis] - rects.reduce((sum, { r }) => sum + r[size], 0)) / (rects.length - 1)
+  const out = boxes.map(() => ({ dx: 0, dy: 0 }))
+  let at = first[axis]
+  for (const { i, r } of rects) {
+    out[i] = axis === 'x' ? { dx: at - r.x, dy: 0 } : { dx: 0, dy: at - r.y }
+    at += r[size] + gap
+  }
+  return out
+}
