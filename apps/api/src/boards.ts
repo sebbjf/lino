@@ -16,7 +16,8 @@ export type BoardStore = {
 export const newId = () => randomBytes(9).toString('base64url')
 
 export async function pgBoards(url: string): Promise<BoardStore & { close: () => Promise<void> }> {
-  const sql = postgres(url, { max: 5 })
+  // onnotice: migrations re-run "already exists, skipping" notices on every start
+  const sql = postgres(url, { max: 5, onnotice: () => {} })
   const db = drizzle(sql)
   await migrate(db, { migrationsFolder: fileURLToPath(new URL('../drizzle', import.meta.url)) })
   return {
