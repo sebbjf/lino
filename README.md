@@ -26,6 +26,8 @@ Pinterest, Are.na and Milanote are good at collecting inspiration. Getting from 
 - **PDF export** of the board.
 - **Shared-board limits.** They are 90-day expiry, 4 MB and 20 shares per hour per IP, but the rate limit is counted in memory per function instance. A shared store (Upstash) or firewall rules would make it real. There is no take-down flow for a link yet.
 - **New elements land in the center of the view,** on top of each other. Placing them in free space would save a drag.
+- **Link fonts in notes come from Google Fonts,** so choosing one sends the font name (and your IP) to Google, and proprietary fonts fall back to the default. Self-hosting or a font upload would avoid both.
+- **The eyedropper** uses the browser's EyeDropper API, so it only shows in Chromium browsers. A click-on-image fallback would cover Firefox and Safari.
 - **Fonts loaded by scripts** (or only named in JS) are missed by link reading.
 - **Phase 2 candidates:** real-time collaboration, a browser extension for clipping, optional accounts to keep boards across devices, more element types (freehand drawing, richer link previews).
 - **Open questions:** final name and domain, license.
@@ -111,9 +113,16 @@ Every push to `main` redeploys both; other branches get preview URLs. The API al
 | Snap rotation to 15° | `Shift` while rotating (0°, 90°, 180° and 270° pull on their own; hold `Alt` to rotate freely) |
 | Move between toolbar buttons | `←` / `→`, `Home` / `End` |
 
-Paste or drop images, links (they become cards with cover, title, fonts and colors) or text (becomes a note). The palette button opens the board palette: rename, pin or hide colors, see the fonts found, and copy everything as CSS or Tailwind.
+Paste or drop images, links (they become cards with cover, title, fonts and colors) or text (becomes a note). The palette button opens the board palette: rename, pin, hide or **shuffle** colors, see the fonts found, and preview the CSS or Tailwind code before copying it. It also takes a **variable prefix** for the CSS export (`--lino-color-…`; Tailwind keeps `--color-…` so its classes work) and writes colors as **hex or OKLCH**.
 
-**Style** (brush icon): with elements selected, set corners (square, soft, round), shadow and opacity; for notes also the color (from the board palette or any color; text switches to dark or light for contrast), text size and typeface. With nothing selected, it styles the board: background color and dots, grid or plain. Styles travel with exports, shares and the PNG. The palette panel also takes a **variable prefix** for the CSS export (`--lino-color-…`; Tailwind keeps `--color-…` so its classes work) and writes colors as **hex or OKLCH**.
+**Pick a color** (pipette, Chromium browsers only): click anywhere on screen, such as a spot in a photo, and the color is pinned to the palette. Opening a swatch's picker also shows its **harmonies** (complementary, analogous, triad); clicking one adds it as a new swatch.
+
+**Style** (brush icon), with elements selected:
+- Any element: corners (square, soft, round), shadow, opacity, and a **tape** or **pin** decoration. **Copy style** / **Paste style** (`Ctrl+Alt+C` / `Ctrl+Alt+V`) moves a look between elements.
+- Notes: color (from the palette or any color; the text turns dark or light for contrast), text size, sans or serif, or **one of the fonts found on your links** (loaded from Google Fonts when it has them).
+- Images: **mono** or **duotone** filter, with the duotone's shadow and highlight colors.
+
+With nothing selected, it styles the board: **themes** (Paper, Kraft, Night, Blueprint), background color, dots/grid/plain, and **messy mode**, where new things drop in slightly tilted. Styles travel with exports, shares and the PNG.
 
 **File menu** (folder icon): **Export board** saves a `.lino.json` with every element (images inline) and the palette edits. **Import board** (or dropping a `.lino.json` on the canvas) replaces the board with a file's contents; `Ctrl+Z` brings the old board back. Imported files are checked like shared boards: only http(s) links and `data:image` images, unknown fields dropped, unreadable items skipped and counted.
 
