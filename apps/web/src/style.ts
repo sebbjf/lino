@@ -7,7 +7,11 @@ export type NoteFont = 'sans' | 'serif'
 export type Pattern = 'dots' | 'grid' | 'plain'
 
 /** Optional look of any element; missing fields mean the default (soft corners, shadow, opaque). */
-export type ElementStyle = { corner?: Corner; shadow?: boolean; opacity?: number }
+export type ElementStyle = { corner?: Corner; shadow?: boolean; opacity?: number; deco?: Deco }
+export type Deco = 'tape' | 'pin'
+export const DECOS: Deco[] = ['tape', 'pin']
+/** Tilt range in degrees for elements added in messy mode. */
+export const MESSY_TILT = 5
 /** Notes only; `bg` unset means the theme's card color. `family` (a font found on a link) wins over `font`. */
 export type NoteStyle = { bg?: string; size?: NoteSize; font?: NoteFont; family?: string }
 
@@ -51,7 +55,7 @@ export function loadFamily(family: string) {
 }
 
 /** The canvas; `bg` unset means the theme background. */
-export type BoardStyle = { bg?: string; pattern?: Pattern }
+export type BoardStyle = { bg?: string; pattern?: Pattern; messy?: boolean }
 
 export const CORNERS: Corner[] = ['square', 'soft', 'round']
 export const NOTE_SIZES: NoteSize[] = ['sm', 'md', 'lg']

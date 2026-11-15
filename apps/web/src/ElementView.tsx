@@ -5,7 +5,7 @@ import { LinkCard } from './LinkCard.tsx'
 import { drag } from './drag.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
-import { useBoard, type BoardElement } from './store.ts'
+import { justDropped, useBoard, type BoardElement } from './store.ts'
 import { DEFAULT_DUO, FAMILY, NOTE_TEXT, loadFamily, rgb, surface, textOn } from './style.ts'
 
 /** Snap distance in screen pixels. */
@@ -59,6 +59,8 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   const root = useRef<HTMLDivElement>(null)
 
   // keep keyboard focus on the selected element (e.g. after duplicate or add)
+  // plays once, for an element just added in messy mode
+  const [drop] = useState(() => justDropped.delete(el.id))
   const family = el.type === 'note' ? el.family : undefined
   useEffect(() => {
     if (family) loadFamily(family)
@@ -217,7 +219,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       tabIndex={0}
       aria-label={label(el)}
       aria-roledescription="board element"
-      className="absolute left-0 top-0 rounded-2xl outline-none"
+      className={`absolute left-0 top-0 rounded-2xl outline-none ${drop ? 'element-drop' : ''}`}
       style={{
         borderRadius: surface(el).borderRadius,
         opacity: el.opacity,
@@ -310,6 +312,19 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       )}
 
       {el.type === 'link' && <LinkCard el={el} />}
+
+      {el.deco === 'tape' && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 -top-3 h-6 w-20 -translate-x-1/2 -rotate-3 bg-[rgb(250_244_225/0.75)] shadow-[0_1px_2px_rgb(0_0_0/0.12)]"
+        />
+      )}
+      {el.deco === 'pin' && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-2 size-4 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#f08a76,#c2412d_60%)] shadow-[0_2px_3px_rgb(0_0_0/0.3)]"
+        />
+      )}
 
       {solo && !editing && !readOnly && (
         <>

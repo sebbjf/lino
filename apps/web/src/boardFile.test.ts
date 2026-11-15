@@ -37,15 +37,16 @@ test('parseBoardFile keeps valid style fields and the board style, drops bad one
     elements: [
       { ...box, type: 'note', text: 'a', bg: '#fff3b0', size: 'lg', font: 'serif', family: 'Space Grotesk', corner: 'round', shadow: false, opacity: 0.05 },
       { ...box, type: 'note', text: 'b', bg: 'url(x)', size: 'huge', corner: '9px', shadow: 'no', family: 'x", serif; } body { color: red' },
-      { ...box, type: 'color', hex: '#000', bg: '#fff', size: 'lg' },
+      { ...box, type: 'color', hex: '#000', bg: '#fff', size: 'lg', deco: 'pin' },
     ],
-    board: { bg: '#1e3a5f', pattern: 'grid', extra: 1 },
+    board: { bg: '#1e3a5f', pattern: 'grid', messy: true, extra: 1 },
   })
   const { elements, board } = parseBoardFile(file)
   expect(elements[0]).toMatchObject({ bg: '#fff3b0', size: 'lg', font: 'serif', family: 'Space Grotesk', corner: 'round', shadow: false, opacity: 0.2 })
   for (const k of ['bg', 'size', 'corner', 'shadow', 'family']) expect(elements[1]).not.toHaveProperty(k)
   expect(elements[2]).not.toHaveProperty('bg')
-  expect(board).toEqual({ bg: '#1e3a5f', pattern: 'grid' })
+  expect(board).toEqual({ bg: '#1e3a5f', pattern: 'grid', messy: true })
+  expect(elements[2]).toMatchObject({ deco: 'pin' })
   expect(parseBoardFile(JSON.stringify({ elements: [] })).board).toEqual({})
 })
 

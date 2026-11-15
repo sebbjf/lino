@@ -99,3 +99,12 @@ test('copy and paste style resets what the source does not set', () => {
   board().undo()
   expect(board().elements[1]).toMatchObject({ opacity: 0.5, size: 'lg' })
 })
+
+test('messy mode tilts new elements a little', () => {
+  useBoard.setState({ board: { messy: true } })
+  for (let i = 0; i < 20; i++) board().add({ type: 'note', text: '', w: 10, h: 10 }, at)
+  const tilts = board().elements.map((e) => e.rotation)
+  expect(tilts.every((r) => Math.abs(r) <= 5)).toBe(true)
+  expect(tilts.some((r) => r !== 0)).toBe(true)
+  useBoard.setState({ board: {} })
+})

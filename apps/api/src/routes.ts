@@ -39,6 +39,7 @@ const elementSchema = {
     error: { type: 'string', maxLength: 300 },
     corner: { enum: ['square', 'soft', 'round'] },
     shadow: { type: 'boolean' },
+    deco: { enum: ['tape', 'pin'] },
     opacity: { type: 'number', minimum: 0.2, maximum: 1 },
     bg: hex,
     size: { enum: ['sm', 'md', 'lg'] },
@@ -72,7 +73,7 @@ const boardSchema = {
     board: {
       type: 'object',
       additionalProperties: false,
-      properties: { bg: hex, pattern: { enum: ['dots', 'grid', 'plain'] } },
+      properties: { bg: hex, pattern: { enum: ['dots', 'grid', 'plain'] }, messy: { type: 'boolean' } },
     },
   },
 }

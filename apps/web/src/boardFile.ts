@@ -1,6 +1,6 @@
 import type { ColorMeta } from './colors.ts'
 import { fitView } from './geometry.ts'
-import { CORNERS, FAMILY, IMAGE_FILTERS, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
+import { CORNERS, DECOS, FAMILY, IMAGE_FILTERS, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
 import { useBoard, type BoardElement } from './store.ts'
 
 const MAX_FILE = 50 * 1024 * 1024
@@ -27,6 +27,7 @@ function styleOf(e: Record<string, unknown>) {
     ...(oneOf(CORNERS, e.corner) && { corner: e.corner }),
     ...(typeof e.shadow === 'boolean' && { shadow: e.shadow }),
     ...(isNum(e.opacity) && { opacity: Math.min(1, Math.max(MIN_OPACITY, e.opacity)) }),
+    ...(oneOf(DECOS, e.deco) && { deco: e.deco }),
   }
 }
 
@@ -53,6 +54,7 @@ export function boardStyleOf(raw: unknown): BoardStyle {
   return {
     ...(isStr(b.bg, 9) && HEX.test(b.bg) && { bg: b.bg }),
     ...(oneOf(PATTERNS, b.pattern) && { pattern: b.pattern }),
+    ...(typeof b.messy === 'boolean' && { messy: b.messy }),
   }
 }
 

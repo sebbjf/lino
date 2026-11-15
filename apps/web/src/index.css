@@ -165,8 +165,13 @@
 :nth-child(3) > .card-drop { animation-delay: 350ms; }
 :nth-child(4) > .card-drop { animation-delay: 450ms; }
 :nth-child(5) > .card-drop { animation-delay: 550ms; }
+/* an element added in messy mode lands on the board; uses scale/translate so the inline transform still applies */
+@keyframes element-drop {
+  from { opacity: 0; scale: 1.12; translate: 0 -18px; }
+}
+.element-drop { animation: element-drop 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both; }
 @media (prefers-reduced-motion: reduce) {
-  .card-drop { animation: none; }
+  .card-drop, .element-drop { animation: none; }
   /* covers popover/tooltip enter-exit animations from tw-animate-css and any transition we forgot */
   *, ::before, ::after {
     animation-duration: 0.01ms !important;

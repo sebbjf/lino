@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { ColorMeta } from './colors.ts'
 import { alignOffsets, distributeOffsets, type AlignMode, type Box, type Guide } from './geometry.ts'
-import type { BoardStyle, ElementStyle, ImageStyle, NoteStyle } from './style.ts'
+import { MESSY_TILT, type BoardStyle, type ElementStyle, type ImageStyle, type NoteStyle } from './style.ts'
 
 type Base = Box & ElementStyle & { id: string }
 export type BoardElement =
@@ -15,7 +15,10 @@ export type StylePatch = ElementStyle & NoteStyle & ImageStyle
 /** Style fields that belong to one element type only. */
 const OWN: Partial<Record<BoardElement['type'], (keyof StylePatch)[]>> = { note: ['bg', 'size', 'font', 'family'], image: ['filter', 'duo'] }
 const TYPED = Object.values(OWN).flat()
-const STYLE_KEYS: (keyof StylePatch)[] = ['corner', 'shadow', 'opacity', ...TYPED]
+const STYLE_KEYS: (keyof StylePatch)[] = ['corner', 'shadow', 'opacity', 'deco', ...TYPED]
+
+/** Ids added in messy mode, so their view plays the drop-in once. */
+export const justDropped = new Set<string>()
 
 export type ExportPrefs = { prefix: string; format: 'hex' | 'oklch' }
 
@@ -152,7 +155,11 @@ export const useBoard = create<State>()((set, get) => ({
 
   add: (el, at = viewportCenter(get().view)) => {
     const id = crypto.randomUUID()
-    const full = { ...el, id, x: at.x - el.w / 2, y: at.y - el.h / 2, rotation: 0 } as BoardElement
+    // messy mode: a small random tilt, like something dropped on a table
+    const messy = get().board.messy
+    const rotation = messy ? Math.round((Math.random() * 2 - 1) * MESSY_TILT * 10) / 10 : 0
+    if (messy) justDropped.add(id)
+    const full = { ...el, id, x: at.x - el.w / 2, y: at.y - el.h / 2, rotation } as BoardElement
     set((s) => ({ ...pushHistory(s), elements: [...s.elements, full], selectedIds: [id] }))
     return id
   },

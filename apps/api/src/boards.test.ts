@@ -19,7 +19,7 @@ const board = {
   elements: [
     {
       id: 'a', type: 'note', text: 'hi', x: 0, y: 0, w: 100, h: 80, rotation: 0,
-      bg: '#fff3b0', size: 'lg', font: 'serif', family: 'Inter', corner: 'square', shadow: false, opacity: 0.6,
+      bg: '#fff3b0', size: 'lg', font: 'serif', family: 'Inter', corner: 'square', shadow: false, opacity: 0.6, deco: 'tape',
     },
     { id: 'b', type: 'color', hex: '#aabbcc', x: 10, y: 10, w: 100, h: 100, rotation: 5 },
     {
@@ -28,7 +28,7 @@ const board = {
     },
   ],
   colorMeta: { '#aabbcc': { name: 'sky', pinned: true } },
-  board: { bg: '#1e3a5f', pattern: 'grid' },
+  board: { bg: '#1e3a5f', pattern: 'grid', messy: true },
 }
 
 const share = (app: ReturnType<typeof buildApp>, payload: unknown) => app.inject({ method: 'POST', url: '/boards', payload: payload as object })

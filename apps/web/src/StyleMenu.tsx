@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { boardFonts, buildPalette } from './colors.ts'
 import { useBoard, type StylePatch } from './store.ts'
-import { CORNERS, FAMILY, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, loadFamily, DEFAULT_DUO, IMAGE_FILTERS, type Pattern } from './style.ts'
+import { CORNERS, DECOS, FAMILY, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, loadFamily, DEFAULT_DUO, IMAGE_FILTERS, type Pattern } from './style.ts'
 
 const NAMES: Record<string, string> = {
   square: 'Square',
@@ -22,6 +22,8 @@ const NAMES: Record<string, string> = {
   none: 'None',
   mono: 'Mono',
   duotone: 'Duotone',
+  tape: 'Tape',
+  pin: 'Pin',
 }
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
@@ -148,6 +150,7 @@ function ElementPanel({ ids }: { ids: string[] }) {
           {cur.shadow === false ? 'Off' : 'On'}
         </Button>
       </div>
+      <Choice label="Decoration" options={['none', ...DECOS] as const} value={cur.deco ?? 'none'} onChange={(d) => apply({ deco: d === 'none' ? undefined : d })} />
       <Group label={`Opacity ${opacity}%`}>
         <input
           type="range"
@@ -247,6 +250,12 @@ function BoardPanel() {
       </Group>
       <Swatches label="Background" value={board.bg} onChange={(bg) => setBoard({ bg })} />
       <Choice label="Pattern" options={PATTERNS} value={board.pattern ?? 'dots'} onChange={(pattern) => setBoard({ pattern })} />
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-medium text-muted-foreground">Messy mode: new things land slightly tilted</span>
+        <Button variant="outline" size="sm" aria-pressed={!!board.messy} onClick={() => setBoard({ messy: !board.messy })}>
+          {board.messy ? 'On' : 'Off'}
+        </Button>
+      </div>
     </>
   )
 }

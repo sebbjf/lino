@@ -1,6 +1,6 @@
 import { boundsOf } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
-import { FAMILY, NOTE_TEXT, RADIUS, filterPixels, textOn, type BoardStyle, type ImageStyle } from './style.ts'
+import { FAMILY, NOTE_TEXT, RADIUS, filterPixels, textOn, type BoardStyle, type Deco, type ImageStyle } from './style.ts'
 
 const PAD = 48
 const MAX_SIDE = 8000 // browsers refuse much larger canvases
@@ -65,6 +65,27 @@ function lines(ctx: CanvasRenderingContext2D, text: string, x: number, y: number
   shown.forEach((l, i) => ctx.fillText(l, x, y + i * lineH))
 }
 
+/** Tape across the top edge or a pin near it, matching the board view. */
+function drawDeco(ctx: CanvasRenderingContext2D, deco: Deco | undefined, w: number) {
+  if (!deco) return
+  ctx.save()
+  ctx.shadowColor = 'rgb(0 0 0 / 0.2)'
+  ctx.shadowBlur = 3
+  ctx.shadowOffsetY = 1
+  if (deco === 'tape') {
+    ctx.translate(w / 2, 0)
+    ctx.rotate((-3 * Math.PI) / 180)
+    ctx.fillStyle = 'rgb(250 244 225 / 0.75)'
+    ctx.fillRect(-40, -12, 80, 24)
+  } else {
+    ctx.fillStyle = '#c2412d'
+    ctx.beginPath()
+    ctx.arc(w / 2, 16, 8, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
 /** Renders the whole board (not just the viewport) to a PNG with the current theme. Selection and handles are left out. */
 export async function boardPng(elements: BoardElement[], scale = 2, board: BoardStyle = {}): Promise<Blob> {
   const css = getComputedStyle(document.documentElement)
@@ -115,6 +136,7 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
     ctx.roundRect(0, 0, w, h, radius)
     ctx.fill()
     ctx.restore()
+    ctx.save()
     ctx.beginPath()
     ctx.roundRect(0, 0, w, h, radius)
     ctx.clip()
@@ -159,6 +181,8 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
         ctx.fill()
       })
     }
+    ctx.restore() // end of the card clip; decorations sit on top of the edge
+    drawDeco(ctx, el.deco, w)
     ctx.restore()
   }
 
