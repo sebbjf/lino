@@ -152,26 +152,28 @@
 .color-well::-webkit-color-swatch { border: 1px solid var(--border); border-radius: 0.75rem; }
 .color-well::-moz-color-swatch { border: 1px solid var(--border); border-radius: 0.75rem; }
 
-/* landing: board cards drop onto the board one by one, settling with a small overshoot */
-@keyframes card-drop {
-  from { opacity: 0; transform: translateY(-24px) scale(1.08); }
-  to { opacity: 1; transform: none; }
+/* landing: the page palette (same four colors as in landing.tsx) */
+html.lp {
+  --p-linen: #e4ddd1;
+  --p-orange: #ef7d12;
+  --p-teal: #2a8fae;
+  --p-olive: #262b1d;
+  /* neutral, like a white gallery wall: the boards bring the color */
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.16 0 0);
+  --card: oklch(1 0 0);
+  --muted-foreground: oklch(0.52 0 0);
+  --border: oklch(0.92 0 0);
+  --dot: oklch(0.88 0 0);
+  --ring: oklch(0.6 0 0);
 }
-.card-drop {
-  animation: card-drop 700ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
-  animation-delay: 150ms;
-}
-:nth-child(2) > .card-drop { animation-delay: 250ms; }
-:nth-child(3) > .card-drop { animation-delay: 350ms; }
-:nth-child(4) > .card-drop { animation-delay: 450ms; }
-:nth-child(5) > .card-drop { animation-delay: 550ms; }
 /* an element added in messy mode lands on the board; uses scale/translate so the inline transform still applies */
 @keyframes element-drop {
   from { opacity: 0; scale: 1.12; translate: 0 -18px; }
 }
 .element-drop { animation: element-drop 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both; }
 @media (prefers-reduced-motion: reduce) {
-  .card-drop, .element-drop { animation: none; }
+  .element-drop { animation: none; }
   /* covers popover/tooltip enter-exit animations from tw-animate-css and any transition we forgot */
   *, ::before, ::after {
     animation-duration: 0.01ms !important;
