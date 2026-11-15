@@ -108,3 +108,18 @@ test('messy mode tilts new elements a little', () => {
   expect(tilts.some((r) => r !== 0)).toBe(true)
   useBoard.setState({ board: {} })
 })
+
+test('arrange lays out only the given elements as one undo step', () => {
+  board().add({ type: 'note', text: '', w: 100, h: 100 }, { x: 0, y: 0 })
+  board().add({ type: 'note', text: '', w: 100, h: 100 }, { x: 10, y: 10 })
+  board().add({ type: 'note', text: '', w: 100, h: 100 }, { x: 900, y: 900 })
+  const [a, b] = ids()
+  board().update(b, { rotation: 30 })
+  const before = board().elements
+  board().arrange([a, b], 'row')
+  const [ea, eb, ec] = board().elements
+  expect(eb).toMatchObject({ x: ea.x + 124, y: ea.y, rotation: 0 })
+  expect(ec).toBe(before[2])
+  board().undo()
+  expect(board().elements).toBe(before)
+})

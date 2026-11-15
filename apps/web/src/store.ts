@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ColorMeta } from './colors.ts'
-import { alignOffsets, distributeOffsets, type AlignMode, type Box, type Guide } from './geometry.ts'
+import { alignOffsets, distributeOffsets, layoutPositions, type AlignMode, type Box, type Guide, type Layout } from './geometry.ts'
 import { MESSY_TILT, type BoardStyle, type ElementStyle, type ImageStyle, type NoteStyle } from './style.ts'
 
 type Base = Box & ElementStyle & { id: string }
@@ -85,6 +85,8 @@ type State = {
   replaceBoard: (elements: BoardElement[], colorMeta: Record<string, ColorMeta>, board?: BoardStyle) => void
   align: (ids: string[], mode: AlignMode) => void
   distribute: (ids: string[], axis: 'x' | 'y') => void
+  /** Arranges elements into a layout template as one undo step; rotations go back to 0. */
+  arrange: (ids: string[], mode: Layout) => void
   /** Selects one element (null clears); `toggle` adds or removes it from the current selection. */
   select: (id: string | null, toggle?: boolean) => void
   selectMany: (ids: string[]) => void
@@ -212,6 +214,14 @@ export const useBoard = create<State>()((set, get) => ({
 
   align: (ids, mode) => set((s) => shift(s, ids, (els) => alignOffsets(els, mode))),
   distribute: (ids, axis) => set((s) => shift(s, ids, (els) => (els.length < 3 ? els.map(() => ({ dx: 0, dy: 0 })) : distributeOffsets(els, axis)))),
+
+  arrange: (ids, mode) =>
+    set((s) => {
+      const els = s.elements.filter((e) => ids.includes(e.id))
+      if (els.length < 2) return s
+      const pos = new Map(layoutPositions(els, mode).map((p, i) => [els[i].id, p]))
+      return { ...pushHistory(s), elements: s.elements.map((e) => (pos.has(e.id) ? { ...e, ...pos.get(e.id), rotation: 0 } : e)) }
+    }),
 
   reorder: (id, to) =>
     set((s) => {

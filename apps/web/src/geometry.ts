@@ -154,3 +154,66 @@ export function distributeOffsets(boxes: Box[], axis: 'x' | 'y') {
   }
   return out
 }
+
+export type Layout = 'grid' | 'masonry' | 'row' | 'column' | 'circle'
+export const LAYOUTS: Layout[] = ['grid', 'masonry', 'row', 'column', 'circle']
+
+/**
+ * New top-left positions that arrange boxes into a template, keeping their sizes; rotation goes to 0.
+ * Boxes are taken in reading order (top to bottom, then left to right) and the layout starts at
+ * their current bounds' top-left (the circle keeps their center). Returned in input order.
+ */
+export function layoutPositions(boxes: Box[], mode: Layout, gap = 24): { x: number; y: number }[] {
+  const n = boxes.length
+  if (!n) return []
+  const b = boundsOf(boxes)
+  // rows are bands of 40px so slightly uneven tops still read left to right
+  const order = boxes.map((_, i) => i).sort((i, j) => Math.round(boxes[i].y / 40) - Math.round(boxes[j].y / 40) || boxes[i].x - boxes[j].x)
+  const out: { x: number; y: number }[] = new Array(n)
+  const maxW = Math.max(...boxes.map((o) => o.w))
+  const cols = Math.ceil(Math.sqrt(n))
+
+  if (mode === 'row' || mode === 'column') {
+    const along = mode === 'row' ? 'w' : 'h'
+    const cross = mode === 'row' ? 'h' : 'w'
+    const size = Math.max(...boxes.map((o) => o[cross]))
+    let at = 0
+    for (const i of order) {
+      const o = boxes[i]
+      const off = (size - o[cross]) / 2 // centered on the line
+      out[i] = mode === 'row' ? { x: b.x + at, y: b.y + off } : { x: b.x + off, y: b.y + at }
+      at += o[along] + gap
+    }
+  } else if (mode === 'grid') {
+    // cells as wide as the widest box; each row as tall as its tallest box
+    let y = b.y
+    for (let r = 0; r * cols < n; r++) {
+      const row = order.slice(r * cols, (r + 1) * cols)
+      const rowH = Math.max(...row.map((i) => boxes[i].h))
+      row.forEach((i, c) => {
+        out[i] = { x: b.x + c * (maxW + gap) + (maxW - boxes[i].w) / 2, y: y + (rowH - boxes[i].h) / 2 }
+      })
+      y += rowH + gap
+    }
+  } else if (mode === 'masonry') {
+    // each box goes to the shortest column
+    const heights = new Array(cols).fill(0)
+    for (const i of order) {
+      const c = heights.indexOf(Math.min(...heights))
+      out[i] = { x: b.x + c * (maxW + gap) + (maxW - boxes[i].w) / 2, y: b.y + heights[c] }
+      heights[c] += boxes[i].h + gap
+    }
+  } else {
+    // around a circle: the straight distance (chord) between neighbours must clear both boxes' diagonals
+    const span = order.map((i) => Math.hypot(boxes[i].w, boxes[i].h))
+    const chord = 2 * Math.sin(Math.PI / n)
+    const r = n === 1 ? 0 : Math.max(...span.map((v, k) => ((v + span[(k + 1) % n]) / 2 + gap) / chord))
+    const cx = b.x + b.w / 2
+    const cy = b.y + b.h / 2
+    order.forEach((i, k) => {
+      const a = (k / n) * Math.PI * 2 - Math.PI / 2
+      out[i] = { x: cx + r * Math.cos(a) - boxes[i].w / 2, y: cy + r * Math.sin(a) - boxes[i].h / 2 }
+    })
+  }
+  return out
+}

@@ -33,6 +33,7 @@ import { addImages } from './image.ts'
 import { FileMenu } from './FileMenu.tsx'
 import { ShareButton } from './ShareButton.tsx'
 import { StyleMenu } from './StyleMenu.tsx'
+import { ArrangeMenu } from './ArrangeMenu.tsx'
 import { useBoard } from './store.ts'
 
 // Chromium only for now; elsewhere the button is hidden.
@@ -183,6 +184,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
       <Tool label="Zoom in" icon={PlusSignIcon} onClick={() => zoomTo(zoom * 1.25)} />
 
       <Divider />
+      {!readOnly && <ArrangeMenu />}
       {!readOnly && <StyleMenu />}
       <Tool label="Palette" icon={SwatchIcon} pressed={paletteOpen} onClick={onTogglePalette} />
       <FileMenu />

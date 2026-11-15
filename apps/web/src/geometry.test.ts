@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { angleTo, resize, rotateVec, zoomAt, fitView, boundsOf, snapMove, alignOffsets, distributeOffsets, type Box } from './geometry.ts'
+import { angleTo, resize, rotateVec, zoomAt, fitView, boundsOf, snapMove, alignOffsets, distributeOffsets, layoutPositions, LAYOUTS, type Box } from './geometry.ts'
 
 // world position of the box's local top-left corner
 function topLeft(b: Box) {
@@ -100,4 +100,24 @@ test('distributeOffsets spaces boxes evenly between the outer two', () => {
   // gaps 0..10 | 12..22 | 90..100 → total 100, sizes 30, gap 35
   const boxes = [box(90, 0, 10, 10), box(0, 0, 10, 10), box(12, 0, 10, 10)]
   expect(distributeOffsets(boxes, 'x').map((o) => o.dx)).toEqual([0, 0, 33])
+})
+
+const overlaps = (a: Box, c: Box) => a.x < c.x + c.w && c.x < a.x + a.w && a.y < c.y + c.h && c.y < a.y + a.h
+
+test('layoutPositions arranges without overlaps and starts at the bounds', () => {
+  const boxes = [box(300, 0, 100, 80), box(0, 0, 200, 120), box(50, 400, 120, 60), box(500, 300, 80, 200), box(10, 200, 140, 140)]
+  // what the board in the browser showed overlapping in a circle: two wide images among small swatches
+  const mixed = [box(0, 0, 200, 120), box(0, 0, 200, 120), ...Array.from({ length: 6 }, (_, i) => box(i * 300, 500, 90, 90))]
+  for (const set of [boxes, mixed]) for (const mode of LAYOUTS) {
+    const placed = layoutPositions(set, mode).map((p, i) => ({ ...set[i], ...p }))
+    for (let i = 0; i < placed.length; i++) for (let j = i + 1; j < placed.length; j++) expect(overlaps(placed[i], placed[j]), `${mode} ${i}-${j}`).toBe(false)
+  }
+  for (const mode of LAYOUTS) {
+    const placed = layoutPositions(boxes, mode).map((p, i) => ({ ...boxes[i], ...p }))
+    for (let i = 0; i < placed.length; i++) for (let j = i + 1; j < placed.length; j++) expect(overlaps(placed[i], placed[j]), `${mode} ${i}-${j}`).toBe(false)
+  }
+  // reading order: the top-left box comes first in a row
+  const row = layoutPositions(boxes, 'row')
+  expect(row[1]).toEqual({ x: 0, y: 40 }) // centered in the 200px-tall line: (200 - 120) / 2
+  expect(row[0].x).toBe(200 + 24)
 })
