@@ -176,7 +176,7 @@ function ToolButton({ pressed, onClick, children }: { pressed?: boolean; onClick
       type="button"
       aria-pressed={pressed}
       onClick={onClick}
-      className={`${pill} px-2.5 py-1.5 text-sm text-foreground/70 sm:px-3 hover:bg-foreground/[0.06] hover:text-foreground aria-pressed:bg-foreground aria-pressed:text-background`}
+      className={`${pill} px-2 py-1.5 text-[13px] text-foreground/70 sm:px-3 sm:text-sm hover:bg-foreground/[0.06] hover:text-foreground aria-pressed:bg-foreground aria-pressed:text-background`}
     >
       {children}
     </button>
@@ -202,7 +202,8 @@ function Stage({ onArranged }: StageProps) {
   const [mode, setModeState] = useState<Mode>('original')
   const setMode = (m: Mode) => {
     setModeState(m)
-    onArranged(m !== 'original' && m !== 'scatter')
+    // the headline only fades when photos sit behind it (full screen); on narrow screens the stage is below the text
+    onArranged(fill && m !== 'original' && m !== 'scatter')
   }
   const zv = useMotionValue(1)
   const [z, setZ] = useState(1)
@@ -263,7 +264,7 @@ function Stage({ onArranged }: StageProps) {
         <div
           role="toolbar"
           aria-label="Arrange the photos"
-          className="flex flex-wrap items-center justify-center gap-0.5 rounded-full border border-border/70 bg-card/90 p-1.5 shadow-soft backdrop-blur"
+          className="grid grid-cols-3 items-center justify-items-center gap-0.5 rounded-3xl border sm:flex sm:flex-wrap sm:justify-center sm:rounded-full border border-border/70 bg-card/90 p-1.5 shadow-soft backdrop-blur"
         >
           {ARRANGE.map((a) => (
             <ToolButton key={a.mode} pressed={mode === a.mode} onClick={() => apply(a.mode)}>
@@ -447,7 +448,8 @@ function DemoSection() {
   )
 }
 // ---------------------------------------------------------------- statement
-// one big sentence that lights up word by word as it scrolls past, with photos set into the line
+// one big sentence that lights up word by word as it scrolls past, with photos set into the line.
+// Progress runs from the sentence entering at 80% of the viewport to its center reaching mid-screen, so the last word lights exactly there.
 const statement: (string | { src: string })[] = [
   'Keep', 'whatever', 'catches', 'your', 'eye:', { src: 'metal' }, 'a', 'sculpture,', { src: 'strokes' }, 'a', 'brushstroke,',
   { src: 'sunflowers' }, 'a', 'bouquet,', 'all', 'on', 'one', 'board.',
@@ -464,12 +466,12 @@ function Word({ p, range, children }: { p: MotionValue<number>; range: [number, 
 }
 
 function StatementSection() {
-  const ref = useRef<HTMLElement>(null)
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 0.8', 'end 0.55'] })
+  const ref = useRef<HTMLParagraphElement>(null)
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 0.8', 'center center'] })
   const n = statement.length
   return (
-    <section ref={ref} className={section}>
-      <p className={`${container} text-[clamp(2rem,4.6vw,4.25rem)] leading-[1.15] font-semibold tracking-[-0.045em] text-balance`}>
+    <section className={section}>
+      <p ref={ref} className={`${container} text-[clamp(2rem,4.6vw,4.25rem)] leading-[1.15] font-semibold tracking-[-0.045em] text-balance`}>
         {statement.map((w, i) => (
           <Word key={i} p={scrollYProgress} range={[i / n, (i + 1) / n]}>
             {typeof w === 'string' ? (
