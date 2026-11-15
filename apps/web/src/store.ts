@@ -85,7 +85,7 @@ type State = {
   replaceBoard: (elements: BoardElement[], colorMeta: Record<string, ColorMeta>, board?: BoardStyle) => void
   align: (ids: string[], mode: AlignMode) => void
   distribute: (ids: string[], axis: 'x' | 'y') => void
-  /** Arranges elements into a layout template as one undo step; rotations go back to 0. */
+  /** Arranges elements into a layout template as one undo step (most templates reset rotation). */
   arrange: (ids: string[], mode: Layout) => void
   /** Selects one element (null clears); `toggle` adds or removes it from the current selection. */
   select: (id: string | null, toggle?: boolean) => void
@@ -220,7 +220,14 @@ export const useBoard = create<State>()((set, get) => ({
       const els = s.elements.filter((e) => ids.includes(e.id))
       if (els.length < 2) return s
       const pos = new Map(layoutPositions(els, mode).map((p, i) => [els[i].id, p]))
-      return { ...pushHistory(s), elements: s.elements.map((e) => (pos.has(e.id) ? { ...e, ...pos.get(e.id), rotation: 0 } : e)) }
+      let elements = s.elements.map((e) => (pos.has(e.id) ? { ...e, ...pos.get(e.id)! } : e))
+      if (mode === 'fan') {
+        // stack the hand left to right, each card over the previous one, in the layers these elements already had
+        const hand = elements.filter((e) => pos.has(e.id)).sort((a, b) => a.x + a.w / 2 - (b.x + b.w / 2))
+        let k = 0
+        elements = elements.map((e) => (pos.has(e.id) ? hand[k++] : e))
+      }
+      return { ...pushHistory(s), elements }
     }),
 
   reorder: (id, to) =>

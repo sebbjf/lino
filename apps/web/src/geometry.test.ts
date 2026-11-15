@@ -108,16 +108,52 @@ test('layoutPositions arranges without overlaps and starts at the bounds', () =>
   const boxes = [box(300, 0, 100, 80), box(0, 0, 200, 120), box(50, 400, 120, 60), box(500, 300, 80, 200), box(10, 200, 140, 140)]
   // what the board in the browser showed overlapping in a circle: two wide images among small swatches
   const mixed = [box(0, 0, 200, 120), box(0, 0, 200, 120), ...Array.from({ length: 6 }, (_, i) => box(i * 300, 500, 90, 90))]
-  for (const set of [boxes, mixed]) for (const mode of LAYOUTS) {
+  // fan and collage overlap on purpose
+  const tidy = LAYOUTS.filter((m) => m !== 'fan' && m !== 'collage')
+  const big = Array.from({ length: 40 }, (_, i) => box(i * 37, i * 11, 60 + (i % 5) * 40, 50 + (i % 3) * 60))
+  for (const set of [boxes, mixed, big]) for (const mode of tidy) {
     const placed = layoutPositions(set, mode).map((p, i) => ({ ...set[i], ...p }))
     for (let i = 0; i < placed.length; i++) for (let j = i + 1; j < placed.length; j++) expect(overlaps(placed[i], placed[j]), `${mode} ${i}-${j}`).toBe(false)
-  }
-  for (const mode of LAYOUTS) {
-    const placed = layoutPositions(boxes, mode).map((p, i) => ({ ...boxes[i], ...p }))
-    for (let i = 0; i < placed.length; i++) for (let j = i + 1; j < placed.length; j++) expect(overlaps(placed[i], placed[j]), `${mode} ${i}-${j}`).toBe(false)
+    expect(placed.every((p) => p.rotation === 0)).toBe(true)
   }
   // reading order: the top-left box comes first in a row
   const row = layoutPositions(boxes, 'row')
-  expect(row[1]).toEqual({ x: 0, y: 40 }) // centered in the 200px-tall line: (200 - 120) / 2
+  expect(row[1]).toEqual({ x: 0, y: 40, rotation: 0 }) // centered in the 200px-tall line: (200 - 120) / 2
   expect(row[0].x).toBe(200 + 24)
+})
+
+test('sunflower puts the biggest box in the middle', () => {
+  const boxes = [box(0, 0, 50, 50), box(100, 0, 300, 200), box(500, 0, 60, 40), box(0, 300, 80, 80)]
+  const b = boundsOf(boxes)
+  const p = layoutPositions(boxes, 'sunflower')[1]
+  expect(p.x + 150).toBeCloseTo(b.x + b.w / 2)
+  expect(p.y + 100).toBeCloseTo(b.y + b.h / 2)
+  // packs about as tight as a grid, not spread out by the biggest pair
+  const mixed = [box(0, 0, 200, 120), box(0, 0, 200, 120), ...Array.from({ length: 6 }, (_, i) => box(i * 300, 500, 90, 90))]
+  const area = (mode: 'grid' | 'sunflower') => {
+    const r = boundsOf(layoutPositions(mixed, mode).map((q, i) => ({ ...mixed[i], ...q })))
+    return r.w * r.h
+  }
+  expect(area('sunflower')).toBeLessThan(area('grid') * 1.6)
+})
+
+test('fan tilts cards symmetrically, left to right, the middle one highest', () => {
+  const boxes = Array.from({ length: 5 }, (_, i) => box(i * 200, 0, 120, 160))
+  const fan = layoutPositions(boxes, 'fan')
+  const rot = fan.map((p) => p.rotation)
+  expect(rot[2]).toBe(0)
+  for (let k = 0; k < 5; k++) expect(rot[k]).toBeCloseTo(-rot[4 - k])
+  expect(rot).toEqual([...rot].sort((x, y) => x - y))
+  expect(fan[0].x).toBeLessThan(fan[4].x)
+  expect(fan[0].y).toBeCloseTo(fan[4].y) // symmetric
+  expect(fan[2].y).toBeLessThan(fan[0].y) // the middle card is highest
+  for (let k = 0; k < 4; k++) expect(fan[k + 1].x - fan[k].x).toBeGreaterThan(0)
+})
+
+test('collage is tilted a little and the same every time', () => {
+  const boxes = Array.from({ length: 6 }, (_, i) => box(i * 150, 0, 120, 120))
+  const a = layoutPositions(boxes, 'collage')
+  expect(layoutPositions(boxes, 'collage')).toEqual(a)
+  expect(a.every((p) => Math.abs(p.rotation) <= 6)).toBe(true)
+  expect(a.some((p) => p.rotation !== 0)).toBe(true)
 })

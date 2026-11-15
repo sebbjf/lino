@@ -100,7 +100,7 @@ Every push to `main` redeploys both; other branches get preview URLs. The API al
 | --- | --- |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y` |
 | Select several | `Shift`+click, `Shift`+drag on the background (selection box), `Ctrl+A` for all; `Esc` clears |
-| Arrange (layout templates) | Wand button: **grid**, **masonry**, **row**, **column** or **circle** for the selection (2+), or the whole board when nothing is selected. Sizes stay, rotation resets, `Ctrl+Z` undoes |
+| Arrange (layout templates) | Wand button, for the selection (2+) or the whole board when nothing is selected: **grid**, **masonry**, **row**, **column**, **circle**, and the playful ones: **sunflower** (a golden-angle spiral packed around the biggest piece), **fan** (a hand of cards, each showing at least 60%) and **collage** (overlapping and slightly tilted, the same every time). Sizes stay, `Ctrl+Z` undoes |
 | Align / distribute | Toolbar buttons with 2+ selected (distribute needs 3+); aligns visible outlines, rotation included |
 | Align while dragging | Snaps to other elements' edges and centers with guide lines; hold `Alt` to move freely |
 | Move selected (whole selection) | Arrows (`Shift` ×10), or drag any selected element |

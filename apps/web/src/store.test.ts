@@ -123,3 +123,14 @@ test('arrange lays out only the given elements as one undo step', () => {
   board().undo()
   expect(board().elements).toBe(before)
 })
+
+test('fan stacks the hand left to right within the same layers', () => {
+  for (const x of [500, 0, 900, 300]) board().add({ type: 'note', text: String(x), w: 100, h: 140 }, { x, y: 0 })
+  board().add({ type: 'color', hex: '#000000', w: 10, h: 10 }, { x: 2000, y: 2000 })
+  const notes = ids().slice(0, 4)
+  board().arrange(notes, 'fan')
+  const els = board().elements
+  const xs = els.slice(0, 4).map((e) => e.x)
+  expect(xs).toEqual([...xs].sort((a, b) => a - b))
+  expect(els[4].type).toBe('color') // untouched element keeps its layer
+})
