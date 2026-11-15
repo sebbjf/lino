@@ -15,7 +15,7 @@ test('unknown route is 404', async () => {
 })
 
 test('CORS preflight when CORS_ORIGIN is set', async () => {
-  process.env.CORS_ORIGIN = 'https://lino.test'
+  process.env.CORS_ORIGIN = 'https://lino.test/' // trailing slash is ignored
   try {
     const res = await buildApp().inject({ method: 'OPTIONS', url: '/boards' })
     assert.equal(res.statusCode, 204)

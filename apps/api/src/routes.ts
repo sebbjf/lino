@@ -83,7 +83,8 @@ export function buildApp({ fetcher, readsPerMinute = 30, sharesPerHour = 20, boa
   const app = Fastify({ bodyLimit: MAX_BOARD_BYTES + 256 * 1024, ...opts })
 
   // The web app lives on another origin in production.
-  const origin = process.env.CORS_ORIGIN
+  // browsers send the origin without a trailing slash; tolerate one pasted into the setting
+  const origin = process.env.CORS_ORIGIN?.replace(/\/+$/, '')
   if (origin) {
     app.addHook('onSend', async (_req, reply) => void reply.header('access-control-allow-origin', origin))
     // POST with a JSON body sends a preflight first
