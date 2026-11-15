@@ -3,7 +3,7 @@ import type { ColorMeta } from './colors.ts'
 import { useBoard, type BoardElement } from './store.ts'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
-/** Same as MAX_BOARD_BYTES in apps/api/src/app.ts. */
+/** Same as MAX_BOARD_BYTES in apps/api/src/routes.ts. */
 const MAX_SHARE_BYTES = 4 * 1024 * 1024
 
 async function call(path: string, init?: RequestInit) {

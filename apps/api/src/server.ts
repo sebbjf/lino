@@ -1,4 +1,6 @@
-import { buildApp } from './app.ts'
+// Vercel's Fastify detection needs the entry file itself to import fastify (the app is built in routes.ts).
+import 'fastify'
+import { buildApp } from './routes.ts'
 import { migrateDb, pgBoards } from './boards.ts'
 
 // Locally migrate on start; on Vercel (VERCEL is set) migrations ran at build. Without a database the API still reads links; sharing answers 503.

@@ -31,10 +31,10 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | Landing page | [apps/web/src/landing.tsx](apps/web/src/landing.tsx) |
 | Theme tokens, fonts, global CSS | [apps/web/src/index.css](apps/web/src/index.css) |
 | shadcn UI primitives | [apps/web/src/components/ui/](apps/web/src/components/ui/) |
-| API routes, CORS, rate limit | [apps/api/src/app.ts](apps/api/src/app.ts) |
+| API routes, CORS, rate limit | [apps/api/src/routes.ts](apps/api/src/routes.ts) |
 | What the API reads from a page (title, cover, fonts, colors) | [apps/api/src/extract.ts](apps/api/src/extract.ts) |
 | SSRF protection, safe HTTP fetch, redirects | [apps/api/src/fetch.ts](apps/api/src/fetch.ts) |
-| What a shared board may contain (body schema), share limits | [apps/api/src/app.ts](apps/api/src/app.ts) |
+| What a shared board may contain (body schema), share limits | [apps/api/src/routes.ts](apps/api/src/routes.ts) |
 | Shared boards table, DB access, migrations | [schema.ts](apps/api/src/schema.ts), [boards.ts](apps/api/src/boards.ts), [drizzle/](apps/api/drizzle/) |
 | Dev proxy, build pages, `@` alias | [apps/web/vite.config.ts](apps/web/vite.config.ts) |
 
@@ -78,7 +78,7 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | File | What it does |
 | --- | --- |
 | `src/server.ts` | Entry (also Vercel's Fastify entry): connects Postgres if `DATABASE_URL` (migrates on start except on Vercel), builds the app and listens (`PORT`, `TRUST_PROXY`). |
-| `src/app.ts` | `buildApp()`: `GET /health`, `GET /read?url=`, `POST /boards`, `GET /boards/:id`, CORS + preflight, in-memory rate limits per IP. |
+| `src/routes.ts` | `buildApp()` (not named app.ts: Vercel would pick it as the entry): `GET /health`, `GET /read?url=`, `POST /boards`, `GET /boards/:id`, CORS + preflight, in-memory rate limits per IP. |
 | `src/migrate.ts` | Applies migrations; run by `vercel-build` at deploy (uses `DATABASE_URL_UNPOOLED` when set). |
 | `src/schema.ts` | Drizzle table `boards` (id, jsonb snapshot, bytes, created/expires). |
 | `src/boards.ts` | `BoardStore` type, `migrateDb(url)`, `pgBoards(url)`: insert (sweeps expired), get unexpired. |

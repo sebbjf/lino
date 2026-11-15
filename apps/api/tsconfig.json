@@ -9,6 +9,7 @@
     "rewriteRelativeImportExtensions": true,
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
+    "typeRoots": ["node_modules/@types"],
     "types": ["node"]
   },
   "include": ["src"]

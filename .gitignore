@@ -4,3 +4,4 @@ dist
 *.local
 learn/
 *.tsbuildinfo
+.vercel

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { buildApp } from './app.ts'
+import { buildApp } from './routes.ts'
 import { findColors, findFonts, parseHtml, readLink } from './extract.ts'
 import { BlockedError, checkUrl, isBlockedIp, safeLookup, type Fetcher } from './fetch.ts'
 

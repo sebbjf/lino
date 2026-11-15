@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { buildApp } from './app.ts'
+import { buildApp } from './routes.ts'
 
 test('GET /health', async () => {
   const app = buildApp()
