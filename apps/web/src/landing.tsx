@@ -6,6 +6,7 @@ import {
   animate,
   motion,
   MotionConfig,
+  type MotionValue,
   useMotionValue,
   useMotionValueEvent,
   useReducedMotion,
@@ -235,7 +236,7 @@ function Stage({ onArranged }: StageProps) {
   const view = { x0: cx - cx / z, x1: cx + (W - cx) / z, y0: cy - cy / z, y1: cy + (H - cy) / z }
 
   return (
-    <div className={fill ? 'pointer-events-none absolute inset-0 z-0' : 'relative mt-10'}>
+    <div className={fill ? 'pointer-events-none absolute inset-0 z-0' : 'relative mt-6'}>
       <div ref={outer} className={fill ? 'absolute inset-0' : 'relative'} style={fill ? undefined : { height: width ? H * k : 480 }}>
         {width > 0 && design.current && (
           <MotionConfig transformPagePoint={(p) => ({ x: p.x / (k * zv.get()), y: p.y / (k * zv.get()) })}>
@@ -408,7 +409,7 @@ function DemoSection() {
   useMotionValueEvent(scrollYProgress, 'change', (p) => !reduced && setT(Math.round(Math.min(1, p / 0.9) * AT.end)))
   const bar = useTransform(scrollYProgress, [0, 0.9], ['0%', '100%'])
   return (
-    <section ref={ref} id="how-it-works" className={`px-4 sm:px-8 ${pinned ? 'h-[320vh]' : 'py-24 sm:py-36'}`}>
+    <section ref={ref} id="how-it-works" className={`px-4 sm:px-8 ${pinned ? 'h-[220vh]' : 'py-24 sm:py-36'}`}>
       <div className={pinned ? 'sticky top-0 flex h-svh items-center' : ''}>
         <div className={`${container} grid w-full gap-12 lg:grid-cols-[1fr_2fr] lg:items-center`}>
           <div>
@@ -440,7 +441,43 @@ function DemoSection() {
     </section>
   )
 }
+// ---------------------------------------------------------------- statement
+// one big sentence that lights up word by word as it scrolls past, with photos set into the line
+const statement: (string | { src: string })[] = [
+  'Keep', 'whatever', 'catches', 'your', 'eye:', { src: 'metal' }, 'a', 'sculpture,', { src: 'strokes' }, 'a', 'brushstroke,',
+  { src: 'sunflowers' }, 'a', 'bouquet,', 'all', 'on', 'one', 'board.',
+]
 
+function Word({ p, range, children }: { p: MotionValue<number>; range: [number, number]; children: ReactNode }) {
+  const reduced = useReducedMotion()
+  const opacity = useTransform(p, range, reduced ? [1, 1] : [0.12, 1])
+  return (
+    <motion.span className="mr-[0.22em] inline-block" style={{ opacity }}>
+      {children}
+    </motion.span>
+  )
+}
+
+function StatementSection() {
+  const ref = useRef<HTMLElement>(null)
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 0.8', 'end 0.55'] })
+  const n = statement.length
+  return (
+    <section ref={ref} className={section}>
+      <p className={`${container} text-[clamp(2rem,4.6vw,4.25rem)] leading-[1.15] font-semibold tracking-[-0.045em] text-balance`}>
+        {statement.map((w, i) => (
+          <Word key={i} p={scrollYProgress} range={[i / n, (i + 1) / n]}>
+            {typeof w === 'string' ? (
+              w
+            ) : (
+              <img src={`/landing/${w.src}.jpg`} alt="" className="inline-block h-[0.9em] w-[1.7em] rounded-full object-cover align-[-0.1em]" />
+            )}
+          </Word>
+        ))}
+      </p>
+    </section>
+  )
+}
 
 // ---------------------------------------------------------------- privacy
 const promises = [
@@ -452,10 +489,10 @@ const promises = [
 
 // a small board on "this device": four of the hero's photos, pinned loosely
 const privatePhotos = [
-  { src: 'bust', className: 'left-[7%] top-[7%] w-[30%] aspect-[2/3] -rotate-3' },
-  { src: 'sun', className: 'left-[41%] top-[4%] w-[24%] aspect-[5/8] rotate-2' },
-  { src: 'amber', className: 'left-[64%] top-[30%] w-[30%] aspect-[3/2] -rotate-2' },
-  { src: 'fabric', className: 'left-[14%] top-[60%] w-[40%] aspect-[3/2] rotate-2' },
+  { src: 'beach', className: 'left-[7%] top-[7%] w-[28%] aspect-[2/3] -rotate-3' },
+  { src: 'tulips', className: 'left-[39%] top-[5%] w-[24%] aspect-[3/4] rotate-2' },
+  { src: 'painting', className: 'left-[65%] top-[30%] w-[29%] aspect-[4/3] -rotate-2' },
+  { src: 'kintsugi', className: 'left-[40%] top-[50%] w-[22%] aspect-[3/4] rotate-3' },
 ]
 
 function PrivacySection() {
@@ -561,7 +598,7 @@ function FaqSection() {
 }
 
 // a small hand of the hero's photos above the last call to action
-const ctaPhotos = ['yellow', 'bust', 'lantern', 'sun', 'amber']
+const ctaPhotos = ['vases', 'metal', 'sunflowers', 'yellow', 'plant']
 
 function CtaSection() {
   return (
@@ -594,13 +631,13 @@ function CtaSection() {
   )
 }
 
-/** Wordmark with the board palette as overlapping dots. */
+/** Wordmark with overlapping dots, in the page's own neutrals. */
 function Logo() {
   return (
     <a href="/" className="flex items-center gap-2.5 rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
       <span aria-hidden className="flex -space-x-1.5">
-        {ROLES.map((r) => (
-          <span key={r} className="size-3.5 rounded-full ring-2 ring-background" style={{ background: v(r) }} />
+        {['bg-foreground/15', 'bg-foreground/35', 'bg-foreground/60', 'bg-foreground'].map((c) => (
+          <span key={c} className={`size-3.5 rounded-full ring-2 ring-background ${c}`} />
         ))}
       </span>
       <span className="text-xl leading-none font-semibold tracking-tight">Lino</span>
@@ -679,7 +716,7 @@ function Hero() {
               Pin <Tag>images</Tag>, <Tag>links</Tag>, <Tag>notes</Tag> and <Tag>colors</Tag>, and keep the colors you like in a palette.
             </p>
           </Reveal>
-          <Reveal delay={0.45} className="mt-10 flex flex-col items-center gap-4">
+          <Reveal delay={0.45} className="mt-8 flex flex-col items-center gap-4 lg:mt-10">
             <a
               href="/board/"
               className="pointer-events-auto rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background shadow-soft transition-transform outline-none hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none"
@@ -706,6 +743,7 @@ function Landing() {
     <MotionConfig reducedMotion="user">
       <Hero />
       <DemoSection />
+      <StatementSection />
       <PrivacySection />
       <FaqSection />
       <CtaSection />
