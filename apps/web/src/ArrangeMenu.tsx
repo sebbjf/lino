@@ -55,7 +55,7 @@ export function ArrangeMenu() {
         {LAYOUTS.map((mode) => (
           <div key={mode} className="contents">
             {mode === PLAYFUL[0] && <p className="mt-1 border-t px-3 pt-3 pb-1 text-xs text-muted-foreground">Playful</p>}
-            <Button variant="ghost" className="h-auto justify-start gap-3 rounded-xl px-3 py-2 text-left" onClick={() => run(mode)}>
+            <Button variant="ghost" className="h-auto justify-start gap-3 rounded-xl px-3 py-2 text-left whitespace-normal" onClick={() => run(mode)}>
               <HugeiconsIcon icon={INFO[mode].icon} strokeWidth={1.8} />
               <span className="flex flex-col">
                 <span>{INFO[mode].label}</span>

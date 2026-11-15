@@ -9,7 +9,7 @@ import { useBoard } from './store.ts'
 
 function Item({ icon, label, hint, onClick, disabled }: { icon: IconSvgElement; label: string; hint: string; onClick: () => void; disabled?: boolean }) {
   return (
-    <Button variant="ghost" className="h-auto justify-start gap-3 rounded-xl px-3 py-2 text-left" disabled={disabled} onClick={onClick}>
+    <Button variant="ghost" className="h-auto justify-start gap-3 rounded-xl px-3 py-2 text-left whitespace-normal" disabled={disabled} onClick={onClick}>
       <HugeiconsIcon icon={icon} strokeWidth={1.8} />
       <span className="flex flex-col">
         <span>{label}</span>
