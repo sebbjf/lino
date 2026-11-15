@@ -1,7 +1,7 @@
 import { StrictMode, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Add01Icon, AdvertisimentIcon, ArrowRight01Icon, CookieIcon, LaptopIcon, UserBlock01Icon, ViewOffSlashIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import { Add01Icon, AdvertisimentIcon, ArrowRight01Icon, CookieIcon, Image02Icon, LaptopIcon, Link01Icon, StickyNote01Icon, SwatchIcon, UserBlock01Icon, ViewOffSlashIcon } from '@hugeicons/core-free-icons'
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
 import {
   animate,
   motion,
@@ -278,8 +278,13 @@ function Stage({ onArranged }: StageProps) {
 
 // ---------------------------------------------------------------- small pieces
 /** A word in the subtitle, outlined like a chip. */
-function Tag({ children }: { children: ReactNode }) {
-  return <span className="mx-0.5 inline-block rounded-full border border-foreground/15 px-2.5 text-sm leading-6 font-medium text-foreground">{children}</span>
+function Tag({ icon, color, children }: { icon: IconSvgElement; color: string; children: ReactNode }) {
+  return (
+    <span className="mx-0.5 inline-flex items-center gap-1.5 rounded-full border border-foreground/15 px-2.5 align-middle text-sm leading-6 font-medium text-foreground">
+      <HugeiconsIcon icon={icon} size={14} strokeWidth={2} style={{ color }} />
+      {children}
+    </span>
+  )
 }
 
 function Eyebrow({ children, dark = false }: { children: ReactNode; dark?: boolean }) {
@@ -713,7 +718,7 @@ function Hero() {
           </h1>
           <Reveal delay={0.35}>
             <p className="mx-auto mt-8 max-w-md text-base leading-8 text-muted-foreground">
-              Pin <Tag>images</Tag>, <Tag>links</Tag>, <Tag>notes</Tag> and <Tag>colors</Tag>, and keep the colors you like in a palette.
+              Pin <Tag icon={Image02Icon} color="var(--p-teal)">images</Tag>, <Tag icon={Link01Icon} color="#7c6bd6">links</Tag>, <Tag icon={StickyNote01Icon} color="#d9a21b">notes</Tag> and <Tag icon={SwatchIcon} color="var(--p-orange)">colors</Tag>, and keep the colors you like in a palette.
             </p>
           </Reveal>
           <Reveal delay={0.45} className="mt-8 flex flex-col items-center gap-4 lg:mt-10">
