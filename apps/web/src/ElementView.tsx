@@ -6,7 +6,7 @@ import { drag } from './drag.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
-import { FAMILY, NOTE_TEXT, loadFamily, surface, textOn } from './style.ts'
+import { DEFAULT_DUO, FAMILY, NOTE_TEXT, loadFamily, rgb, surface, textOn } from './style.ts'
 
 /** Snap distance in screen pixels. */
 const SNAP_PX = 6
@@ -17,6 +17,24 @@ function label(el: BoardElement) {
   if (el.type === 'color') return `Color ${el.hex}`
   if (el.type === 'link') return `Link: ${el.title ?? new URL(el.url).hostname}`
   return LABELS[el.type]
+}
+
+/** SVG duotone: grey by luma, then map black to shadows and white to highlights (same math as filterPixels). */
+function DuotoneFilter({ id, duo }: { id: string; duo: [string, string] }) {
+  const [a, b] = duo.map((h) => rgb(h) ?? [0, 0, 0])
+  const table = (c: number) => `${a[c] / 255} ${b[c] / 255}`
+  return (
+    <svg aria-hidden width="0" height="0" className="absolute">
+      <filter id={`duo-${id}`} colorInterpolationFilters="sRGB">
+        <feColorMatrix type="saturate" values="0" />
+        <feComponentTransfer>
+          <feFuncR type="table" tableValues={table(0)} />
+          <feFuncG type="table" tableValues={table(1)} />
+          <feFuncB type="table" tableValues={table(2)} />
+        </feComponentTransfer>
+      </filter>
+    </svg>
+  )
 }
 
 /** `solo`: the only selected element, which gets handles and keyboard focus. */
@@ -212,7 +230,16 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       }}
     >
       {el.type === 'image' && (
-        <img src={el.src} alt="" draggable={false} className="pointer-events-none size-full rounded-2xl object-cover shadow-soft" style={surface(el)} />
+        <>
+          {el.filter === 'duotone' && <DuotoneFilter id={el.id} duo={el.duo ?? DEFAULT_DUO} />}
+          <img
+            src={el.src}
+            alt=""
+            draggable={false}
+            className="pointer-events-none size-full rounded-2xl object-cover shadow-soft"
+            style={{ ...surface(el), filter: el.filter === 'mono' ? 'grayscale(1)' : el.filter === 'duotone' ? `url(#duo-${el.id})` : undefined }}
+          />
+        </>
       )}
 
       {el.type === 'note' && (

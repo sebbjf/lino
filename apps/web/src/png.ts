@@ -1,6 +1,6 @@
 import { boundsOf } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
-import { FAMILY, NOTE_TEXT, RADIUS, textOn, type BoardStyle } from './style.ts'
+import { FAMILY, NOTE_TEXT, RADIUS, filterPixels, textOn, type BoardStyle, type ImageStyle } from './style.ts'
 
 const PAD = 48
 const MAX_SIDE = 8000 // browsers refuse much larger canvases
@@ -32,12 +32,30 @@ function loadImage(src: string) {
   })
 }
 
+type Source = HTMLImageElement | HTMLCanvasElement
+const dims = (img: Source) => (img instanceof HTMLImageElement ? [img.naturalWidth, img.naturalHeight] : [img.width, img.height])
+
 /** Draws img to fill the rect like CSS object-fit: cover. */
-function cover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
-  const s = Math.max(w / img.naturalWidth, h / img.naturalHeight)
+function cover(ctx: CanvasRenderingContext2D, img: Source, x: number, y: number, w: number, h: number) {
+  const [iw, ih] = dims(img)
+  const s = Math.max(w / iw, h / ih)
   const sw = w / s
   const sh = h / s
-  ctx.drawImage(img, (img.naturalWidth - sw) / 2, (img.naturalHeight - sh) / 2, sw, sh, x, y, w, h)
+  ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, x, y, w, h)
+}
+
+/** The image with its mono/duotone filter baked in, or the image itself. */
+function filtered(img: HTMLImageElement, s: ImageStyle): Source {
+  if (!s.filter) return img
+  const c = document.createElement('canvas')
+  c.width = img.naturalWidth
+  c.height = img.naturalHeight
+  const ctx = c.getContext('2d')!
+  ctx.drawImage(img, 0, 0)
+  const data = ctx.getImageData(0, 0, c.width, c.height)
+  filterPixels(data.data, s.filter, s.duo)
+  ctx.putImageData(data, 0, 0)
+  return c
 }
 
 function lines(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxW: number, lineH: number, maxLines: number) {
@@ -103,7 +121,7 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
     ctx.textBaseline = 'top'
     const img = images.get(el.id)
 
-    if (el.type === 'image' && img) cover(ctx, img, 0, 0, w, h)
+    if (el.type === 'image' && img) cover(ctx, filtered(img, el), 0, 0, w, h)
 
     if (el.type === 'note') {
       const [size, lineH] = NOTE_TEXT[el.size ?? 'md']

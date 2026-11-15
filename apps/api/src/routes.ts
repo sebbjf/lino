@@ -44,6 +44,8 @@ const elementSchema = {
     size: { enum: ['sm', 'md', 'lg'] },
     font: { enum: ['sans', 'serif'] },
     family: { type: 'string', pattern: '^[A-Za-z0-9 _-]{1,60}$' },
+    filter: { enum: ['mono', 'duotone'] },
+    duo: { type: 'array', minItems: 2, maxItems: 2, items: hex },
   },
   allOf: [
     requires('image', ['src']),

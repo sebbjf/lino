@@ -61,6 +61,7 @@ test('rejects content that would be unsafe to render', async () => {
     { ...board.elements[0], bg: 'red;background:url(x)' },
     { ...board.elements[0], opacity: 0 },
     { ...board.elements[0], corner: '9999px' },
+    { id: 'i', type: 'image', src: 'data:image/png;base64,AA==', x: 0, y: 0, w: 10, h: 10, rotation: 0, duo: ['#000', 'url(x)'] },
     { ...board.elements[0], family: 'x", serif; } body {' },
   ]
   for (const el of bad) assert.equal((await share(app, { elements: [el] })).statusCode, 400, JSON.stringify(el))

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { hexToOklch, surface, textOn } from './style.ts'
+import { filterPixels, hexToOklch, surface, textOn } from './style.ts'
 
 test('hexToOklch matches known values', () => {
   expect(hexToOklch('#ffffff')).toBe('oklch(1 0 0)')
@@ -19,4 +19,11 @@ test('textOn picks the readable text color', () => {
 test('surface defaults to soft corners with the class shadow', () => {
   expect(surface({})).toEqual({ borderRadius: 25 })
   expect(surface({ corner: 'square', shadow: false })).toEqual({ borderRadius: 0, boxShadow: 'none' })
+})
+
+test('filterPixels makes grey or blends between the duotone colors', () => {
+  const px = () => new Uint8ClampedArray([255, 255, 255, 255, 0, 0, 0, 128])
+  expect([...filterPixels(px(), 'mono')]).toEqual([255, 255, 255, 255, 0, 0, 0, 128])
+  expect([...filterPixels(px(), 'duotone', ['#102030', '#f0e0d0'])]).toEqual([240, 224, 208, 255, 16, 32, 48, 128])
+  expect([...filterPixels(new Uint8ClampedArray([255, 0, 0, 255]), 'mono')].slice(0, 3)).toEqual([54, 54, 54])
 })

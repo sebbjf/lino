@@ -1,6 +1,6 @@
 import type { ColorMeta } from './colors.ts'
 import { fitView } from './geometry.ts'
-import { CORNERS, FAMILY, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
+import { CORNERS, FAMILY, IMAGE_FILTERS, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
 import { useBoard, type BoardElement } from './store.ts'
 
 const MAX_FILE = 50 * 1024 * 1024
@@ -39,6 +39,14 @@ function noteStyleOf(e: Record<string, unknown>) {
   }
 }
 
+function imageStyleOf(e: Record<string, unknown>) {
+  const duo = Array.isArray(e.duo) && e.duo.length === 2 && e.duo.every((h) => isStr(h, 9) && HEX.test(h)) ? (e.duo as [string, string]) : null
+  return {
+    ...(oneOf(IMAGE_FILTERS, e.filter) && { filter: e.filter }),
+    ...(duo && { duo }),
+  }
+}
+
 export function boardStyleOf(raw: unknown): BoardStyle {
   if (!raw || typeof raw !== 'object') return {}
   const b = raw as Record<string, unknown>
@@ -59,7 +67,7 @@ function toElement(raw: unknown): BoardElement | null {
   const box = { id: crypto.randomUUID(), x: e.x, y: e.y, w: e.w, h: e.h, rotation: isNum(e.rotation) ? e.rotation : 0, ...styleOf(e) }
   switch (e.type) {
     case 'image':
-      return isStr(e.src, Infinity) && DATA_IMAGE.test(e.src) ? { ...box, type: 'image', src: e.src } : null
+      return isStr(e.src, Infinity) && DATA_IMAGE.test(e.src) ? { ...box, type: 'image', src: e.src, ...imageStyleOf(e) } : null
     case 'note':
       return isStr(e.text) ? { ...box, type: 'note', text: e.text, ...noteStyleOf(e) } : null
     case 'color':

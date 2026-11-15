@@ -4,8 +4,8 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { boardFonts, buildPalette } from './colors.ts'
-import { useBoard } from './store.ts'
-import { CORNERS, FAMILY, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, loadFamily, type ElementStyle, type NoteStyle } from './style.ts'
+import { useBoard, type StylePatch } from './store.ts'
+import { CORNERS, FAMILY, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, loadFamily, DEFAULT_DUO, IMAGE_FILTERS } from './style.ts'
 
 const NAMES: Record<string, string> = {
   square: 'Square',
@@ -19,6 +19,9 @@ const NAMES: Record<string, string> = {
   dots: 'Dots',
   grid: 'Grid',
   plain: 'Plain',
+  none: 'None',
+  mono: 'Mono',
+  duotone: 'Duotone',
 }
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
@@ -111,7 +114,15 @@ function ElementPanel({ ids }: { ids: string[] }) {
   if (!cur) return null
   const note = cur.type === 'note' ? cur : null
   const allNotes = sel.every((e) => e.type === 'note')
-  const apply = (patch: ElementStyle & NoteStyle) => {
+  const image = cur.type === 'image' ? cur : null
+  const allImages = sel.every((e) => e.type === 'image')
+  const duo = image?.duo ?? DEFAULT_DUO
+  const setDuo = (i: 0 | 1, hex: string | undefined) => {
+    const next: [string, string] = [...duo]
+    next[i] = hex ?? DEFAULT_DUO[i]
+    restyle(ids, { duo: next })
+  }
+  const apply = (patch: StylePatch) => {
     checkpoint()
     restyle(ids, patch)
   }
@@ -141,6 +152,22 @@ function ElementPanel({ ids }: { ids: string[] }) {
           onChange={(e) => restyle(ids, { opacity: Number(e.target.value) / 100 })}
         />
       </Group>
+      {allImages && image && (
+        <div className="flex flex-col gap-3 border-t pt-3">
+          <Choice
+            label="Filter"
+            options={['none', ...IMAGE_FILTERS] as const}
+            value={image.filter ?? 'none'}
+            onChange={(f) => apply({ filter: f === 'none' ? undefined : f, ...(f === 'duotone' && { duo }) })}
+          />
+          {image.filter === 'duotone' && (
+            <>
+              <Swatches label="Shadows" value={duo[0]} onStart={checkpoint} onChange={(hex) => setDuo(0, hex)} />
+              <Swatches label="Highlights" value={duo[1]} onStart={checkpoint} onChange={(hex) => setDuo(1, hex)} />
+            </>
+          )}
+        </div>
+      )}
       {allNotes && note && (
         <div className="flex flex-col gap-3 border-t pt-3">
           <Swatches label="Note color" value={note.bg} onStart={checkpoint} onChange={(bg) => restyle(ids, { bg })} />

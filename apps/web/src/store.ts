@@ -1,16 +1,21 @@
 import { create } from 'zustand'
 import type { ColorMeta } from './colors.ts'
 import { alignOffsets, distributeOffsets, type AlignMode, type Box, type Guide } from './geometry.ts'
-import type { BoardStyle, ElementStyle, NoteStyle } from './style.ts'
+import type { BoardStyle, ElementStyle, ImageStyle, NoteStyle } from './style.ts'
 
 type Base = Box & ElementStyle & { id: string }
 export type BoardElement =
-  | (Base & { type: 'image'; src: string })
+  | (Base & { type: 'image'; src: string } & ImageStyle)
   | (Base & { type: 'note'; text: string } & NoteStyle)
   | (Base & { type: 'color'; hex: string })
   | (Base & { type: 'link' } & LinkInfo)
 
 /** How the palette is written out. `prefix` goes after `--` in CSS variables (Tailwind needs its own namespaces). */
+export type StylePatch = ElementStyle & NoteStyle & ImageStyle
+/** Style fields that belong to one element type only. */
+const OWN: Partial<Record<BoardElement['type'], (keyof StylePatch)[]>> = { note: ['bg', 'size', 'font', 'family'], image: ['filter', 'duo'] }
+const TYPED = Object.values(OWN).flat()
+
 export type ExportPrefs = { prefix: string; format: 'hex' | 'oklch' }
 
 export type LinkInfo = {
@@ -61,7 +66,7 @@ type State = {
   add: (el: NewElement, at?: { x: number; y: number }) => string
   update: (id: string, patch: Partial<BoardElement>) => void
   /** Applies a style patch to several elements. Call checkpoint() first to make it undoable. */
-  restyle: (ids: string[], patch: ElementStyle & NoteStyle) => void
+  restyle: (ids: string[], patch: StylePatch) => void
   /** Moves several elements to new positions in one state change. */
   moveMany: (pos: Record<string, { x: number; y: number }>) => void
   remove: (ids: string[]) => void
@@ -152,9 +157,10 @@ export const useBoard = create<State>()((set, get) => ({
     set((s) => ({
       elements: s.elements.map((e) => {
         if (!ids.includes(e.id)) return e
-        // note-only fields never land on other element types
-        const { bg: _bg, size: _size, font: _font, family: _family, ...common } = patch
-        return { ...e, ...(e.type === 'note' ? patch : common) } as BoardElement
+        // type-specific fields (note color, image filter...) never land on other element types
+        const own = OWN[e.type] ?? []
+        const keep = Object.fromEntries(Object.entries(patch).filter(([k]) => !TYPED.includes(k as keyof StylePatch) || own.includes(k as keyof StylePatch)))
+        return { ...e, ...keep } as BoardElement
       }),
     })),
 

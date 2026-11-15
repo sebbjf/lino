@@ -48,3 +48,19 @@ test('parseBoardFile keeps valid style fields and the board style, drops bad one
   expect(board).toEqual({ bg: '#1e3a5f', pattern: 'grid' })
   expect(parseBoardFile(JSON.stringify({ elements: [] })).board).toEqual({})
 })
+
+test('parseBoardFile keeps image filters only when valid', () => {
+  const src = 'data:image/png;base64,AA=='
+  const { elements } = parseBoardFile(
+    JSON.stringify({
+      elements: [
+        { ...box, type: 'image', src, filter: 'duotone', duo: ['#102030', '#f0e0d0'] },
+        { ...box, type: 'image', src, filter: 'sepia', duo: ['#000', 'url(x)'] },
+        { ...box, type: 'note', text: 'x', filter: 'mono' },
+      ],
+    }),
+  )
+  expect(elements[0]).toMatchObject({ filter: 'duotone', duo: ['#102030', '#f0e0d0'] })
+  for (const e of elements.slice(1)) expect(e).not.toHaveProperty('filter')
+  expect(elements[1]).not.toHaveProperty('duo')
+})

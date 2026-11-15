@@ -11,6 +11,31 @@ export type ElementStyle = { corner?: Corner; shadow?: boolean; opacity?: number
 /** Notes only; `bg` unset means the theme's card color. `family` (a font found on a link) wins over `font`. */
 export type NoteStyle = { bg?: string; size?: NoteSize; font?: NoteFont; family?: string }
 
+export type ImageFilter = 'mono' | 'duotone'
+export const IMAGE_FILTERS: ImageFilter[] = ['mono', 'duotone']
+/** Images only. `duo` is [shadows, highlights] for the duotone filter. */
+export type ImageStyle = { filter?: ImageFilter; duo?: [string, string] }
+export const DEFAULT_DUO: [string, string] = ['#2f4858', '#f4efe6']
+
+/** RGB 0-255 of a hex color, or null. */
+export function rgb(hex: string) {
+  const c = channels(hex)
+  return c && c.map((v) => Math.round(v * 255))
+}
+
+/**
+ * Applies mono or duotone to RGBA pixels in place: grey from Rec. 709 luma (what an SVG
+ * saturate(0) gives in sRGB), then for duotone a blend from the shadow to the highlight color.
+ */
+export function filterPixels(data: Uint8ClampedArray, filter: ImageFilter, duo: [string, string] = DEFAULT_DUO) {
+  const [a, b] = duo.map((h) => rgb(h) ?? [0, 0, 0])
+  for (let i = 0; i < data.length; i += 4) {
+    const l = (0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]) / 255
+    for (let c = 0; c < 3; c++) data[i + c] = filter === 'mono' ? l * 255 : a[c] + (b[c] - a[c]) * l
+  }
+  return data
+}
+
 /** Font names safe to put in CSS and a Google Fonts URL. */
 export const FAMILY = /^[A-Za-z0-9 _-]{1,60}$/
 
