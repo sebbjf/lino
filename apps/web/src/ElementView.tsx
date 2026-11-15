@@ -109,7 +109,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     const v = useBoard.getState().view
     checkpoint()
     drag(e, (_dx, _dy, ev) =>
-      update(el.id, { rotation: angleTo(box, (ev.clientX - v.x) / v.zoom, (ev.clientY - v.y) / v.zoom, ev.shiftKey) }),
+      update(el.id, { rotation: angleTo(box, (ev.clientX - v.x) / v.zoom, (ev.clientY - v.y) / v.zoom, ev.shiftKey, ev.altKey) }),
     )
   }
 

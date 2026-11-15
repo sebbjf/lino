@@ -36,6 +36,16 @@ test('angleTo points top edge at the cursor, with snapping', () => {
   expect(angleTo(box, 200, 40, true)).toBe(90)
 })
 
+test('angleTo pulls to right angles unless free', () => {
+  const box = { x: 0, y: 0, w: 100, h: 100, rotation: 0 }
+  // cursor ~4° past 90° (right side, slightly below center)
+  expect(angleTo(box, 200, 60, false)).toBe(90)
+  expect(angleTo(box, 200, 60, false, true)).toBeCloseTo(93.8, 0)
+  expect(angleTo(box, 45, 200, false)).toBe(-180)
+  // ~18° off: no pull
+  expect(angleTo(box, 200, 100, false)).toBeCloseTo(108.4, 0)
+})
+
 test('zoomAt keeps the point under the cursor', () => {
   const v = { x: 30, y: -10, zoom: 1 }
   const out = zoomAt(v, 200, 100, 2)

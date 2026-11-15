@@ -108,7 +108,7 @@ Every push to `main` redeploys both; other branches get preview URLs. The API al
 | Edit note, open color picker, open link | `Enter` (or double-click) |
 | Pan / zoom | Wheel or drag the background / `Ctrl` + wheel |
 | Resize with aspect lock toggled | `Shift` while resizing |
-| Snap rotation to 15° | `Shift` while rotating |
+| Snap rotation to 15° | `Shift` while rotating (0°, 90°, 180° and 270° pull on their own; hold `Alt` to rotate freely) |
 | Move between toolbar buttons | `←` / `→`, `Home` / `End` |
 
 Paste or drop images, links (they become cards with cover, title, fonts and colors) or text (becomes a note). The palette button opens the board palette: rename, pin or hide colors, see the fonts found, and copy everything as CSS or Tailwind.

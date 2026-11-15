@@ -25,12 +25,14 @@ export function resize(box: Box, dx: number, dy: number, keepAspect: boolean): B
   return { ...box, x: cx - w / 2, y: cy - h / 2, w, h }
 }
 
-/** Rotation (degrees, -180..180) that points the box's top edge at a world point. */
-export function angleTo(box: Box, px: number, py: number, snap: boolean): number {
+/** Rotation (degrees, -180..180) that points the box's top edge at a world point.
+ * snap: steps of 15°. Otherwise right angles pull within 6°, unless free. */
+export function angleTo(box: Box, px: number, py: number, snap: boolean, free = false): number {
   const cx = box.x + box.w / 2
   const cy = box.y + box.h / 2
   let deg = (Math.atan2(py - cy, px - cx) * 180) / Math.PI + 90
   if (snap) deg = Math.round(deg / 15) * 15
+  else if (!free && Math.abs(deg - Math.round(deg / 90) * 90) < 6) deg = Math.round(deg / 90) * 90
   return ((((deg + 180) % 360) + 360) % 360) - 180
 }
 
