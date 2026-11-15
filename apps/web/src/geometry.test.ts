@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { angleTo, resize, rotateVec, zoomAt, fitView, type Box } from './geometry.ts'
+import { angleTo, resize, rotateVec, zoomAt, fitView, boundsOf, type Box } from './geometry.ts'
 
 // world position of the box's local top-left corner
 function topLeft(b: Box) {
@@ -50,4 +50,11 @@ test('fitView centers content and only zooms out', () => {
   const big = fitView([{ x: 0, y: 0, w: 1000, h: 100, rotation: 0 }, { x: 0, y: 0, w: 10, h: 10, rotation: 0 }], 600, 600, 50)
   expect(big.zoom).toBe(0.5)
   expect(big.x).toBe(50)
+})
+
+test('boundsOf includes rotated corners', () => {
+  expect(boundsOf([{ x: 0, y: 0, w: 100, h: 50, rotation: 0 }, { x: 200, y: 200, w: 10, h: 10, rotation: 0 }])).toEqual({ x: 0, y: 0, w: 210, h: 210 })
+  const r = boundsOf([{ x: 0, y: 0, w: 100, h: 100, rotation: 45 }])
+  expect(r.w).toBeCloseTo(100 * Math.SQRT2)
+  expect(r.x).toBeCloseTo(50 - 50 * Math.SQRT2)
 })

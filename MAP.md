@@ -18,6 +18,7 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | CSS variables / Tailwind `@theme` output | [apps/web/src/export.ts](apps/web/src/export.ts) |
 | Saving/loading the board (IndexedDB, autosave) | [apps/web/src/storage.ts](apps/web/src/storage.ts) |
 | Adding images (resize, read file) | [apps/web/src/image.ts](apps/web/src/image.ts) |
+| PNG export (canvas drawing of every element type) | [apps/web/src/png.ts](apps/web/src/png.ts) |
 | Share button, read-only link, loading a shared board | [ShareButton.tsx](apps/web/src/ShareButton.tsx), [share.ts](apps/web/src/share.ts) |
 | Adding links (URL detection, call to API) | [apps/web/src/link.ts](apps/web/src/link.ts) |
 | Link card look | [apps/web/src/LinkCard.tsx](apps/web/src/LinkCard.tsx) |
@@ -50,9 +51,10 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/storage.ts` | IndexedDB load/save, debounced autosave subscribed to the store. |
 | `src/colors.ts` | `normalizeHex`, `buildPalette` (colors from swatches, links, images + user meta), `boardFonts`, `dominantColors`. |
 | `src/export.ts` | `exportTheme('css' \| 'tailwind', colors, fonts)` and slug naming. |
-| `src/geometry.ts` | Box math: rotate, resize with aspect lock, rotation snap, zoom around a point, fit view to content. |
+| `src/geometry.ts` | Box math: rotate, resize with aspect lock, rotation snap, zoom around a point, fit view to content, rotated bounds. |
 | `src/drag.ts` | Pointer-drag helper used by move/resize/rotate. |
 | `src/image.ts` | Read an image file into a data URL and add it to the board. |
+| `src/png.ts` | `boardPng()` draws all elements to a canvas (theme colors, fonts, rotation); `downloadPng()`; `wrapText()`. |
 | `src/share.ts` | `shareBoard()` (POST snapshot, returns link), `loadShared(id)` (read-only, fitted view). |
 | `src/ShareButton.tsx` | Toolbar Share popover: confirm, create link, copy. |
 | `src/link.ts` | `asUrl`, `addLink`: calls `GET /read`, samples the cover's colors, adds a link card. |
@@ -60,7 +62,7 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/index.css` | Tailwind import, theme tokens, fonts. |
 | `src/lib/utils.ts` | `cn()` class helper (shadcn). |
 | `src/components/ui/*` | shadcn components: button, empty, field, input, kbd, label, popover, separator, tooltip. |
-| `src/*.test.ts` | Vitest: colors, export, geometry, store. |
+| `src/*.test.ts` | Vitest: colors, export, geometry, png text wrap, store. |
 | `components.json` | shadcn config. |
 | `.env.example` | `VITE_API_URL`. |
 

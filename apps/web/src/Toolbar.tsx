@@ -1,6 +1,7 @@
 import {
   Copy01Icon,
   Delete02Icon,
+  Download04Icon,
   Image01Icon,
   LayerBringForwardIcon,
   LayerSendBackwardIcon,
@@ -20,6 +21,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { zoomAt } from './geometry.ts'
 import { addImages } from './image.ts'
+import { downloadPng } from './png.ts'
 import { ShareButton } from './ShareButton.tsx'
 import { useBoard } from './store.ts'
 
@@ -61,6 +63,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
   const canUndo = useBoard((s) => s.past.some((p) => p !== s.elements))
   const canRedo = useBoard((s) => s.future.length > 0)
   const readOnly = useBoard((s) => s.readOnly)
+  const empty = useBoard((s) => s.elements.length === 0)
   const { add, duplicate, reorder, remove, undo, redo } = useBoard.getState()
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -118,6 +121,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
 
       <Divider />
       <Tool label="Palette" icon={SwatchIcon} pressed={paletteOpen} onClick={onTogglePalette} />
+      <Tool label="Download PNG" icon={Download04Icon} disabled={empty} onClick={downloadPng} />
       {!readOnly && <ShareButton />}
     </div>
   )

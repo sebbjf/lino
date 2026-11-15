@@ -50,3 +50,21 @@ export function fitView(boxes: Box[], w: number, h: number, pad = 64) {
   const zoom = Math.max(0.1, Math.min(1, (w - pad * 2) / bw, (h - pad * 2) / bh))
   return { zoom, x: (w - bw * zoom) / 2 - minX * zoom, y: (h - bh * zoom) / 2 - minY * zoom }
 }
+
+/** World-space bounding box of boxes, rotation included. */
+export function boundsOf(boxes: Box[]) {
+  const pts = boxes.flatMap((b) =>
+    [
+      [-b.w / 2, -b.h / 2],
+      [b.w / 2, -b.h / 2],
+      [b.w / 2, b.h / 2],
+      [-b.w / 2, b.h / 2],
+    ].map(([x, y]) => {
+      const p = rotateVec(x, y, b.rotation)
+      return { x: p.x + b.x + b.w / 2, y: p.y + b.y + b.h / 2 }
+    }),
+  )
+  const minX = Math.min(...pts.map((p) => p.x))
+  const minY = Math.min(...pts.map((p) => p.y))
+  return { x: minX, y: minY, w: Math.max(...pts.map((p) => p.x)) - minX, h: Math.max(...pts.map((p) => p.y)) - minY }
+}
