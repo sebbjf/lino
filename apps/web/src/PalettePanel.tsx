@@ -1,17 +1,25 @@
-import { Cancel01Icon, PinIcon, PinOffIcon, SwatchIcon } from '@hugeicons/core-free-icons'
+import { Cancel01Icon, Copy01Icon, PinIcon, PinOffIcon, SwatchIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
-import { buildPalette } from './colors.ts'
+import { boardFonts, buildPalette } from './colors.ts'
+import { exportTheme, type ExportFormat } from './export.ts'
 import { useBoard } from './store.ts'
 
 export function PalettePanel({ onClose }: { onClose: () => void }) {
   const elements = useBoard((s) => s.elements)
   const colorMeta = useBoard((s) => s.colorMeta)
-  const { setColorMeta, restoreHiddenColors } = useBoard.getState()
+  const { setColorMeta, restoreHiddenColors, notify } = useBoard.getState()
   const { colors, hidden } = useMemo(() => buildPalette(elements, colorMeta), [elements, colorMeta])
+  const fonts = useMemo(() => boardFonts(elements), [elements])
+
+  const copy = (format: ExportFormat) =>
+    navigator.clipboard.writeText(exportTheme(format, colors, fonts)).then(
+      () => notify(format === 'css' ? 'CSS variables copied.' : 'Tailwind theme copied.'),
+      () => notify('Could not copy to the clipboard.'),
+    )
 
   return (
     <aside
@@ -34,7 +42,7 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
               <HugeiconsIcon icon={SwatchIcon} strokeWidth={1.8} />
             </EmptyMedia>
             <EmptyTitle>No colors yet</EmptyTitle>
-            <EmptyDescription>Add a color swatch to the board and it shows up here.</EmptyDescription>
+            <EmptyDescription>Add a color swatch or paste a link and its colors show up here.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -81,6 +89,35 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
         <Button variant="link" size="sm" className="self-start px-0" onClick={restoreHiddenColors}>
           Restore {hidden.length} removed {hidden.length === 1 ? 'color' : 'colors'}
         </Button>
+      )}
+
+      {fonts.length > 0 && (
+        <section aria-labelledby="fonts-title" className="flex flex-col gap-2 border-t pt-3">
+          <h3 id="fonts-title" className="font-heading text-lg">
+            Fonts
+          </h3>
+          <ul className="flex flex-wrap gap-1.5">
+            {fonts.map((f) => (
+              <li key={f} className="rounded-full bg-muted px-2.5 py-0.5 text-sm">
+                {f}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground">Read from the links' CSS, so the list may be incomplete.</p>
+        </section>
+      )}
+
+      {(colors.length > 0 || fonts.length > 0) && (
+        <section aria-label="Export" className="flex gap-2 border-t pt-3">
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => copy('css')}>
+            <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
+            CSS variables
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => copy('tailwind')}>
+            <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
+            Tailwind
+          </Button>
+        </section>
       )}
     </aside>
   )
