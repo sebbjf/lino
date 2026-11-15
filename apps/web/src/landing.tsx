@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Add01Icon, ArrowRight01Icon, LaptopIcon, UserBlock01Icon } from '@hugeicons/core-free-icons'
+import { Add01Icon, AdvertisimentIcon, ArrowRight01Icon, CookieIcon, LaptopIcon, UserBlock01Icon, ViewOffSlashIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   animate,
@@ -32,11 +32,6 @@ const dots = (size: number) => ({ backgroundImage: 'radial-gradient(var(--color-
 const exports = {
   css: `:root {
 ${ROLES.map((r) => `  --${r}: ${palette[r]};`).join('\n')}
-  --font-display: 'Newsreader', serif;
-  --font-body: 'Figtree', sans-serif;
-}`,
-  tailwind: `@theme {
-${ROLES.map((r) => `  --color-${r}: ${palette[r]};`).join('\n')}
   --font-display: 'Newsreader', serif;
   --font-body: 'Figtree', sans-serif;
 }`,
@@ -91,21 +86,26 @@ function Photo({ src, className = '' }: { src: string; className?: string }) {
 // ---------------------------------------------------------------- hero board
 type Item = { id: number; src: string; x: number; y: number; w: number; h: number; rotation: number; z: number }
 
-// x and y are fractions of the full-screen stage, around the centered headline; the narrow stage starts as a collage.
-// Sizes keep each photo's own aspect ratio.
-const START: Item[] = [
-  { id: 1, src: 'arch', x: 0.015, y: 0.0, w: 130, h: 195, rotation: -3 },
-  { id: 2, src: 'lantern', x: 0.05, y: 0.4, w: 170, h: 255, rotation: 4 },
-  { id: 3, src: 'lamp', x: 0.135, y: 0.06, w: 140, h: 210, rotation: -6 },
-  { id: 4, src: 'stairs', x: 0.17, y: 0.7, w: 220, h: 147, rotation: 5 },
-  { id: 5, src: 'ladder', x: 0.64, y: 0.03, w: 200, h: 134, rotation: -5 },
-  { id: 6, src: 'bottle', x: 0.86, y: 0.02, w: 140, h: 179, rotation: 6 },
-  { id: 7, src: 'vases', x: 0.84, y: 0.4, w: 140, h: 249, rotation: 3 },
-  { id: 8, src: 'teapot', x: 0.67, y: 0.68, w: 230, h: 154, rotation: -3 },
-].map((it, i) => ({ ...it, z: i + 1 }))
-const startAt = (W: number, H: number) => START.map((it) => ({ ...it, x: it.x * W, y: it.y * H }))
+// Full screen: four photos on each side of the headline, in two staggered columns mirrored left/right.
+// x is the distance from that side's edge and y is laid out for a 640-unit block centered in the stage (both in design units);
+// the narrow stage starts as a collage. Sizes keep each photo's own aspect ratio.
+const START = [
+  { id: 1, src: 'yellow', side: 'l', x: 24, y: 40, w: 160, h: 240, rotation: -2 },
+  { id: 2, src: 'fabric', side: 'l', x: 24, y: 310, w: 188, h: 125, rotation: 2 },
+  { id: 3, src: 'sun', side: 'l', x: 206, y: 130, w: 140, h: 224, rotation: 2 },
+  { id: 4, src: 'lantern', side: 'l', x: 206, y: 385, w: 150, h: 225, rotation: -2 },
+  { id: 5, src: 'bust', side: 'r', x: 24, y: 30, w: 150, h: 225, rotation: 2 },
+  { id: 6, src: 'amber', side: 'r', x: 24, y: 285, w: 170, h: 113, rotation: -2 },
+  { id: 7, src: 'sleeves', side: 'r', x: 206, y: 130, w: 160, h: 120, rotation: -2 },
+  { id: 8, src: 'vases', side: 'r', x: 206, y: 280, w: 135, h: 240, rotation: 2 },
+].map(({ side, ...it }, i) => ({ ...it, right: side === 'r', z: i + 1 }))
+const startAt = (W: number, Hu: number): Item[] =>
+  START.map(({ right, ...it }) => ({ ...it, x: right ? W - it.x - it.w : it.x, y: it.y + (Hu - 640) / 2 }))
 
-const ARRANGE: { mode: Layout | 'scatter'; label: string }[] = [
+/** 'original' is the hand-placed start (a collage on narrow screens), same as on page load. */
+type Mode = Layout | 'scatter' | 'original'
+const ARRANGE: { mode: Mode; label: string }[] = [
+  { mode: 'original', label: 'Original' },
   { mode: 'scatter', label: 'Scatter' },
   { mode: 'fan', label: 'Fan' },
   { mode: 'sunflower', label: 'Sunflower' },
@@ -197,18 +197,19 @@ function Stage({ onArranged }: StageProps) {
   const Hu = fill ? H - 110 : H
   const k = width ? width / W : 1
 
-  const [items, setItems] = useState(START)
-  const [mode, setModeState] = useState<Layout | 'scatter' | null>(null)
-  const setMode = (m: Layout | 'scatter' | null) => {
+  const [items, setItems] = useState<Item[]>([])
+  const [mode, setModeState] = useState<Mode>('original')
+  const setMode = (m: Mode) => {
     setModeState(m)
-    onArranged(m !== null && m !== 'scatter')
+    onArranged(m !== 'original' && m !== 'scatter')
   }
   const zv = useMotionValue(1)
   const [z, setZ] = useState(1)
   const top = useRef(START.length)
 
-  const apply = (m: Layout | 'scatter', from = items) => {
-    const r = arrange(from, m, W, Hu)
+  const apply = (m: Mode) => {
+    const start = startAt(W, Hu)
+    const r = m === 'original' ? (fill ? { items: start, z: 1 } : arrange(start, 'collage', W, Hu)) : arrange(items, m, W, Hu)
     setItems(r.items)
     setZ(r.z)
     setMode(m)
@@ -224,12 +225,7 @@ function Stage({ onArranged }: StageProps) {
     const key = `${fill}-${W}`
     if (design.current === key) return
     design.current = key
-    const start = startAt(W, Hu)
-    if (fill) {
-      setItems(start)
-      setZ(1)
-      setMode(null)
-    } else apply('collage', start)
+    apply('original')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fill, W, width])
 
@@ -327,7 +323,7 @@ function Line({ children, className = '', delay = 0, inView = false }: { childre
 // one spacing scale for every section
 const section = 'px-4 py-24 sm:px-8 sm:py-36'
 const container = 'mx-auto max-w-6xl'
-const h2 = 'mt-6 text-[clamp(2.5rem,5vw,4.25rem)] leading-[1] font-semibold tracking-[-0.045em]'
+const h2 = 'mt-6 text-balance text-[clamp(2.5rem,5vw,4.25rem)] leading-[1] font-semibold tracking-[-0.045em]'
 const lead = 'mt-6 max-w-md text-muted-foreground'
 
 // ---------------------------------------------------------------- demo
@@ -412,12 +408,12 @@ function DemoSection() {
   useMotionValueEvent(scrollYProgress, 'change', (p) => !reduced && setT(Math.round(Math.min(1, p / 0.9) * AT.end)))
   const bar = useTransform(scrollYProgress, [0, 0.9], ['0%', '100%'])
   return (
-    <section ref={ref} className={`px-4 sm:px-8 ${pinned ? 'h-[320vh]' : 'py-24 sm:py-36'}`}>
+    <section ref={ref} id="how-it-works" className={`px-4 sm:px-8 ${pinned ? 'h-[320vh]' : 'py-24 sm:py-36'}`}>
       <div className={pinned ? 'sticky top-0 flex h-svh items-center' : ''}>
-        <div className={`${container} grid w-full gap-12 lg:grid-cols-[0.85fr_2fr] lg:items-center`}>
+        <div className={`${container} grid w-full gap-12 lg:grid-cols-[1fr_2fr] lg:items-center`}>
           <div>
             <Eyebrow>The board</Eyebrow>
-            <h2 className={`${h2} text-[clamp(2.75rem,5vw,4.5rem)]`}>
+            <h2 className="mt-6 text-[clamp(2.5rem,3.4vw,3.25rem)] leading-[1] font-semibold tracking-[-0.045em] text-balance">
               <Line inView>Collect it all.</Line>
               <Line inView delay={0.1} className="text-foreground/45">
                 Keep the colors.
@@ -445,116 +441,79 @@ function DemoSection() {
   )
 }
 
-// ---------------------------------------------------------------- tokens
-function Output() {
-  const [tab, setTab] = useState<'css' | 'tailwind'>('css')
-  return (
-    <div className="relative overflow-hidden rounded-3xl bg-foreground text-background shadow-2xl">
-      <div className="flex items-center gap-1 border-b border-background/10 px-3 py-2">
-        {(['css', 'tailwind'] as const).map((t) => (
-          <button
-            key={t}
-            aria-pressed={tab === t}
-            onClick={() => setTab(t)}
-            className="rounded-full px-3 py-1 text-xs text-background/60 outline-none hover:text-background focus-visible:ring-2 focus-visible:ring-background/40 aria-pressed:bg-background/10 aria-pressed:text-background"
-          >
-            {t === 'css' ? 'CSS variables' : 'Tailwind v4'}
-          </button>
-        ))}
-        <span className="ml-auto hidden gap-1.5 sm:flex">
-          {ROLES.map((r) => (
-            <span key={r} className="size-3 rounded-full" style={{ background: v(r) }} />
-          ))}
-        </span>
-      </div>
-      <pre className="overflow-x-auto p-5 font-mono text-[13px] leading-relaxed">{exports[tab]}</pre>
-    </div>
-  )
-}
-
-function TokensSection() {
-  const ref = useRef<HTMLElement>(null)
-  const reduced = useReducedMotion()
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
-  const codeY = useTransform(scrollYProgress, [0, 1], reduced ? [0, 0] : [60, -40])
-  return (
-    <section ref={ref} className={`${section} overflow-hidden pt-8 sm:pt-12`}>
-      <div className={`${container} grid gap-12 md:grid-cols-12 md:items-center`}>
-        <div className="md:col-span-5">
-          <Eyebrow>Tokens</Eyebrow>
-          <h2 className={h2}>
-            <Line inView>That board,</Line>
-            <Line inView delay={0.1} className="text-foreground/45">
-              as tokens.
-            </Line>
-          </h2>
-          <Reveal>
-            <p className={lead}>
-              Rename and pin the colors you keep, and Lino turns them into tokens you can paste into your project. Paste a link and its fonts and colors join the
-              board too.
-            </p>
-            <p className="mt-6 font-mono text-xs text-muted-foreground">Hex or OKLCH, with your own variable prefix.</p>
-          </Reveal>
-        </div>
-        <div className="relative md:col-span-7 md:col-start-6 md:pl-8">
-          <motion.div className="relative" style={{ y: codeY }}>
-            <Output />
-          </motion.div>
-        </div>
-      </div>
-    </section>
-  )
-}
 
 // ---------------------------------------------------------------- privacy
-const promises = ['account', 'tracking', 'cookies', 'ads']
+const promises = [
+  { label: 'No account', note: 'Open the board and start pinning.', icon: UserBlock01Icon },
+  { label: 'No tracking', note: 'Nothing you add is sent to a server.', icon: ViewOffSlashIcon },
+  { label: 'No cookies', note: 'Nothing to accept before you start.', icon: CookieIcon },
+  { label: 'No ads', note: 'Just your board.', icon: AdvertisimentIcon },
+]
 
-/** A big line that slides in from one side as it scrolls into view. */
-function SlideLine({ from, children, className }: { from: number; children: ReactNode; className: string }) {
-  const ref = useRef<HTMLLIElement>(null)
-  const reduced = useReducedMotion()
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'center 0.6'] })
-  const x = useTransform(scrollYProgress, [0, 1], reduced ? [0, 0] : [from, 0])
-  const opacity = useTransform(scrollYProgress, [0, 1], reduced ? [1, 1] : [0.15, 1])
-  return (
-    <motion.li ref={ref} className={className} style={{ x, opacity }}>
-      {children}
-    </motion.li>
-  )
-}
+// a small board on "this device": four of the hero's photos, pinned loosely
+const privatePhotos = [
+  { src: 'bust', className: 'left-[7%] top-[7%] w-[30%] aspect-[2/3] -rotate-3' },
+  { src: 'sun', className: 'left-[41%] top-[4%] w-[24%] aspect-[5/8] rotate-2' },
+  { src: 'amber', className: 'left-[64%] top-[30%] w-[30%] aspect-[3/2] -rotate-2' },
+  { src: 'fabric', className: 'left-[14%] top-[60%] w-[40%] aspect-[3/2] rotate-2' },
+]
 
 function PrivacySection() {
   return (
-    <section className={`${section} overflow-hidden bg-foreground text-background`}>
-      <div className={`${container} grid gap-12 md:grid-cols-12`}>
-        <div className="md:col-span-5">
-          <Eyebrow dark>Private</Eyebrow>
+    <section id="privacy" className={section}>
+      <div className={`${container} grid items-center gap-14 lg:grid-cols-2 lg:gap-20`}>
+        <div>
+          <Eyebrow>Private</Eyebrow>
           <h2 className={h2}>
             <Line inView>Your boards</Line>
-            <Line inView delay={0.1} className="opacity-50">
+            <Line inView delay={0.1} className="text-foreground/45">
               stay with you.
             </Line>
           </h2>
           <Reveal>
-            <p className={`${lead} opacity-70`} style={{ color: 'inherit' }}>
+            <p className={lead}>
               Everything you pin is saved in your browser, on this device. There is no account to make, and nothing you add leaves it unless you share a board.
             </p>
           </Reveal>
+          <ul className="mt-10 divide-y divide-border border-y border-border">
+            {promises.map((p, i) => (
+              <motion.li
+                key={p.label}
+                className="flex items-center gap-4 py-4"
+                initial={{ opacity: 0, x: -16 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7, ease, delay: i * 0.06 }}
+              >
+                <HugeiconsIcon icon={p.icon} size={20} strokeWidth={1.6} aria-hidden className="shrink-0" />
+                <span className="w-28 shrink-0 text-sm font-medium">{p.label}</span>
+                <span className="text-sm text-muted-foreground">{p.note}</span>
+              </motion.li>
+            ))}
+          </ul>
         </div>
-        <ul className="md:col-span-7 md:pt-24">
-          {promises.map((w, i) => (
-            <SlideLine
-              key={w}
-              from={i % 2 ? 180 : -180}
-              className={`flex items-baseline gap-4 border-t border-current/15 py-5 text-[clamp(2.75rem,6vw,5rem)] leading-none font-semibold tracking-[-0.05em] ${i % 2 ? 'md:justify-end' : ''}`}
-            >
-              <span className="text-[0.45em] font-medium opacity-40">
-                No
-              </span>
-              {w}.
-            </SlideLine>
-          ))}
-        </ul>
+
+        <Reveal>
+          <div className="relative aspect-[4/3.4] rounded-[2rem] border border-border bg-card shadow-soft">
+            <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(var(--dot)_1px,transparent_1px)] [background-size:18px_18px]" />
+            {privatePhotos.map((p, i) => (
+              <motion.div
+                key={p.src}
+                className={`absolute ${p.className}`}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.9, ease, delay: 0.15 + i * 0.08 }}
+              >
+                <Photo src={p.src} />
+              </motion.div>
+            ))}
+            <div className="absolute right-5 bottom-5 flex items-center gap-2 rounded-full border border-border bg-card/90 px-4 py-2 text-xs font-medium whitespace-nowrap shadow-soft backdrop-blur">
+              <HugeiconsIcon icon={LaptopIcon} size={14} strokeWidth={1.8} aria-hidden />
+              Saved on this device
+            </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   )
@@ -571,33 +530,28 @@ const faqs = [
 
 function FaqSection() {
   return (
-    <section className={section}>
-      <div className={`${container} grid gap-12 md:grid-cols-12`}>
-        <div className="md:col-span-4">
-          <div className="md:sticky md:top-24">
-            <Eyebrow>Questions</Eyebrow>
-            <h2 className={h2}>
-              <Line inView>Good</Line>
-              <Line inView delay={0.1} className="text-foreground/45">
-                to know.
-              </Line>
-            </h2>
-          </div>
+    <section id="faq" className={`${section} pt-0 sm:pt-0`}>
+      <div className="mx-auto max-w-2xl">
+        <div className="text-center">
+          <Eyebrow>Questions</Eyebrow>
+          <h2 className={h2}>
+            <Line inView>Good to know.</Line>
+          </h2>
         </div>
-        <Reveal className="border-t border-border md:col-span-7 md:col-start-6">
+        <Reveal className="mt-12 space-y-2">
           {faqs.map(([q, a]) => (
-            <details key={q} className="group border-b border-border">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-md py-6 text-xl font-medium tracking-tight outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:text-2xl [&::-webkit-details-marker]:hidden">
+            <details key={q} className="group rounded-2xl border border-border bg-card px-5 shadow-soft">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl py-4 font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
                 {q}
                 <HugeiconsIcon
                   icon={Add01Icon}
-                  size={20}
+                  size={18}
                   strokeWidth={1.8}
                   aria-hidden
                   className="shrink-0 text-muted-foreground transition-transform group-open:rotate-45 motion-reduce:transition-none"
                 />
               </summary>
-              <p className="max-w-xl pb-6 text-muted-foreground">{a}</p>
+              <p className="pb-5 text-sm leading-6 text-muted-foreground">{a}</p>
             </details>
           ))}
         </Reveal>
@@ -606,22 +560,34 @@ function FaqSection() {
   )
 }
 
+// a small hand of the hero's photos above the last call to action
+const ctaPhotos = ['yellow', 'bust', 'lantern', 'sun', 'amber']
+
 function CtaSection() {
   return (
-    <section className="overflow-hidden bg-foreground py-24 text-background sm:py-32">
-      <div className={`${container} px-4 sm:px-8`}>
-        <h2 className="text-center text-[clamp(3rem,8vw,7rem)] leading-[0.95] font-semibold tracking-[-0.055em]">
-          <Line inView>Start your</Line>
-          <Line inView delay={0.1} className="opacity-50">
-            first board.
-          </Line>
+    <section className={`${section} pt-0 sm:pt-0`}>
+      <div className={`${container} rounded-[2rem] border border-border bg-card px-6 py-20 text-center shadow-soft sm:py-24`}>
+        <Reveal className="flex justify-center">
+          {ctaPhotos.map((src, i) => (
+            <motion.div
+              key={src}
+              className="-mx-2 h-32 w-24 sm:-mx-3 sm:h-44 sm:w-32"
+              style={{ rotate: (i - 2) * 7, y: Math.abs(i - 2) * 10, zIndex: 5 - Math.abs(i - 2) }}
+              whileHover={{ y: -12, scale: 1.05 }}
+            >
+              <Photo src={src} />
+            </motion.div>
+          ))}
+        </Reveal>
+        <h2 className="mt-14 text-[clamp(2.5rem,6vw,4.75rem)] leading-[1] font-semibold tracking-[-0.05em] text-balance">
+          <Line inView>Start your first board.</Line>
         </h2>
-        <Reveal className="mt-12 flex flex-col items-center gap-5">
-          <a href="/board/" className={`${pill} group bg-background px-7 py-4 text-base font-medium text-foreground`}>
+        <Reveal className="mt-8 flex flex-col items-center gap-4">
+          <a href="/board/" className={`${darkButton} px-6 py-3 text-sm shadow-soft`}>
             Open your board
             <Arrow />
           </a>
-          <p className="max-w-xs opacity-70">It opens right away, with nothing to sign up for.</p>
+          <p className="text-sm text-muted-foreground">It opens right away, with nothing to sign up for.</p>
         </Reveal>
       </div>
     </section>
@@ -639,6 +605,47 @@ function Logo() {
       </span>
       <span className="text-xl leading-none font-semibold tracking-tight">Lino</span>
     </a>
+  )
+}
+
+const footerLinks = [
+  { title: 'Product', links: [['Open your board', '/board/'], ['How it works', '#how-it-works']] },
+  { title: 'Lino', links: [['Privacy', '#privacy'], ['Questions', '#faq']] },
+]
+
+function Footer() {
+  return (
+    <footer className="px-4 pt-20 pb-10 sm:px-8">
+      <div className={`${container} grid gap-12 sm:grid-cols-[1.5fr_1fr_1fr]`}>
+        <div className="space-y-4">
+          <Logo />
+          <p className="max-w-xs text-sm text-muted-foreground">A calm moodboard for images, notes and colors. No account needed.</p>
+        </div>
+        {footerLinks.map((col) => (
+          <nav key={col.title} aria-label={col.title} className="space-y-3 text-sm">
+            <p className="font-medium">{col.title}</p>
+            <ul className="space-y-2 text-muted-foreground">
+              {col.links.map(([label, href]) => (
+                <li key={href}>
+                  <a href={href} className="rounded-sm outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50">
+                    {label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))}
+      </div>
+      <div className={`${container} mt-16 flex flex-col gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:justify-between`}>
+        <span>© {new Date().getFullYear()} Lino</span>
+        <span>
+          Photos from{' '}
+          <a href="https://unsplash.com" className="underline-offset-2 hover:text-foreground hover:underline">
+            Unsplash
+          </a>
+        </span>
+      </div>
+    </footer>
   )
 }
 
@@ -699,14 +706,10 @@ function Landing() {
     <MotionConfig reducedMotion="user">
       <Hero />
       <DemoSection />
-      <TokensSection />
       <PrivacySection />
       <FaqSection />
       <CtaSection />
-      <footer className={`${container} flex items-center justify-between px-4 py-10 text-xs text-muted-foreground sm:px-8`}>
-        <Logo />
-        <span>© {new Date().getFullYear()} Lino</span>
-      </footer>
+      <Footer />
     </MotionConfig>
   )
 }

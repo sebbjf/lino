@@ -167,6 +167,9 @@ html.lp {
   --dot: oklch(0.88 0 0);
   --ring: oklch(0.6 0 0);
 }
+@media (prefers-reduced-motion: no-preference) {
+  html.lp { scroll-behavior: smooth; }
+}
 /* an element added in messy mode lands on the board; uses scale/translate so the inline transform still applies */
 @keyframes element-drop {
   from { opacity: 0; scale: 1.12; translate: 0 -18px; }
