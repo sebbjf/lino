@@ -14,6 +14,7 @@ import {
   LayerSendBackwardIcon,
   MinusSignIcon,
   PaintBoardIcon,
+  PipetteIcon,
   PlusSignIcon,
   RedoIcon,
   StickyNote01Icon,
@@ -26,12 +27,30 @@ import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { normalizeHex } from './colors.ts'
 import { zoomAt } from './geometry.ts'
 import { addImages } from './image.ts'
 import { FileMenu } from './FileMenu.tsx'
 import { ShareButton } from './ShareButton.tsx'
 import { StyleMenu } from './StyleMenu.tsx'
 import { useBoard } from './store.ts'
+
+// Chromium only for now; elsewhere the button is hidden.
+type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> }
+const EyeDropper = (window as unknown as { EyeDropper?: EyeDropperCtor }).EyeDropper
+
+/** Picks any pixel on screen (an image, a link cover) and pins it to the palette. */
+async function pickColor() {
+  const { setColorMeta, notify } = useBoard.getState()
+  try {
+    const hex = normalizeHex((await new EyeDropper!().open()).sRGBHex)
+    if (!hex) return
+    setColorMeta(hex, { pinned: true, hidden: false })
+    notify(`${hex} added to the palette.`)
+  } catch {
+    // Esc cancels the picker; nothing to say
+  }
+}
 
 type ToolProps = { label: string; icon: IconSvgElement; onClick: () => void; shortcut?: string; disabled?: boolean; pressed?: boolean }
 
@@ -104,6 +123,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
           <Tool label="Add image" icon={Image01Icon} onClick={() => fileInput.current?.click()} />
           <Tool label="Add note" icon={StickyNote01Icon} onClick={() => add({ type: 'note', text: '', w: 220, h: 140 })} />
           <Tool label="Add color" icon={PaintBoardIcon} onClick={() => add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 })} />
+          {EyeDropper && <Tool label="Pick a color from the screen" icon={PipetteIcon} onClick={pickColor} />}
           <input
             ref={fileInput}
             type="file"
