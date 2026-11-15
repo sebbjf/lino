@@ -10,7 +10,7 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | Element types (`image`, `note`, `color`, `link`) | `BoardElement` in [store.ts](apps/web/src/store.ts) |
 | Global shortcuts (undo/redo), paste handling | [apps/web/src/App.tsx](apps/web/src/App.tsx) |
 | Per-element shortcuts (arrows, Delete, Ctrl+D, `[` `]`, Enter) | [apps/web/src/ElementView.tsx](apps/web/src/ElementView.tsx) |
-| Pan, zoom, wheel, drop files/links | [apps/web/src/Canvas.tsx](apps/web/src/Canvas.tsx) |
+| Pan, zoom, wheel, drop files/links/board files | [apps/web/src/Canvas.tsx](apps/web/src/Canvas.tsx) |
 | Align / distribute math | `alignOffsets`, `distributeOffsets` in [geometry.ts](apps/web/src/geometry.ts) |
 | Multi-select: Shift+click, group drag | [ElementView.tsx](apps/web/src/ElementView.tsx); selection box in [Canvas.tsx](apps/web/src/Canvas.tsx); Ctrl+A, Delete/Esc without focus in [App.tsx](apps/web/src/App.tsx) |
 | Alignment guides / snapping while dragging | `snapMove` in [geometry.ts](apps/web/src/geometry.ts), used in [ElementView.tsx](apps/web/src/ElementView.tsx), drawn in [Canvas.tsx](apps/web/src/Canvas.tsx) |
@@ -21,6 +21,8 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | CSS variables / Tailwind `@theme` output | [apps/web/src/export.ts](apps/web/src/export.ts) |
 | Saving/loading the board (IndexedDB, autosave) | [apps/web/src/storage.ts](apps/web/src/storage.ts) |
 | Adding images (resize, read file) | [apps/web/src/image.ts](apps/web/src/image.ts) |
+| Board file export/import (`.lino.json`), validation of imported files | [apps/web/src/boardFile.ts](apps/web/src/boardFile.ts) |
+| File menu (export, import, PNG) | [apps/web/src/FileMenu.tsx](apps/web/src/FileMenu.tsx) |
 | PNG export (canvas drawing of every element type) | [apps/web/src/png.ts](apps/web/src/png.ts) |
 | Share button, read-only link, loading a shared board | [ShareButton.tsx](apps/web/src/ShareButton.tsx), [share.ts](apps/web/src/share.ts) |
 | Adding links (URL detection, call to API) | [apps/web/src/link.ts](apps/web/src/link.ts) |
@@ -57,6 +59,8 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/geometry.ts` | Box math: rotate, resize with aspect lock, rotation snap, zoom around a point, fit view to content, rotated bounds, `snapMove` (alignment snapping + guides), `alignOffsets`, `distributeOffsets`. |
 | `src/drag.ts` | Pointer-drag helper used by move/resize/rotate. |
 | `src/image.ts` | Read an image file into a data URL and add it to the board. |
+| `src/boardFile.ts` | `exportBoardFile()`, `importBoardFile(file)`, `parseBoardFile(text)` (rebuilds each element from untrusted JSON). |
+| `src/FileMenu.tsx` | Toolbar folder popover: export board, import board, download PNG. |
 | `src/png.ts` | `boardPng()` draws all elements to a canvas (theme colors, fonts, rotation); `downloadPng()`; `wrapText()`. |
 | `src/share.ts` | `shareBoard()` (POST snapshot, returns link), `loadShared(id)` (read-only, fitted view). |
 | `src/ShareButton.tsx` | Toolbar Share popover: confirm, create link, copy. |
@@ -65,7 +69,7 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/index.css` | Tailwind import, theme tokens, fonts. |
 | `src/lib/utils.ts` | `cn()` class helper (shadcn). |
 | `src/components/ui/*` | shadcn components: button, empty, field, input, kbd, label, popover, separator, tooltip. |
-| `src/*.test.ts` | Vitest: colors, export, geometry, png text wrap, store. |
+| `src/*.test.ts` | Vitest: board file parsing, colors, export, geometry, png text wrap, store. |
 | `components.json` | shadcn config. |
 | `.env.example` | `VITE_API_URL`. |
 

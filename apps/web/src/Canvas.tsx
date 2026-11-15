@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent
 import { drag } from './drag.ts'
 import { ElementView } from './ElementView.tsx'
 import { boundsOf, zoomAt } from './geometry.ts'
+import { importBoardFile, isBoardFile } from './boardFile.ts'
 import { addImages } from './image.ts'
 import { addLink, asUrl } from './link.ts'
 import { useBoard } from './store.ts'
@@ -70,6 +71,8 @@ export function Canvas() {
     if (useBoard.getState().readOnly) return
     const at = { x: (e.clientX - view.x) / view.zoom, y: (e.clientY - view.y) / view.zoom }
     const files = [...e.dataTransfer.files]
+    const board = files.find(isBoardFile)
+    if (board) return void importBoardFile(board)
     const url = asUrl(e.dataTransfer.getData('text/uri-list').split('\n')[0].trim())
     if (files.length) addImages(files, at)
     else if (url) addLink(url, at)

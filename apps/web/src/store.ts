@@ -55,6 +55,8 @@ type State = {
   remove: (ids: string[]) => void
   duplicate: (ids: string[]) => void
   reorder: (id: string, to: Layer) => void
+  /** Swaps in another board's elements as one undo step; palette edits are merged (they have no history). */
+  replaceBoard: (elements: BoardElement[], colorMeta: Record<string, ColorMeta>) => void
   align: (ids: string[], mode: AlignMode) => void
   distribute: (ids: string[], axis: 'x' | 'y') => void
   /** Selects one element (null clears); `toggle` adds or removes it from the current selection. */
@@ -148,6 +150,9 @@ export const useBoard = create<State>()((set, get) => ({
     if (!copies.length) return
     set((s) => ({ ...pushHistory(s), elements: [...s.elements, ...copies], selectedIds: copies.map((c) => c.id) }))
   },
+
+  replaceBoard: (elements, colorMeta) =>
+    set((s) => ({ ...pushHistory(s), elements, selectedIds: [], colorMeta: { ...s.colorMeta, ...colorMeta } })),
 
   align: (ids, mode) => set((s) => shift(s, ids, (els) => alignOffsets(els, mode))),
   distribute: (ids, axis) => set((s) => shift(s, ids, (els) => (els.length < 3 ? els.map(() => ({ dx: 0, dy: 0 })) : distributeOffsets(els, axis)))),
