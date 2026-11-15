@@ -1,2 +1,6 @@
 packages:
   - apps/*
+
+# esbuild (via drizzle-kit) has a postinstall that only checks its binary; the platform package already provides it.
+allowBuilds:
+  esbuild: false
