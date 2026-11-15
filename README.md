@@ -58,6 +58,7 @@ Shared boards are rendered in other people's browsers, so the body schema is str
 | Action | Keys |
 | --- | --- |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y` |
+| Align while dragging | Snaps to other elements' edges and centers with guide lines; hold `Alt` to move freely |
 | Move selected | Arrows (`Shift` ×10) |
 | Resize selected | `Alt` + arrows (`Shift` ×10) |
 | Rotate selected 15° | `R` / `Shift+R` |

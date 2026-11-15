@@ -68,3 +68,47 @@ export function boundsOf(boxes: Box[]) {
   const minY = Math.min(...pts.map((p) => p.y))
   return { x: minX, y: minY, w: Math.max(...pts.map((p) => p.x)) - minX, h: Math.max(...pts.map((p) => p.y)) - minY }
 }
+
+type Rect = { x: number; y: number; w: number; h: number }
+/** A guide line in world space: vertical at x = pos (axis 'x') or horizontal at y = pos, spanning from..to. */
+export type Guide = { axis: 'x' | 'y'; pos: number; from: number; to: number }
+
+const edges = (start: number, size: number) => [start, start + size / 2, start + size]
+
+/**
+ * Snaps a moving rect to the edges and centers of other rects when within `threshold`.
+ * Returns the correction to apply and the guides to draw for every line that now matches.
+ */
+export function snapMove(moving: Rect, others: Rect[], threshold: number) {
+  const offset = (k: 'x' | 'y') => {
+    const size = k === 'x' ? 'w' : 'h'
+    let best: number | undefined
+    for (const o of others)
+      for (const m of edges(moving[k], moving[size]))
+        for (const t of edges(o[k], o[size])) {
+          const d = t - m
+          if (Math.abs(d) <= threshold && (best === undefined || Math.abs(d) < Math.abs(best))) best = d
+        }
+    return best ?? 0
+  }
+  const dx = offset('x')
+  const dy = offset('y')
+  const r = { ...moving, x: moving.x + dx, y: moving.y + dy }
+
+  const guides: Guide[] = []
+  for (const [k, size, cross, crossSize] of [
+    ['x', 'w', 'y', 'h'],
+    ['y', 'h', 'x', 'w'],
+  ] as const) {
+    for (const o of others)
+      for (const m of edges(r[k], r[size]))
+        if (edges(o[k], o[size]).some((t) => Math.abs(t - m) < 0.5))
+          guides.push({
+            axis: k,
+            pos: m,
+            from: Math.min(r[cross], o[cross]),
+            to: Math.max(r[cross] + r[crossSize], o[cross] + o[crossSize]),
+          })
+  }
+  return { dx, dy, guides }
+}

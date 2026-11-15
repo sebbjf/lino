@@ -1,7 +1,7 @@
 import type { PointerEvent as ReactPointerEvent } from 'react'
 
 /** Tracks a pointer drag from a pointerdown, reporting the screen-space delta until release. */
-export function drag(e: ReactPointerEvent, onMove: (dx: number, dy: number, ev: PointerEvent) => void) {
+export function drag(e: ReactPointerEvent, onMove: (dx: number, dy: number, ev: PointerEvent) => void, onEnd?: () => void) {
   const sx = e.clientX
   const sy = e.clientY
   const move = (ev: PointerEvent) => onMove(ev.clientX - sx, ev.clientY - sy, ev)
@@ -9,6 +9,7 @@ export function drag(e: ReactPointerEvent, onMove: (dx: number, dy: number, ev: 
     window.removeEventListener('pointermove', move)
     window.removeEventListener('pointerup', up)
     window.removeEventListener('pointercancel', up)
+    onEnd?.()
   }
   window.addEventListener('pointermove', move)
   window.addEventListener('pointerup', up)

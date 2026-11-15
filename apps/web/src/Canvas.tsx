@@ -11,6 +11,7 @@ export function Canvas() {
   const selectedId = useBoard((s) => s.selectedId)
   const view = useBoard((s) => s.view)
   const readOnly = useBoard((s) => s.readOnly)
+  const guides = useBoard((s) => s.guides)
   const ref = useRef<HTMLDivElement>(null)
 
   // wheel pans, Ctrl/Cmd + wheel (and trackpad pinch) zooms; needs a non-passive listener
@@ -78,6 +79,18 @@ export function Canvas() {
       >
         {elements.map((el) => (
           <ElementView key={el.id} el={el} selected={el.id === selectedId} zoom={view.zoom} />
+        ))}
+        {guides.map((g, i) => (
+          <div
+            key={i}
+            aria-hidden
+            className="pointer-events-none absolute bg-guide"
+            style={
+              g.axis === 'x'
+                ? { left: g.pos, top: g.from, width: 1 / view.zoom, height: g.to - g.from }
+                : { left: g.from, top: g.pos, width: g.to - g.from, height: 1 / view.zoom }
+            }
+          />
         ))}
       </div>
     </div>

@@ -3,8 +3,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ColorFields } from './ColorFields.tsx'
 import { LinkCard } from './LinkCard.tsx'
 import { drag } from './drag.ts'
-import { angleTo, resize, rotateVec } from './geometry.ts'
+import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
+import type { Guide } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
+
+/** Snap distance in screen pixels. */
+const SNAP_PX = 6
 
 const LABELS = { image: 'Image', note: 'Note', color: 'Color', link: 'Link' }
 
@@ -56,8 +60,27 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
     if (editing) return
     e.currentTarget.focus()
     const { x, y } = el
+    // snap the visible (rotated) outline to the other elements' edges and centers; Alt moves freely
+    const own = boundsOf([el])
+    const others = useBoard.getState().elements.flatMap((o) => (o.id === el.id ? [] : [boundsOf([o])]))
+    const setGuides = (guides: Guide[]) => useBoard.setState({ guides })
     checkpoint()
-    drag(e, (dx, dy) => update(el.id, { x: x + dx / zoom, y: y + dy / zoom }))
+    drag(
+      e,
+      (dx, dy, ev) => {
+        let nx = x + dx / zoom
+        let ny = y + dy / zoom
+        if (ev.altKey) setGuides([])
+        else {
+          const s = snapMove({ ...own, x: own.x + nx - x, y: own.y + ny - y }, others, SNAP_PX / zoom)
+          nx += s.dx
+          ny += s.dy
+          setGuides(s.guides)
+        }
+        update(el.id, { x: nx, y: ny })
+      },
+      () => setGuides([]),
+    )
   }
 
   const onResize = (e: PointerEvent) => {

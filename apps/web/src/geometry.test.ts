@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { angleTo, resize, rotateVec, zoomAt, fitView, boundsOf, type Box } from './geometry.ts'
+import { angleTo, resize, rotateVec, zoomAt, fitView, boundsOf, snapMove, type Box } from './geometry.ts'
 
 // world position of the box's local top-left corner
 function topLeft(b: Box) {
@@ -57,4 +57,22 @@ test('boundsOf includes rotated corners', () => {
   const r = boundsOf([{ x: 0, y: 0, w: 100, h: 100, rotation: 45 }])
   expect(r.w).toBeCloseTo(100 * Math.SQRT2)
   expect(r.x).toBeCloseTo(50 - 50 * Math.SQRT2)
+})
+
+test('snapMove pulls edges and centers within threshold and reports guides', () => {
+  const other = { x: 100, y: 100, w: 100, h: 100 }
+  // left edge 3px right of the other's left edge, far vertically: snaps x only
+  const a = snapMove({ x: 103, y: 400, w: 50, h: 50 }, [other], 6)
+  expect(a).toMatchObject({ dx: -3, dy: 0 })
+  // after snapping, its right edge (150) also meets the other's center
+  expect(a.guides).toEqual([
+    { axis: 'x', pos: 100, from: 100, to: 450 },
+    { axis: 'x', pos: 150, from: 100, to: 450 },
+  ])
+  // centers line up (150) after snapping y
+  const b = snapMove({ x: 400, y: 128, w: 40, h: 40 }, [other], 6)
+  expect(b.dy).toBe(2)
+  expect(b.guides.map((g) => [g.axis, g.pos])).toEqual([['y', 150]])
+  // out of range: nothing
+  expect(snapMove({ x: 300, y: 300, w: 10, h: 10 }, [other], 6)).toEqual({ dx: 0, dy: 0, guides: [] })
 })

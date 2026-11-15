@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ColorMeta } from './colors.ts'
-import type { Box } from './geometry.ts'
+import type { Box, Guide } from './geometry.ts'
 
 export type BoardElement =
   | (Box & { id: string; type: 'image'; src: string })
@@ -31,6 +31,8 @@ type State = {
   selectedId: string | null
   view: View
   notice: string | null
+  /** Alignment guides shown while dragging. */
+  guides: Guide[]
   /** A shared board opened from a link: view only, nothing is saved. */
   readOnly: boolean
   /** Palette edits keyed by normalized hex. Not part of undo history. */
@@ -76,6 +78,7 @@ export const useBoard = create<State>()((set, get) => ({
   view: { x: 0, y: 0, zoom: 1 },
   notice: null,
   readOnly: false,
+  guides: [],
   colorMeta: {},
   past: [],
   future: [],
