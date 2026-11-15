@@ -18,6 +18,7 @@ type Props = { el: BoardElement; selected: boolean; zoom: number }
 
 export const ElementView = memo(function ElementView({ el, selected, zoom }: Props) {
   const { update, select, remove, duplicate, reorder, checkpoint } = useBoard.getState()
+  const readOnly = useBoard((s) => s.readOnly)
   // a freshly added empty note opens straight into editing
   const [editing, setEditing] = useState(() => selected && el.type === 'note' && !el.text)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -29,6 +30,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
   }, [selected, editing])
 
   const open = () => {
+    if (readOnly && el.type !== 'link') return
     if (el.type !== 'link') checkpoint()
     if (el.type === 'note') setEditing(true)
     if (el.type === 'color') setPickerOpen(true)
@@ -37,7 +39,8 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     // React bubbles events from portals (the colour popover) through here; ignore those
-    if (e.button !== 0 || !e.currentTarget.contains(e.target as Node)) return
+    // read-only: let the press reach the canvas so it pans
+    if (readOnly || e.button !== 0 || !e.currentTarget.contains(e.target as Node)) return
     e.stopPropagation()
     select(el.id)
     if (editing) return
@@ -66,7 +69,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget) return
+    if (e.target !== e.currentTarget || (readOnly && e.key !== 'Enter' && e.key !== 'Escape')) return
     const mod = e.metaKey || e.ctrlKey
     const step = e.shiftKey ? 10 : 1
     if (e.key.startsWith('Arrow')) checkpoint()
@@ -129,7 +132,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
         height: el.h,
         transform: `translate(${el.x}px, ${el.y}px) rotate(${el.rotation}deg)`,
         boxShadow: selected ? `0 0 0 ${2 / zoom}px var(--color-primary)` : undefined,
-        cursor: editing ? 'auto' : 'move',
+        cursor: readOnly ? undefined : editing ? 'auto' : 'move',
       }}
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => e.currentTarget.contains(e.target as Node) && open()}
@@ -163,7 +166,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
       {el.type === 'color' && (
         <div className="relative size-full rounded-2xl shadow-soft" style={{ background: el.hex }}>
           <Popover
-            open={pickerOpen}
+            open={pickerOpen && !readOnly}
             onOpenChange={(open) => {
               if (open) checkpoint()
               setPickerOpen(open)
@@ -192,7 +195,7 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
 
       {el.type === 'link' && <LinkCard el={el} />}
 
-      {selected && !editing && (
+      {selected && !editing && !readOnly && (
         <>
           <div
             aria-hidden

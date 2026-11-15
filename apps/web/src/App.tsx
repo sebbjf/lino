@@ -10,13 +10,14 @@ import { Toolbar } from './Toolbar.tsx'
 export function App() {
   const empty = useBoard((s) => s.elements.length === 0)
   const notice = useBoard((s) => s.notice)
+  const readOnly = useBoard((s) => s.readOnly)
   const [paletteOpen, setPaletteOpen] = useState(false)
 
   // paste images onto the board, a URL as a link card, or plain text as a note
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       const t = e.target as HTMLElement
-      if (t.closest('input, textarea, [contenteditable]')) return
+      if (t.closest('input, textarea, [contenteditable]') || useBoard.getState().readOnly) return
       const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'))
       const text = e.clipboardData?.getData('text/plain').trim()
       const url = text && asUrl(text)
@@ -56,7 +57,20 @@ export function App() {
       <main>
         <h1 className="sr-only">Lino board</h1>
         <Canvas />
-        {empty && (
+        {readOnly && (
+          <p className="fixed left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border bg-card/90 px-4 py-1.5 text-sm shadow-soft backdrop-blur">
+            <span className="text-muted-foreground">Shared board · read-only</span>
+            <a href="/board/" className="font-medium underline-offset-4 hover:underline">
+              Open your board
+            </a>
+          </p>
+        )}
+        {empty && readOnly && (
+          <div className="pointer-events-none fixed inset-0 grid place-items-center px-4 text-center">
+            <p className="font-heading text-4xl text-foreground">This board could not be opened</p>
+          </div>
+        )}
+        {empty && !readOnly && (
           <div className="pointer-events-none fixed inset-0 grid place-items-center px-4 text-center">
             <div>
               <p className="font-heading text-4xl text-foreground">Start with a reference</p>

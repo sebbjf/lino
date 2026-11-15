@@ -39,3 +39,14 @@ export function zoomAt(view: { x: number; y: number; zoom: number }, px: number,
   const z = Math.min(4, Math.max(0.1, zoom))
   return { zoom: z, x: px - ((px - view.x) * z) / view.zoom, y: py - ((py - view.y) * z) / view.zoom }
 }
+
+/** View that fits all boxes in a w×h screen with padding, never zooming in past 100%. Rotation is ignored. */
+export function fitView(boxes: Box[], w: number, h: number, pad = 64) {
+  if (!boxes.length) return { x: 0, y: 0, zoom: 1 }
+  const minX = Math.min(...boxes.map((b) => b.x))
+  const minY = Math.min(...boxes.map((b) => b.y))
+  const bw = Math.max(...boxes.map((b) => b.x + b.w)) - minX
+  const bh = Math.max(...boxes.map((b) => b.y + b.h)) - minY
+  const zoom = Math.max(0.1, Math.min(1, (w - pad * 2) / bw, (h - pad * 2) / bh))
+  return { zoom, x: (w - bw * zoom) / 2 - minX * zoom, y: (h - bh * zoom) / 2 - minY * zoom }
+}

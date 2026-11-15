@@ -11,7 +11,7 @@ pnpm workspace with two apps:
 | App | What | Tech |
 | --- | --- | --- |
 | `apps/web` | Landing page at `/`, the board at `/board/` (two Vite pages) | React 19, Vite, Tailwind v4, shadcn (Base UI), Zustand, IndexedDB |
-| `apps/api` | Reads a link's title, cover, fonts and colors for link cards | Fastify 5 on Node 24, run as TypeScript directly (type stripping, no build step) |
+| `apps/api` | Reads links for link cards; stores shared boards | Fastify 5 on Node 24, run as TypeScript directly (type stripping, no build step), Postgres + Drizzle |
 
 ## Run
 
@@ -27,17 +27,29 @@ pnpm build
 
 In dev, the web app calls `/api`, which Vite proxies to `:3000`.
 
+Sharing needs Postgres. Locally, with Docker Desktop running:
+
+```bash
+docker compose up -d   # Postgres 17 on :5432 (user/password/db: lino)
+```
+
+Then set `DATABASE_URL` in `apps/api/.env` (see the example). The API applies migrations from `apps/api/drizzle/` on start. Without `DATABASE_URL` everything else works and sharing answers 503. After changing `apps/api/src/schema.ts`, run `pnpm --filter @lino/api exec drizzle-kit generate`.
+
 ## Environment
 
 Copy the examples to `.env` (both are optional in dev):
 
 - `apps/web/.env.example`: `VITE_API_URL`, the API address (defaults to `/api`).
-- `apps/api/.env.example`: `CORS_ORIGIN`, the web origin allowed to call the API; `TRUST_PROXY=1` when behind a proxy such as Render, so rate limits see the real client IP.
+- `apps/api/.env.example`: `CORS_ORIGIN`, the web origin allowed to call the API; `TRUST_PROXY=1` when behind a proxy such as Render, so rate limits see the real client IP; `DATABASE_URL` for shared boards.
 
 ## API
 
 - `GET /health` → `{ ok: true }`
 - `GET /read?url=` → `{ url, title, image, fonts, colors, missing }` (`image` is a data URL) for a public page.
+- `POST /boards` with `{ elements, colorMeta }` → `201 { id, expiresAt }`. Stores a fixed snapshot for 90 days. Max 5 MB, 300 elements, 20 shares per hour per IP.
+- `GET /boards/:id` → the snapshot, or 404 when unknown or expired.
+
+Shared boards are rendered in other people's browsers, so the body schema is strict: images must be `data:image/…` URLs, links must be http(s), colors must be hex, unknown fields are dropped. The 12-character id is random (72 bits) and is the only key.
 
 `/read` only fetches public http(s) addresses on ports 80/443. The address is checked again on every redirect and pinned at DNS lookup, so DNS rebinding can't reach internal hosts. It has an 8 s budget, size caps and a limit of 30 reads per minute per IP. Deploy with `apps/api/Dockerfile`.
 
@@ -55,3 +67,5 @@ Copy the examples to `.env` (both are optional in dev):
 | Snap rotation to 15° | `Shift` while rotating |
 
 Paste or drop images, links (they become cards with cover, title, fonts and colors) or text (becomes a note). The palette button opens the board palette: rename, pin or hide colors, see the fonts found, and copy everything as CSS or Tailwind.
+
+**Share** uploads a copy of the board and gives a read-only link (`/board/?s=<id>`). Later edits do not change it. The shared view can pan, zoom, open links and copy the palette, and never touches the viewer's own board.

@@ -31,6 +31,8 @@ type State = {
   selectedId: string | null
   view: View
   notice: string | null
+  /** A shared board opened from a link: view only, nothing is saved. */
+  readOnly: boolean
   /** Palette edits keyed by normalized hex. Not part of undo history. */
   colorMeta: Record<string, ColorMeta>
   setColorMeta: (hex: string, patch: ColorMeta) => void
@@ -73,6 +75,7 @@ export const useBoard = create<State>()((set, get) => ({
   selectedId: null,
   view: { x: 0, y: 0, zoom: 1 },
   notice: null,
+  readOnly: false,
   colorMeta: {},
   past: [],
   future: [],

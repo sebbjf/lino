@@ -40,6 +40,7 @@ export function Canvas() {
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault()
+    if (useBoard.getState().readOnly) return
     const at = { x: (e.clientX - view.x) / view.zoom, y: (e.clientY - view.y) / view.zoom }
     const files = [...e.dataTransfer.files]
     const url = asUrl(e.dataTransfer.getData('text/uri-list').split('\n')[0].trim())

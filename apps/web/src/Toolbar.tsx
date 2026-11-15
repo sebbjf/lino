@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { zoomAt } from './geometry.ts'
 import { addImages } from './image.ts'
+import { ShareButton } from './ShareButton.tsx'
 import { useBoard } from './store.ts'
 
 type ToolProps = { label: string; icon: IconSvgElement; onClick: () => void; shortcut?: string; disabled?: boolean; pressed?: boolean }
@@ -59,6 +60,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
   const zoom = useBoard((s) => s.view.zoom)
   const canUndo = useBoard((s) => s.past.some((p) => p !== s.elements))
   const canRedo = useBoard((s) => s.future.length > 0)
+  const readOnly = useBoard((s) => s.readOnly)
   const { add, duplicate, reorder, remove, undo, redo } = useBoard.getState()
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -73,36 +75,41 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
       aria-label="Board tools"
       className="fixed bottom-6 left-1/2 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-full border bg-card/90 p-1.5 [scrollbar-width:none] shadow-soft backdrop-blur"
     >
-      <Tool label="Add image" icon={Image01Icon} onClick={() => fileInput.current?.click()} />
-      <Tool label="Add note" icon={StickyNote01Icon} onClick={() => add({ type: 'note', text: '', w: 220, h: 140 })} />
-      <Tool label="Add color" icon={PaintBoardIcon} onClick={() => add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 })} />
-      <input
-        ref={fileInput}
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={(e) => {
-          addImages([...(e.target.files ?? [])])
-          e.target.value = ''
-        }}
-      />
-
-      <Divider />
-      <Tool label="Undo" icon={UndoIcon} shortcut="Ctrl+Z" disabled={!canUndo} onClick={undo} />
-      <Tool label="Redo" icon={RedoIcon} shortcut="Ctrl+Shift+Z" disabled={!canRedo} onClick={redo} />
-
-      {selectedId && (
+      {!readOnly && (
         <>
+          <Tool label="Add image" icon={Image01Icon} onClick={() => fileInput.current?.click()} />
+          <Tool label="Add note" icon={StickyNote01Icon} onClick={() => add({ type: 'note', text: '', w: 220, h: 140 })} />
+          <Tool label="Add color" icon={PaintBoardIcon} onClick={() => add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 })} />
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => {
+              addImages([...(e.target.files ?? [])])
+              e.target.value = ''
+            }}
+          />
+
           <Divider />
-          <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" onClick={() => duplicate(selectedId)} />
-          <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" onClick={() => reorder(selectedId, 'forward')} />
-          <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" onClick={() => reorder(selectedId, 'backward')} />
-          <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" onClick={() => remove(selectedId)} />
+          <Tool label="Undo" icon={UndoIcon} shortcut="Ctrl+Z" disabled={!canUndo} onClick={undo} />
+          <Tool label="Redo" icon={RedoIcon} shortcut="Ctrl+Shift+Z" disabled={!canRedo} onClick={redo} />
+
+          {selectedId && (
+            <>
+              <Divider />
+              <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" onClick={() => duplicate(selectedId)} />
+              <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" onClick={() => reorder(selectedId, 'forward')} />
+              <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" onClick={() => reorder(selectedId, 'backward')} />
+              <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" onClick={() => remove(selectedId)} />
+            </>
+          )}
+
+          <Divider />
         </>
       )}
 
-      <Divider />
       <Tool label="Zoom out" icon={MinusSignIcon} onClick={() => zoomTo(zoom / 1.25)} />
       <Button variant="ghost" size="sm" aria-label="Reset zoom to 100%" className="tabular-nums" onClick={() => zoomTo(1)}>
         {Math.round(zoom * 100)}%
@@ -111,6 +118,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
 
       <Divider />
       <Tool label="Palette" icon={SwatchIcon} pressed={paletteOpen} onClick={onTogglePalette} />
+      {!readOnly && <ShareButton />}
     </div>
   )
 }
