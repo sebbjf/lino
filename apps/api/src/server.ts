@@ -19,4 +19,9 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   )
 }
 
-await app.listen({ port: Number(process.env.PORT ?? 3000), host: '0.0.0.0' })
+// Not awaited: Vercel's runtime intercepts http.Server#listen to capture the server and never calls back,
+// so awaiting here would keep this module from finishing to load and every request would hang.
+app.listen({ port: Number(process.env.PORT ?? 3000), host: '0.0.0.0' }).catch((err) => {
+  app.log.error(err)
+  process.exit(1)
+})

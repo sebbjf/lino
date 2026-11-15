@@ -86,7 +86,7 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `drizzle.config.ts` | drizzle-kit config. |
 | `src/extract.ts` | `readLink()`: fetches the page, parses title/cover from HTML, reads fonts and colors from stylesheets, returns cover as a data URL. |
 | `src/fetch.ts` | `safeFetch()`: public http(s) only, ports 80/443, blocks private IPs at DNS lookup, re-checks each redirect, size and time caps. |
-| `src/*.test.ts` | `node --test`: app routes, link reading with a fake fetcher, board sharing with an in-memory store. |
+| `src/*.test.ts` | `node --test`: loading `server.ts` the way Vercel does, app routes, link reading with a fake fetcher, board sharing with an in-memory store. |
 | `Dockerfile` | Production image (`node src/server.ts`). |
 | `.env.example` | `CORS_ORIGIN`, `TRUST_PROXY`, `DATABASE_URL`. |
 
