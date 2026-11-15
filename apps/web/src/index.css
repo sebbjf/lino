@@ -2,13 +2,14 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/figtree";
-@import "@fontsource/instrument-serif";
+@import "@fontsource-variable/playfair/opsz.css";
+@import "@fontsource-variable/playfair/opsz-italic.css";
 
 @custom-variant dark (&:is(.dark *));
 
 
 @theme inline {
-  --font-heading: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-heading: 'Playfair Variable', ui-serif, Georgia, serif;
   --color-dot: var(--dot);
   --font-sans: 'Figtree Variable', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -130,6 +131,10 @@
   }
   html {
     @apply font-sans antialiased;
+  }
+  /* light by default; font-medium etc. still override (utilities layer wins) */
+  .font-heading {
+    font-weight: 300;
   }
 }
 /* soft, layered card shadow used by board elements */

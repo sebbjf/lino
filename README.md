@@ -11,7 +11,7 @@ pnpm typecheck
 pnpm test
 ```
 
-- `apps/web`: React + Vite + Tailwind + Zustand. The board lives in IndexedDB, no account.
+- `apps/web`: React + Vite + Tailwind + Zustand. Landing page at `/`, the board at `/board/` (two Vite pages). The board lives in IndexedDB, no account.
 - `apps/api`: Fastify, run directly as TypeScript by Node 24 (type stripping, no build step).
 
 ## Board shortcuts
