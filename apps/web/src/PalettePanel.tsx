@@ -1,6 +1,6 @@
 import { Cancel01Icon, Copy01Icon, PinIcon, PinOffIcon, SwatchIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
@@ -17,8 +17,10 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
 
   const prefs = useBoard((s) => s.exportPrefs)
   const { setExportPrefs } = useBoard.getState()
-  const copy = (format: ExportFormat) =>
-    navigator.clipboard.writeText(exportTheme(format, colors, fonts, prefs)).then(
+  const [format, setFormat] = useState<ExportFormat>('css')
+  const code = exportTheme(format, colors, fonts, prefs)
+  const copy = () =>
+    navigator.clipboard.writeText(code).then(
       () => notify(format === 'css' ? 'CSS variables copied.' : 'Tailwind theme copied.'),
       () => notify('Could not copy to the clipboard.'),
     )
@@ -142,16 +144,31 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
           <p className="text-xs text-muted-foreground">
             {slug(prefs.prefix, '') ? `CSS writes --${slug(prefs.prefix, '')}-color-…; ` : ''}Tailwind always uses --color-… so its classes work.
           </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => copy('css')}>
-              <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
-              CSS variables
-            </Button>
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => copy('tailwind')}>
-              <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
-              Tailwind
-            </Button>
+          <div role="group" aria-label="Export as" className="flex gap-1">
+            {(['css', 'tailwind'] as const).map((f) => (
+              <Button
+                key={f}
+                variant={format === f ? 'secondary' : 'ghost'}
+                size="sm"
+                aria-pressed={format === f}
+                className={`flex-1 ${format === f ? 'ring-1 ring-ring' : ''}`}
+                onClick={() => setFormat(f)}
+              >
+                {f === 'css' ? 'CSS variables' : 'Tailwind'}
+              </Button>
+            ))}
           </div>
+          <pre
+            aria-label={`${format === 'css' ? 'CSS' : 'Tailwind'} preview`}
+            tabIndex={0}
+            className="max-h-48 overflow-auto rounded-xl bg-muted p-3 font-mono text-xs leading-relaxed select-text"
+          >
+            {code}
+          </pre>
+          <Button variant="outline" size="sm" onClick={copy}>
+            <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
+            Copy {format === 'css' ? 'CSS' : 'Tailwind'}
+          </Button>
         </section>
       )}
     </aside>
