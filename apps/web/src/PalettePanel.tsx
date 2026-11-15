@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
-import { boardFonts, buildPalette } from './colors.ts'
+import { boardFonts, buildPalette, shuffledOrder } from './colors.ts'
 import { exportTheme, slug, type ExportFormat } from './export.ts'
 import { useBoard } from './store.ts'
 
@@ -87,6 +87,20 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {colors.length > 1 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          title="Shuffle the order (pinned colors stay first); unnamed colors get new numbers"
+          onClick={() => {
+            for (const [hex, order] of Object.entries(shuffledOrder(colors.map((c) => c.hex)))) setColorMeta(hex, { order })
+          }}
+        >
+          Shuffle order
+        </Button>
       )}
 
       {hidden.length > 0 && (

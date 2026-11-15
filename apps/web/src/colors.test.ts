@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { boardFonts, buildPalette, dominantColors, normalizeHex } from './colors.ts'
+import { boardFonts, buildPalette, dominantColors, harmonies, normalizeHex, shuffledOrder } from './colors.ts'
 import type { BoardElement } from './store.ts'
 
 test('normalizeHex', () => {
@@ -35,4 +35,23 @@ test('dominantColors: most common first, skips transparent and near duplicates',
   const px = (r: number, g: number, b: number, a = 255, times = 1) => Array.from({ length: times }, () => [r, g, b, a]).flat()
   const data = new Uint8ClampedArray([...px(200, 30, 30, 255, 5), ...px(205, 32, 30, 255, 3), ...px(20, 20, 200, 255, 4), ...px(0, 255, 0, 0, 9)])
   expect(dominantColors(data, 3)).toEqual(['#c81e1e', '#1414c8'])
+})
+
+test('harmonies rotate the hue and keep saturation and lightness', () => {
+  const [comp, ana, tri] = harmonies('#ff0000')
+  expect(comp.colors).toEqual(['#00ffff'])
+  expect(ana.colors).toEqual(['#ff0080', '#ff8000'])
+  expect(tri.colors).toEqual(['#0000ff', '#00ff00'])
+  expect(harmonies('#808080')[0].colors).toEqual(['#808080'])
+  expect(harmonies('nope')).toEqual([])
+})
+
+test('shuffled order reorders the palette, pinned colors still first', () => {
+  const els = ['#111111', '#222222', '#333333'].map((hex) => ({ type: 'color', hex }) as BoardElement)
+  const order = shuffledOrder(['#111111', '#222222', '#333333'], () => 0) // fixed "random" for a deterministic order
+  const meta = Object.fromEntries(Object.entries(order).map(([hex, o]) => [hex, { order: o }]))
+  const shuffled = buildPalette(els, meta).colors.map((c) => c.hex)
+  expect(shuffled).toEqual(Object.entries(order).sort((a, b) => a[1] - b[1]).map(([hex]) => hex))
+  meta['#333333'] = { ...meta['#333333'], pinned: true } as { order: number }
+  expect(buildPalette(els, meta).colors[0].hex).toBe('#333333')
 })

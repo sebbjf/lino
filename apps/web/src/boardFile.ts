@@ -114,6 +114,7 @@ export function parseBoardFile(text: string) {
         ...(isStr(m.name, 60) && { name: m.name }),
         ...(typeof m.pinned === 'boolean' && { pinned: m.pinned }),
         ...(typeof m.hidden === 'boolean' && { hidden: m.hidden }),
+        ...(isNum(m.order) && { order: m.order }),
       }
     }
   return { elements, colorMeta, board: boardStyleOf(data.board), skipped: data.elements.length - elements.length }

@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ColorFields } from './ColorFields.tsx'
 import { LinkCard } from './LinkCard.tsx'
 import { drag } from './drag.ts'
+import { harmonies } from './colors.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
 import { justDropped, useBoard, type BoardElement } from './store.ts'
@@ -17,6 +18,35 @@ function label(el: BoardElement) {
   if (el.type === 'color') return `Color ${el.hex}`
   if (el.type === 'link') return `Link: ${el.title ?? new URL(el.url).hostname}`
   return LABELS[el.type]
+}
+
+/** Hue-rotated companions of a swatch; clicking one adds it as a new swatch beside this one. */
+function Harmonies({ el }: { el: Extract<BoardElement, { type: 'color' }> }) {
+  const add = (hex: string, i: number) =>
+    useBoard.getState().add({ type: 'color', hex, w: el.w, h: el.h }, { x: el.x + el.w * 1.5 + 16 + i * (el.w + 16), y: el.y + el.h / 2 })
+  return (
+    <div className="mt-3 flex flex-col gap-2 border-t pt-3">
+      <p className="text-xs font-medium text-muted-foreground">Harmonies: click to add</p>
+      {harmonies(el.hex).map((g) => (
+        <div key={g.name} className="flex items-center justify-between gap-2">
+          <span className="text-xs">{g.name}</span>
+          <span className="flex gap-1">
+            {g.colors.map((hex, i) => (
+              <button
+                key={hex + i}
+                type="button"
+                aria-label={`Add ${g.name.toLowerCase()} color ${hex}`}
+                title={hex}
+                className="size-6 rounded-full border"
+                style={{ background: hex }}
+                onClick={() => add(hex, i)}
+              />
+            ))}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 /** SVG duotone: grey by luma, then map black to shadows and white to highlights (same math as filterPixels). */
@@ -306,6 +336,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
             </PopoverTrigger>
             <PopoverContent side="right" align="start" className="w-60" finalFocus={root}>
               <ColorFields hex={el.hex} onChange={(hex) => update(el.id, { hex })} />
+              <Harmonies el={el} />
             </PopoverContent>
           </Popover>
         </div>

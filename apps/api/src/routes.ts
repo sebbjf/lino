@@ -67,7 +67,7 @@ const boardSchema = {
       additionalProperties: {
         type: 'object',
         additionalProperties: false,
-        properties: { name: { type: 'string', maxLength: 60 }, pinned: { type: 'boolean' }, hidden: { type: 'boolean' } },
+        properties: { name: { type: 'string', maxLength: 60 }, pinned: { type: 'boolean' }, hidden: { type: 'boolean' }, order: { type: 'number' } },
       },
     },
     board: {

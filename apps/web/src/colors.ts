@@ -1,6 +1,7 @@
 import type { BoardElement } from './store.ts'
 
-export type ColorMeta = { name?: string; pinned?: boolean; hidden?: boolean }
+/** `order` comes from shuffling; colors without one keep board order after those that have one. */
+export type ColorMeta = { name?: string; pinned?: boolean; hidden?: boolean; order?: number }
 export type PaletteColor = { hex: string; name: string; pinned: boolean }
 
 /** '#ABC', 'abc', '#aabbcc' → '#aabbcc'; anything else → null. */
@@ -25,9 +26,54 @@ export function buildPalette(elements: BoardElement[], meta: Record<string, Colo
   const all = [...hexes]
   const visible = all
     .filter((hex) => !meta[hex]?.hidden)
-    .sort((a, b) => Number(!!meta[b]?.pinned) - Number(!!meta[a]?.pinned))
+    .map((hex, i) => ({ hex, key: meta[hex]?.order ?? all.length + i }))
+    .sort((a, b) => Number(!!meta[b.hex]?.pinned) - Number(!!meta[a.hex]?.pinned) || a.key - b.key)
+    .map(({ hex }) => hex)
     .map((hex, i): PaletteColor => ({ hex, name: meta[hex]?.name || `color-${i + 1}`, pinned: !!meta[hex]?.pinned }))
   return { colors: visible, hidden: all.filter((hex) => meta[hex]?.hidden) }
+}
+
+/** Random order values for a set of colors (Fisher-Yates), to shuffle the palette. */
+export function shuffledOrder(hexes: string[], random = Math.random) {
+  const a = [...hexes]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return Object.fromEntries(a.map((hex, i) => [hex, i]))
+}
+
+function toHsl(hex: string): [number, number, number] {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  const d = max - min
+  if (!d) return [0, 0, l]
+  const s = d / (1 - Math.abs(2 * l - 1))
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+  return [(h * 60 + 360) % 360, s, l]
+}
+
+function fromHsl(h: number, s: number, l: number) {
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12
+    return l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1))
+  }
+  return '#' + [0, 8, 4].map((n) => toHex(Math.round(f(n) * 255))).join('')
+}
+
+/** Classic hue rotations of a color: complementary, analogous (±30°) and triad (±120°). */
+export function harmonies(hex: string) {
+  const h = normalizeHex(hex)
+  if (!h) return []
+  const [hue, s, l] = toHsl(h)
+  const turn = (deg: number) => fromHsl((hue + deg + 360) % 360, s, l)
+  return [
+    { name: 'Complementary', colors: [turn(180)] },
+    { name: 'Analogous', colors: [turn(-30), turn(30)] },
+    { name: 'Triad', colors: [turn(-120), turn(120)] },
+  ]
 }
 
 /** Fonts found on the board's links, deduped case-insensitively, in board order. */
