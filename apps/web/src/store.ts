@@ -15,6 +15,7 @@ export type StylePatch = ElementStyle & NoteStyle & ImageStyle
 /** Style fields that belong to one element type only. */
 const OWN: Partial<Record<BoardElement['type'], (keyof StylePatch)[]>> = { note: ['bg', 'size', 'font', 'family'], image: ['filter', 'duo'] }
 const TYPED = Object.values(OWN).flat()
+const STYLE_KEYS: (keyof StylePatch)[] = ['corner', 'shadow', 'opacity', ...TYPED]
 
 export type ExportPrefs = { prefix: string; format: 'hex' | 'oklch' }
 
@@ -67,6 +68,11 @@ type State = {
   update: (id: string, patch: Partial<BoardElement>) => void
   /** Applies a style patch to several elements. Call checkpoint() first to make it undoable. */
   restyle: (ids: string[], patch: StylePatch) => void
+  /** Style copied with copyStyle; unset fields are kept as undefined so pasting resets them. */
+  copiedStyle: StylePatch | null
+  copyStyle: (id: string) => void
+  /** Pastes the copied style as one undo step; fields another type can't have are skipped. */
+  pasteStyle: (ids: string[]) => void
   /** Moves several elements to new positions in one state change. */
   moveMany: (pos: Record<string, { x: number; y: number }>) => void
   remove: (ids: string[]) => void
@@ -121,6 +127,7 @@ export const useBoard = create<State>()((set, get) => ({
   guides: [],
   colorMeta: {},
   board: {},
+  copiedStyle: null,
   exportPrefs: { prefix: '', format: 'hex' },
   past: [],
   future: [],
@@ -163,6 +170,18 @@ export const useBoard = create<State>()((set, get) => ({
         return { ...e, ...keep } as BoardElement
       }),
     })),
+
+  copyStyle: (id) => {
+    const el = get().elements.find((e) => e.id === id) as (BoardElement & StylePatch) | undefined
+    if (el) set({ copiedStyle: Object.fromEntries(STYLE_KEYS.map((k) => [k, el[k]])) as StylePatch, notice: 'Style copied.' })
+  },
+
+  pasteStyle: (ids) => {
+    const { copiedStyle, checkpoint, restyle } = get()
+    if (!copiedStyle || !ids.length) return
+    checkpoint()
+    restyle(ids, copiedStyle)
+  },
 
   moveMany: (pos) => set((s) => ({ elements: s.elements.map((e) => (pos[e.id] ? { ...e, ...pos[e.id] } : e)) })),
 

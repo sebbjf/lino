@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { boardFonts, buildPalette } from './colors.ts'
 import { useBoard, type StylePatch } from './store.ts'
-import { CORNERS, FAMILY, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, loadFamily, DEFAULT_DUO, IMAGE_FILTERS } from './style.ts'
+import { CORNERS, FAMILY, MIN_OPACITY, NOTE_FONTS, NOTE_SIZES, PATTERNS, loadFamily, DEFAULT_DUO, IMAGE_FILTERS, type Pattern } from './style.ts'
 
 const NAMES: Record<string, string> = {
   square: 'Square',
@@ -107,6 +107,8 @@ function Swatches({ label, value, onChange, onStart }: { label: string; value: s
 
 function ElementPanel({ ids }: { ids: string[] }) {
   const elements = useBoard((s) => s.elements)
+  const copied = useBoard((s) => s.copiedStyle)
+  const { copyStyle, pasteStyle } = useBoard.getState()
   const { restyle, checkpoint } = useBoard.getState()
   const sel = elements.filter((e) => ids.includes(e.id))
   // controls show the most recently picked element's values
@@ -131,6 +133,14 @@ function ElementPanel({ ids }: { ids: string[] }) {
 
   return (
     <>
+      <div className="flex gap-1">
+        <Button variant="outline" size="sm" className="flex-1" aria-keyshortcuts="Control+Alt+C" title="Ctrl+Alt+C" onClick={() => copyStyle(cur.id)}>
+          Copy style
+        </Button>
+        <Button variant="outline" size="sm" className="flex-1" aria-keyshortcuts="Control+Alt+V" title="Ctrl+Alt+V" disabled={!copied} onClick={() => pasteStyle(ids)}>
+          Paste style
+        </Button>
+      </div>
       <Choice label="Corners" options={CORNERS} value={cur.corner ?? 'soft'} onChange={(corner) => apply({ corner })} />
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">Shadow</span>
@@ -201,11 +211,40 @@ function ElementPanel({ ids }: { ids: string[] }) {
   )
 }
 
+/** One-click board looks: a background and a pattern. */
+const THEMES: { name: string; bg?: string; pattern: Pattern }[] = [
+  { name: 'Default', pattern: 'dots' },
+  { name: 'Paper', bg: '#f4efe6', pattern: 'dots' },
+  { name: 'Kraft', bg: '#c9a87c', pattern: 'plain' },
+  { name: 'Night', bg: '#1c1f26', pattern: 'dots' },
+  { name: 'Blueprint', bg: '#1e3a5f', pattern: 'grid' },
+]
+
 function BoardPanel() {
   const board = useBoard((s) => s.board)
   const { setBoard } = useBoard.getState()
   return (
     <>
+      <Group label="Themes">
+        <div className="grid grid-cols-5 gap-1.5">
+          {THEMES.map((t) => {
+            const on = board.bg === t.bg && (board.pattern ?? 'dots') === t.pattern
+            return (
+              <button
+                key={t.name}
+                type="button"
+                aria-pressed={on}
+                title={t.name}
+                className={`flex flex-col items-center gap-1 rounded-lg p-1 text-[11px] ${on ? 'ring-2 ring-ring' : 'hover:bg-muted'}`}
+                onClick={() => setBoard({ bg: t.bg, pattern: t.pattern })}
+              >
+                <span aria-hidden className="size-8 rounded-md border" style={{ background: t.bg ?? 'var(--background)' }} />
+                {t.name}
+              </button>
+            )
+          })}
+        </div>
+      </Group>
       <Swatches label="Background" value={board.bg} onChange={(bg) => setBoard({ bg })} />
       <Choice label="Pattern" options={PATTERNS} value={board.pattern ?? 'dots'} onChange={(pattern) => setBoard({ pattern })} />
     </>

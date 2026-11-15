@@ -86,3 +86,16 @@ test('restyle keeps note-only fields off other elements and keeps unmentioned on
   board().undo()
   expect(board().elements[0]).not.toHaveProperty('corner')
 })
+
+test('copy and paste style resets what the source does not set', () => {
+  board().add({ type: 'note', text: 'a', w: 10, h: 10 }, at)
+  board().add({ type: 'note', text: 'b', w: 10, h: 10 }, at)
+  const [a, b] = ids()
+  board().restyle([a], { bg: '#fff3b0', corner: 'round' })
+  board().restyle([b], { opacity: 0.5, size: 'lg' })
+  board().copyStyle(a)
+  board().pasteStyle([b])
+  expect(board().elements[1]).toMatchObject({ bg: '#fff3b0', corner: 'round', opacity: undefined, size: undefined })
+  board().undo()
+  expect(board().elements[1]).toMatchObject({ opacity: 0.5, size: 'lg' })
+})

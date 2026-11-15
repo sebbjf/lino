@@ -151,6 +151,14 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       e.preventDefault()
       return
     }
+    // Ctrl+Alt+C / Ctrl+Alt+V copy and paste the look (by key position: Alt changes e.key on some layouts)
+    if (mod && e.altKey && (e.code === 'KeyC' || e.code === 'KeyV')) {
+      const { copyStyle, pasteStyle } = useBoard.getState()
+      if (e.code === 'KeyC') copyStyle(el.id)
+      else pasteStyle(group())
+      e.preventDefault()
+      return
+    }
     switch (e.key) {
       case 'Delete':
       case 'Backspace':
