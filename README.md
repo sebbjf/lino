@@ -4,6 +4,32 @@ A moodboard that turns inspiration into a design starting point. Drop images, li
 
 Product spec: [PRD.md](PRD.md). Where things live in the code: [MAP.md](MAP.md).
 
+Live: [lino-nine.vercel.app](https://lino-nine.vercel.app) (API at [lino-api-seven.vercel.app](https://lino-api-seven.vercel.app/health)).
+
+## The problem
+
+Pinterest, Are.na and Milanote are good at collecting inspiration. Getting from "I have 30 references" to "I have a palette and fonts for my project" is still done by hand: eyedropping colors, digging through dev tools for font names, typing hex codes into a config. Lino does that step. Paste a link and it reads the page's cover, fonts and colors; the palette panel gathers every color on the board, lets you rename, pin or hide them, and copies the result as CSS variables or a Tailwind theme.
+
+## Decisions
+
+- **No accounts.** The board autosaves to IndexedDB and never leaves the browser unless you share it. Sharing uploads an anonymous, fixed copy. That gives no sign-up friction and no personal data to protect.
+- **A hand-written API** (Fastify) instead of a managed backend, so every part can be explained. It has two jobs: reading links and storing shared boards.
+- **Elements are DOM nodes with CSS transforms, not a `<canvas>`.** They are easier to style and they get focus, keyboard and screen reader support for free. PNG export draws the board onto a canvas separately, so it doesn't depend on screenshots.
+- **Reading links is a security boundary.** The server fetches URLs that users type, so it blocks private addresses, rechecks every redirect, pins the DNS answer (against rebinding) and caps time, size and rate. If extraction fails, the card is still created with whatever was found, and the card says what is missing.
+- **Fonts come only from a page's CSS.** Identifying typefaces from images is a hard problem and was left out. The UI says the font list may be incomplete.
+- **Shared images live inside the board's Postgres row** (data URLs in `jsonb`), not in object storage (R2). That means one store and no upload flow. The 4 MB cap per board keeps it reasonable.
+- **Deployed on Vercel + Neon, not Render.** Render's free tier sleeps and its free Postgres expires. See [ADR 0001](docs/adr/0001-deploy-on-vercel-and-neon.md).
+- **PDF export was cut** in favor of PNG, as the PRD planned if time ran short.
+
+## Pending improvements
+
+- **PDF export** of the board.
+- **Shared-board limits.** They are 90-day expiry, 4 MB and 20 shares per hour per IP, but the rate limit is counted in memory per function instance. A shared store (Upstash) or firewall rules would make it real. There is no take-down flow for a link yet.
+- **New elements land in the center of the view,** on top of each other. Placing them in free space would save a drag.
+- **Fonts loaded by scripts** (or only named in JS) are missed by link reading.
+- **Phase 2 candidates:** real-time collaboration, a browser extension for clipping, optional accounts to keep boards across devices, more element types (freehand drawing, richer link previews).
+- **Open questions:** final name and domain, license.
+
 ## Stack
 
 pnpm workspace with two apps:
