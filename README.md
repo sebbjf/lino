@@ -14,7 +14,7 @@ pnpm test
 - `apps/web`: React + Vite + Tailwind + Zustand. Landing page at `/`, the board at `/board/` (two Vite pages). The board lives in IndexedDB, no account.
 - `apps/api`: Fastify, run directly as TypeScript by Node 24 (type stripping, no build step). `GET /read?url=` reads a page's title, cover, fonts and colors for link cards. It only fetches public http(s) addresses on ports 80/443 (checked again on every redirect and pinned at DNS lookup, so rebinding can't reach internal hosts), with an 8 s budget, size caps and 30 reads per minute per IP.
 
-Env: `VITE_API_URL` (web, defaults to `/api`, proxied to :3000 in dev), `CORS_ORIGIN` and `TRUST_PROXY=1` (api, behind a proxy such as Render).
+Env: see `apps/web/.env.example` and `apps/api/.env.example`. `VITE_API_URL` (web, defaults to `/api`, proxied to :3000 in dev), `CORS_ORIGIN` and `TRUST_PROXY=1` (api, behind a proxy such as Render).
 
 ## Board shortcuts
 
