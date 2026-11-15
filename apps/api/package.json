@@ -6,7 +6,11 @@
     "dev": "node --env-file-if-exists=.env --watch src/server.ts",
     "start": "node src/server.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --test"
+    "test": "node --test",
+    "vercel-build": "node src/migrate.ts"
+  },
+  "engines": {
+    "node": "24.x"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",

@@ -61,7 +61,7 @@ test('rejects content that would be unsafe to render', async () => {
 
 test('too large board is refused', async () => {
   const app = buildApp({ boards: memoryStore() })
-  const src = `data:image/webp;base64,${'A'.repeat(5.2 * 1024 * 1024)}`
+  const src = `data:image/webp;base64,${'A'.repeat(4.1 * 1024 * 1024)}`
   const res = await share(app, { elements: [{ id: 'i', type: 'image', src, x: 0, y: 0, w: 10, h: 10, rotation: 0 }] })
   assert.equal(res.statusCode, 413)
 })

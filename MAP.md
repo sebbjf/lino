@@ -77,10 +77,11 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 
 | File | What it does |
 | --- | --- |
-| `src/server.ts` | Entry: connects Postgres if `DATABASE_URL` (runs migrations), builds the app and listens (`PORT`, `TRUST_PROXY`). |
+| `src/server.ts` | Entry (also Vercel's Fastify entry): connects Postgres if `DATABASE_URL` (migrates on start except on Vercel), builds the app and listens (`PORT`, `TRUST_PROXY`). |
 | `src/app.ts` | `buildApp()`: `GET /health`, `GET /read?url=`, `POST /boards`, `GET /boards/:id`, CORS + preflight, in-memory rate limits per IP. |
+| `src/migrate.ts` | Applies migrations; run by `vercel-build` at deploy (uses `DATABASE_URL_UNPOOLED` when set). |
 | `src/schema.ts` | Drizzle table `boards` (id, jsonb snapshot, bytes, created/expires). |
-| `src/boards.ts` | `BoardStore` type and `pgBoards(url)`: migrate, insert (sweeps expired), get unexpired. |
+| `src/boards.ts` | `BoardStore` type, `migrateDb(url)`, `pgBoards(url)`: insert (sweeps expired), get unexpired. |
 | `drizzle/` | Generated SQL migrations (`drizzle-kit generate`). |
 | `drizzle.config.ts` | drizzle-kit config. |
 | `src/extract.ts` | `readLink()`: fetches the page, parses title/cover from HTML, reads fonts and colors from stylesheets, returns cover as a data URL. |
@@ -93,7 +94,8 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 
 | Path | What |
 | --- | --- |
-| `README.md` | Overview, how to run, shortcuts. |
+| `README.md` | Overview, how to run, deploy steps, shortcuts. |
+| `docs/adr/` | Architecture decisions (0001: Vercel + Neon deploy). |
 | `PRD.md` | Product spec and v1 scope. |
 | `CLAUDE.md`, `docs/agents/` | Instructions for coding agents (issue tracker, labels, domain docs). |
 | `.scratch/<feature>/` | Local markdown issues. |

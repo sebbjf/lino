@@ -15,11 +15,23 @@ export type BoardStore = {
 /** 12 url-safe chars, 72 random bits: unguessable, so the link is the only key. */
 export const newId = () => randomBytes(9).toString('base64url')
 
-export async function pgBoards(url: string): Promise<BoardStore & { close: () => Promise<void> }> {
-  // onnotice: migrations re-run "already exists, skipping" notices on every start
-  const sql = postgres(url, { max: 5, onnotice: () => {} })
+// onnotice: migrations re-run "already exists, skipping" notices on every start.
+// prepare: false so it also works through a transaction pooler (Neon's pooled URL).
+const connect = (url: string, max: number) => postgres(url, { max, prepare: false, onnotice: () => {} })
+
+/** Applies pending migrations from apps/api/drizzle. Idempotent. */
+export async function migrateDb(url: string) {
+  const sql = connect(url, 1)
+  try {
+    await migrate(drizzle(sql), { migrationsFolder: fileURLToPath(new URL('../drizzle', import.meta.url)) })
+  } finally {
+    await sql.end()
+  }
+}
+
+export function pgBoards(url: string): BoardStore & { close: () => Promise<void> } {
+  const sql = connect(url, 5)
   const db = drizzle(sql)
-  await migrate(db, { migrationsFolder: fileURLToPath(new URL('../drizzle', import.meta.url)) })
   return {
     async create(data, bytes, expiresAt) {
       const id = newId()

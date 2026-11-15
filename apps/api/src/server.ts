@@ -1,8 +1,10 @@
 import { buildApp } from './app.ts'
-import { pgBoards } from './boards.ts'
+import { migrateDb, pgBoards } from './boards.ts'
 
-// without a database the API still reads links; sharing answers 503
-const boards = process.env.DATABASE_URL ? await pgBoards(process.env.DATABASE_URL) : undefined
+// Locally migrate on start; on Vercel (VERCEL is set) migrations ran at build. Without a database the API still reads links; sharing answers 503.
+const url = process.env.DATABASE_URL
+if (url && !process.env.VERCEL) await migrateDb(url)
+const boards = url ? pgBoards(url) : undefined
 const app = buildApp({ logger: true, trustProxy: process.env.TRUST_PROXY === '1', boards })
 if (!boards) app.log.warn('DATABASE_URL is not set: sharing is off')
 

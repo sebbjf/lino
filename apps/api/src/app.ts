@@ -5,7 +5,8 @@ import { BlockedError, type Fetcher } from './fetch.ts'
 
 type Opts = FastifyServerOptions & { fetcher?: Fetcher; readsPerMinute?: number; sharesPerHour?: number; boards?: BoardStore }
 
-export const MAX_BOARD_BYTES = 5 * 1024 * 1024
+// Vercel functions refuse request bodies over 4.5 MB, so stay under it.
+export const MAX_BOARD_BYTES = 4 * 1024 * 1024
 const SHARE_DAYS = 90
 
 // What a shared board may contain. Strict on purpose: another person's browser renders it.
@@ -79,7 +80,7 @@ function rateLimit(max: number, windowMs: number) {
 
 export function buildApp({ fetcher, readsPerMinute = 30, sharesPerHour = 20, boards, ...opts }: Opts = {}) {
   // base64 images are counted after JSON parsing too; this is the transport cap
-  const app = Fastify({ bodyLimit: MAX_BOARD_BYTES + 512 * 1024, ...opts })
+  const app = Fastify({ bodyLimit: MAX_BOARD_BYTES + 256 * 1024, ...opts })
 
   // The web app lives on another origin in production.
   const origin = process.env.CORS_ORIGIN
@@ -132,7 +133,7 @@ export function buildApp({ fetcher, readsPerMinute = 30, sharesPerHour = 20, boa
   app.post<{ Body: unknown }>('/boards', { schema: { body: boardSchema } }, async (req, reply) => {
     if (!boards) return reply.code(503).send({ error: 'Sharing is not available right now.' })
     const bytes = Buffer.byteLength(JSON.stringify(req.body))
-    if (bytes > MAX_BOARD_BYTES) return reply.code(413).send({ error: 'This board is too large to share (limit 5 MB).' })
+    if (bytes > MAX_BOARD_BYTES) return reply.code(413).send({ error: `This board is too large to share (limit ${MAX_BOARD_BYTES / 1024 / 1024} MB).` })
     if (shareLimited(req.ip)) return reply.code(429).send({ error: 'Too many shares. Try again later.' })
     const expiresAt = new Date(Date.now() + SHARE_DAYS * 86_400_000)
     const id = await boards.create(req.body, bytes, expiresAt)

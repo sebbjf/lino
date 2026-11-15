@@ -46,12 +46,25 @@ Copy the examples to `.env` (both are optional in dev):
 
 - `GET /health` → `{ ok: true }`
 - `GET /read?url=` → `{ url, title, image, fonts, colors, missing }` (`image` is a data URL) for a public page.
-- `POST /boards` with `{ elements, colorMeta }` → `201 { id, expiresAt }`. Stores a fixed snapshot for 90 days. Max 5 MB, 300 elements, 20 shares per hour per IP.
+- `POST /boards` with `{ elements, colorMeta }` → `201 { id, expiresAt }`. Stores a fixed snapshot for 90 days. Max 4 MB, 300 elements, 20 shares per hour per IP.
 - `GET /boards/:id` → the snapshot, or 404 when unknown or expired.
 
 Shared boards are rendered in other people's browsers, so the body schema is strict: images must be `data:image/…` URLs, links must be http(s), colors must be hex, unknown fields are dropped. The 12-character id is random (72 bits) and is the only key.
 
-`/read` only fetches public http(s) addresses on ports 80/443. The address is checked again on every redirect and pinned at DNS lookup, so DNS rebinding can't reach internal hosts. It has an 8 s budget, size caps and a limit of 30 reads per minute per IP. Deploy with `apps/api/Dockerfile`.
+`/read` only fetches public http(s) addresses on ports 80/443. The address is checked again on every redirect and pinned at DNS lookup, so DNS rebinding can't reach internal hosts. It has an 8 s budget, size caps and a limit of 30 reads per minute per IP.
+
+## Deploy (Vercel + Neon, free)
+
+Why this setup: [docs/adr/0001-deploy-on-vercel-and-neon.md](docs/adr/0001-deploy-on-vercel-and-neon.md). Both apps deploy from the same GitHub repo as two Vercel projects.
+
+1. Push the repo to GitHub.
+2. **API project.** On vercel.com/new import the repo, set **Root Directory** to `apps/api` (Vercel detects Fastify). Deploy once.
+3. **Database.** In the API project open **Storage → Create → Neon** and connect it. This adds `DATABASE_URL` and `DATABASE_URL_UNPOOLED`.
+4. **Web project.** Import the same repo again with **Root Directory** `apps/web` (Vite is detected). Add `VITE_API_URL` = the API's URL (e.g. `https://lino-api.vercel.app`, no trailing slash). Deploy.
+5. Back in the API project add `CORS_ORIGIN` = the web's URL (e.g. `https://lino.vercel.app`) and `TRUST_PROXY=1`, then **Redeploy**. The build (`vercel-build`) applies migrations.
+6. Check `GET <api>/health` → `{ "ok": true }`, then share a board from the web.
+
+Every push to `main` redeploys both; other branches get preview URLs. The API also runs anywhere with Docker (`apps/api/Dockerfile`) given `DATABASE_URL` and one `node src/migrate.ts`.
 
 ## Board shortcuts
 
