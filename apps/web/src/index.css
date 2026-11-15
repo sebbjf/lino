@@ -165,4 +165,10 @@
 :nth-child(5) > .card-drop { animation-delay: 550ms; }
 @media (prefers-reduced-motion: reduce) {
   .card-drop { animation: none; }
+  /* covers popover/tooltip enter-exit animations from tw-animate-css and any transition we forgot */
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

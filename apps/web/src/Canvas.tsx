@@ -10,6 +10,7 @@ export function Canvas() {
   const elements = useBoard((s) => s.elements)
   const selectedId = useBoard((s) => s.selectedId)
   const view = useBoard((s) => s.view)
+  const readOnly = useBoard((s) => s.readOnly)
   const ref = useRef<HTMLDivElement>(null)
 
   // wheel pans, Ctrl/Cmd + wheel (and trackpad pinch) zooms; needs a non-passive listener
@@ -53,6 +54,9 @@ export function Canvas() {
   return (
     <div
       ref={ref}
+      role="region"
+      aria-label="Board"
+      aria-describedby="board-help"
       className="fixed inset-0 cursor-grab touch-none select-none overflow-hidden active:cursor-grabbing"
       style={{
         backgroundImage: 'radial-gradient(var(--color-dot) 1px, transparent 1px)',
@@ -63,6 +67,11 @@ export function Canvas() {
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
     >
+      <p id="board-help" className="sr-only">
+        {readOnly
+          ? 'Tab through the elements. Enter opens a link.'
+          : 'Tab through the elements. Arrows move the selected one, Alt+arrows resize it, R rotates it, Enter edits it, Delete removes it.'}
+      </p>
       <div
         className="absolute left-0 top-0 origin-top-left"
         style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}

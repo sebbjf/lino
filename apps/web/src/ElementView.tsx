@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ColorFields } from './ColorFields.tsx'
 import { LinkCard } from './LinkCard.tsx'
 import { drag } from './drag.ts'
-import { angleTo, resize } from './geometry.ts'
+import { angleTo, resize, rotateVec } from './geometry.ts'
 import { useBoard, type BoardElement } from './store.ts'
 
 const LABELS = { image: 'Image', note: 'Note', color: 'Color', link: 'Link' }
@@ -15,6 +15,16 @@ function label(el: BoardElement) {
 }
 
 type Props = { el: BoardElement; selected: boolean; zoom: number }
+
+/** Tabbing to an element off screen moves the view to it; the canvas never scrolls by itself. */
+function panIntoView(el: BoardElement) {
+  const { view, setView } = useBoard.getState()
+  const left = view.x + el.x * view.zoom
+  const top = view.y + el.y * view.zoom
+  const inside = left >= 0 && top >= 0 && left + el.w * view.zoom <= innerWidth && top + el.h * view.zoom <= innerHeight
+  if (inside) return
+  setView({ ...view, x: innerWidth / 2 - (el.x + el.w / 2) * view.zoom, y: innerHeight / 2 - (el.y + el.h / 2) * view.zoom })
+}
 
 export const ElementView = memo(function ElementView({ el, selected, zoom }: Props) {
   const { update, select, remove, duplicate, reorder, checkpoint } = useBoard.getState()
@@ -72,7 +82,16 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
     if (e.target !== e.currentTarget || (readOnly && e.key !== 'Enter' && e.key !== 'Escape')) return
     const mod = e.metaKey || e.ctrlKey
     const step = e.shiftKey ? 10 : 1
-    if (e.key.startsWith('Arrow')) checkpoint()
+    if (e.key.startsWith('Arrow') || e.key.toLowerCase() === 'r') checkpoint()
+    // Alt+arrows resize from the bottom-right corner, the keyboard twin of the resize handle
+    if (e.altKey && e.key.startsWith('Arrow')) {
+      const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key]
+      if (!d) return
+      const world = rotateVec(d[0], d[1], el.rotation)
+      update(el.id, resize(el, world.x, world.y, el.type === 'image'))
+      e.preventDefault()
+      return
+    }
     switch (e.key) {
       case 'Delete':
       case 'Backspace':
@@ -90,6 +109,14 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
       case 'ArrowDown':
         update(el.id, { y: el.y + step })
         break
+      case 'r':
+      case 'R': {
+        if (mod) return // Ctrl+R stays reload
+        // R rotates 15° clockwise, Shift+R counter-clockwise
+        const deg = Math.round((el.rotation + (e.shiftKey ? -15 : 15)) / 15) * 15
+        update(el.id, { rotation: ((((deg + 180) % 360) + 360) % 360) - 180 })
+        break
+      }
       case ']':
         reorder(el.id, mod ? 'front' : 'forward')
         break
@@ -137,7 +164,11 @@ export const ElementView = memo(function ElementView({ el, selected, zoom }: Pro
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => e.currentTarget.contains(e.target as Node) && open()}
       onKeyDown={onKeyDown}
-      onFocus={() => select(el.id)}
+      onFocus={(e) => {
+        select(el.id)
+        // keyboard focus only: a click on a half-visible element must not jump the view
+        if (e.target === e.currentTarget && e.currentTarget.matches(':focus-visible')) panIntoView(el)
+      }}
     >
       {el.type === 'image' && (
         <img src={el.src} alt="" draggable={false} className="pointer-events-none size-full rounded-2xl object-cover shadow-soft" />

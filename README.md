@@ -59,15 +59,25 @@ Shared boards are rendered in other people's browsers, so the body schema is str
 | --- | --- |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y` |
 | Move selected | Arrows (`Shift` ×10) |
+| Resize selected | `Alt` + arrows (`Shift` ×10) |
+| Rotate selected 15° | `R` / `Shift+R` |
 | Delete / duplicate | `Delete` / `Ctrl+D` |
 | Layer down / up | `[` / `]` (`Ctrl` for back / front) |
 | Edit note, open color picker, open link | `Enter` (or double-click) |
 | Pan / zoom | Wheel or drag the background / `Ctrl` + wheel |
 | Resize with aspect lock toggled | `Shift` while resizing |
 | Snap rotation to 15° | `Shift` while rotating |
+| Move between toolbar buttons | `←` / `→`, `Home` / `End` |
 
 Paste or drop images, links (they become cards with cover, title, fonts and colors) or text (becomes a note). The palette button opens the board palette: rename, pin or hide colors, see the fonts found, and copy everything as CSS or Tailwind.
 
 **Download PNG** renders the whole board (not just what is on screen) at 2× with the current theme. It is drawn on a canvas, not screenshotted, so selection outlines never show up.
 
 **Share** uploads a copy of the board and gives a read-only link (`/board/?s=<id>`). Later edits do not change it. The shared view can pan, zoom, open links and copy the palette, and never touches the viewer's own board.
+
+## Accessibility
+
+- Every board action has a keyboard path: Tab reaches each element (the view pans to it), and moving, resizing, rotating, layering, editing and deleting all have keys (above).
+- The canvas is a labelled region whose description lists those keys for screen readers. Elements are labelled groups ("Color #aabbcc", "Link: title"). Notices use a polite live region.
+- Text contrast is at least 5.2:1 in the theme (muted text included).
+- `prefers-reduced-motion` turns off the landing animation, the demo loop and every transition/animation in the board.

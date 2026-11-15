@@ -14,7 +14,7 @@ import {
   UndoIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
-import { useRef } from 'react'
+import { useRef, type KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { Separator } from '@/components/ui/separator'
@@ -55,6 +55,18 @@ function Tool({ label, icon, onClick, shortcut, disabled, pressed }: ToolProps) 
   )
 }
 
+/** Left/Right (and Home/End) move between toolbar buttons, as the toolbar role promises. */
+function moveFocus(e: KeyboardEvent<HTMLDivElement>) {
+  const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End']
+  if (!keys.includes(e.key)) return
+  const items = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]
+  const i = items.indexOf(document.activeElement as HTMLButtonElement)
+  if (i < 0) return
+  const next = { ArrowLeft: i - 1, ArrowRight: i + 1, Home: 0, End: items.length - 1 }[e.key]!
+  items[(next + items.length) % items.length].focus()
+  e.preventDefault()
+}
+
 const Divider = () => <Separator orientation="vertical" className="mx-1 h-5 self-center" />
 
 export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean; onTogglePalette: () => void }) {
@@ -76,6 +88,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
     <div
       role="toolbar"
       aria-label="Board tools"
+      onKeyDown={moveFocus}
       className="fixed bottom-6 left-1/2 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-full border bg-card/90 p-1.5 [scrollbar-width:none] shadow-soft backdrop-blur"
     >
       {!readOnly && (
