@@ -65,8 +65,51 @@ export function Canvas() {
       return
     }
     select(null)
-    drag(e, (dx, dy) => setView({ ...v, x: v.x + dx, y: v.y + dy }))
+    // incremental, from the live view, so a pinch in the middle of a pan doesn't make the view jump back
+    let last = [0, 0]
+    drag(e, (dx, dy) => {
+      if (touches.current.size < 2) {
+        const cur = useBoard.getState().view
+        setView({ ...cur, x: cur.x + dx - last[0], y: cur.y + dy - last[1] })
+      }
+      last = [dx, dy]
+    })
   }
+
+  // touch: two fingers pinch-zoom around their midpoint and pan with it
+  const touches = useRef(new Map<number, { x: number; y: number }>())
+  const onTouchDownCapture = (e: PointerEvent) => {
+    if (e.pointerType !== 'touch') return
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (touches.current.size > 1) e.stopPropagation() // the second finger never drags an element
+  }
+  useEffect(() => {
+    const node = ref.current!
+    const pts = touches.current
+    const move = (e: globalThis.PointerEvent) => {
+      const p = pts.get(e.pointerId)
+      if (!p) return
+      if (pts.size === 2) {
+        const [a, b] = [...pts.values()]
+        const before = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) }
+        pts.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        const [c, d] = [...pts.values()]
+        const after = { x: (c.x + d.x) / 2, y: (c.y + d.y) / 2, d: Math.hypot(c.x - d.x, c.y - d.y) }
+        const { view: v, setView } = useBoard.getState()
+        const z = zoomAt(v, before.x, before.y, v.zoom * (before.d ? after.d / before.d : 1))
+        setView({ ...z, x: z.x + after.x - before.x, y: z.y + after.y - before.y })
+      } else pts.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    }
+    const up = (e: globalThis.PointerEvent) => pts.delete(e.pointerId)
+    node.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    return () => {
+      node.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+    }
+  }, [])
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault()
@@ -103,6 +146,7 @@ export function Canvas() {
         backgroundSize: `${grid}px ${grid}px`,
         backgroundPosition: `${view.x}px ${view.y}px`,
       }}
+      onPointerDownCapture={onTouchDownCapture}
       onPointerDown={onPointerDown}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}

@@ -240,7 +240,8 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     e.preventDefault()
   }
 
-  const handle = 12 / zoom
+  // bigger grab targets for fingers
+  const handle = (matchMedia('(pointer: coarse)').matches ? 24 : 12) / zoom
 
   return (
     <div
