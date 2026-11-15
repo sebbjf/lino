@@ -224,7 +224,6 @@ function DemoBoard() {
           <div className="mt-4 overflow-hidden rounded-xl bg-foreground text-background">
             <div className="flex justify-between border-b border-background/10 px-3 py-1.5 text-[11px] text-background/60">
               <span>CSS variables</span>
-              <span>soon</span>
             </div>
             <pre className="overflow-hidden p-3 font-mono text-[10.5px] leading-relaxed">
               {codeLines.map((line, i) => (
@@ -280,13 +279,13 @@ function Logo() {
   )
 }
 
-const promises = ['account', 'tracking', 'uploads', 'ads']
+const promises = ['account', 'tracking', 'cookies', 'ads']
 
 const faqs = [
-  ['Where are my boards saved?', "In your browser's storage on this device. Nothing you pin, images included, is sent to a server."],
-  ['What happens if I clear my browser data?', 'Your boards are deleted with it. Share links and exporting a board as an image are planned, so you can keep a copy.'],
-  ['Can I open a board on another device?', 'Not yet. A board lives in the browser where you made it. Read-only share links are planned.'],
-  ['When can I export the palette?', 'Export to CSS variables and Tailwind v4 ships in the next release, together with reading fonts and colors from links.'],
+  ['Where are my boards saved?', "In your browser's storage on this device. Nothing you pin, images included, is sent to a server unless you share the board."],
+  ['What happens if I clear my browser data?', 'Your board is deleted with it. Export it first as a .lino.json file to keep a copy you can import later, or download it as a PNG.'],
+  ['Can I open a board on another device?', 'Export the board as a .lino.json file and import it there. Or share a read-only link: it is a fixed copy that lasts 90 days.'],
+  ['How do I use the palette in my project?', 'Open the palette and copy it as CSS variables or a Tailwind v4 theme, in hex or OKLCH. Fonts read from your links come along.'],
   ['Do I need an account?', 'No. Open the board and start pinning.'],
 ]
 
@@ -314,7 +313,7 @@ function Landing() {
               <em>on one board</em>.
             </h1>
             <p className="mx-auto mt-8 max-w-md text-base leading-8 text-muted-foreground">
-              Pin <Tag>images</Tag>, <Tag>notes</Tag> and <Tag>colors</Tag>, and keep the colors you like in a palette.
+              Pin <Tag>images</Tag>, <Tag>links</Tag>, <Tag>notes</Tag> and <Tag>colors</Tag>, and keep the colors you like in a palette.
             </p>
             <div className="mt-10 flex flex-col items-center gap-4">
               <a
@@ -357,10 +356,10 @@ function Landing() {
               That board, as tokens.
             </h2>
             <p className={lead}>
-              Rename and pin the colors you keep, and Lino turns them into tokens you can paste into your project. Fonts will
-              come from the pages you link.
+              Rename and pin the colors you keep, and Lino turns them into tokens you can paste into your project. Paste a link
+              and its fonts and colors join the board too.
             </p>
-            <p className="mt-6 font-mono text-xs text-muted-foreground">Export and link reading ship in the next release.</p>
+            <p className="mt-6 font-mono text-xs text-muted-foreground">Hex or OKLCH, with your own variable prefix.</p>
           </div>
           <Output />
         </div>
@@ -373,8 +372,8 @@ function Landing() {
             Your boards stay with you.
           </h2>
           <p className={`${lead} text-background/60`}>
-            Everything you pin is saved in your browser, on this device. There is no account to make, and nothing you add is
-            sent to a server.
+            Everything you pin is saved in your browser, on this device. There is no account to make, and nothing you add
+            leaves it unless you share a board.
           </p>
           <ul className="mt-16 grid gap-x-16 sm:grid-cols-2">
             {promises.map((w) => (
