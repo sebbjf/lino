@@ -41,6 +41,22 @@ More feature ideas, noted on 2026-11-16. None is implemented and none repeats th
 - **Caption** attached to an image, moving with it.
 - **Color-blindness simulation** of the board and the palette.
 
+## Settings menu
+
+There is no place for app-wide preferences today: everything is per board (`board`, `exportPrefs`) or implicit. One menu, opened from the top bar next to the boards menu, saved in its own IndexedDB record (not inside a board, so it never travels with a shared board or a `.lino.json`).
+
+What it could hold, in the order it earns its place:
+
+- **Appearance**: light, dark or system theme for the app chrome (the board keeps its own background).
+- **Defaults for new boards**: background and pattern, messy mode on or off, export format and variable prefix.
+- **Editing**: snap and alignment guides on or off, how many colors an image contributes to the palette (0 turns it off).
+- **Motion**: reduce animations, on top of the system `prefers-reduced-motion`.
+- **Language**, once there are translations (`community`).
+- **Your data**: storage used, back up and restore all boards, delete everything. This is the natural home for "Back up all boards" above.
+- **About**: version, shortcuts cheat sheet, links to docs, privacy and the repository.
+
+Keep it small: a setting only goes in when there is a real choice behind it, never to avoid deciding a default.
+
 ## Notes
 
 - Tone scales, roles, dark variant and type pairing overlap with `design-token-export`; do them there.
