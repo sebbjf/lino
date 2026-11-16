@@ -13,14 +13,14 @@ export function normalizeHex(value: string): string | null {
 }
 
 /**
- * The board palette: every swatch and link colour plus pinned colours, minus removed ones, pinned first.
+ * The board palette: every swatch, link and image colour plus pinned colours, minus removed ones, pinned first.
  * Unnamed colours get `color-N` in palette order.
  */
 export function buildPalette(elements: BoardElement[], meta: Record<string, ColorMeta>) {
   const hexes = new Set<string>()
   for (const el of elements) {
     if (el.type === 'color') hexes.add(normalizeHex(el.hex) ?? el.hex)
-    if (el.type === 'link') for (const hex of el.colors) hexes.add(hex)
+    if (el.type === 'link' || el.type === 'image') for (const hex of el.colors ?? []) hexes.add(hex)
   }
   for (const [hex, m] of Object.entries(meta)) if (m.pinned) hexes.add(hex)
   const all = [...hexes]

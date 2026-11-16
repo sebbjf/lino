@@ -24,6 +24,11 @@ test('buildPalette dedupes, pins first, keeps pinned without swatch, hides remov
   expect(hidden).toEqual(['#111111'])
 })
 
+test('buildPalette reads image colours; images saved before they had any add none', () => {
+  const img = (colors?: string[]) => ({ id: 'i', type: 'image', src: '', colors, x: 0, y: 0, w: 1, h: 1, rotation: 0 }) as BoardElement
+  expect(buildPalette([img(['#abcdef', '#123456']), img()], {}).colors.map((c) => c.hex)).toEqual(['#abcdef', '#123456'])
+})
+
 test('buildPalette and boardFonts read link elements', () => {
   const link = (colors: string[], fonts: string[]) => ({ id: 'l', type: 'link', colors, fonts, x: 0, y: 0, w: 1, h: 1, rotation: 0 }) as unknown as BoardElement
   const els = [swatch('#111111'), link(['#111111', '#abcdef'], ['Inter']), link([], ['inter', 'Fraunces'])]

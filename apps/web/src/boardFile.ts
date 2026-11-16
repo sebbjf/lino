@@ -87,7 +87,7 @@ function toElement(raw: unknown): BoardElement | null {
   }
   switch (e.type) {
     case 'image':
-      return isStr(e.src, Infinity) && DATA_IMAGE.test(e.src) ? { ...box, type: 'image', src: e.src, ...imageStyleOf(e) } : null
+      return isStr(e.src, Infinity) && DATA_IMAGE.test(e.src) ? { ...box, type: 'image', src: e.src, colors: strList(e.colors, (s) => HEX.test(s)), ...imageStyleOf(e) } : null
     case 'note':
       return isStr(e.text) ? { ...box, type: 'note', text: e.text, ...noteStyleOf(e) } : null
     case 'color':

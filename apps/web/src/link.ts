@@ -1,4 +1,3 @@
-import { dominantColors } from './colors.ts'
 import { readImage } from './image.ts'
 import { useBoard, type LinkInfo } from './store.ts'
 
@@ -13,16 +12,6 @@ export function asUrl(text: string): string | null {
   } catch {
     return null
   }
-}
-
-/** Samples a downscaled copy of an image for its main colours. */
-async function coverColors(src: string) {
-  const bmp = await createImageBitmap(await (await fetch(src)).blob())
-  const canvas = new OffscreenCanvas(24, 24)
-  const ctx = canvas.getContext('2d')!
-  ctx.drawImage(bmp, 0, 0, 24, 24)
-  bmp.close()
-  return dominantColors(ctx.getImageData(0, 0, 24, 24).data, 3)
 }
 
 /** Adds a loading link card at once, then fills it with what the API could read. The card stays if reading fails. */
@@ -45,7 +34,7 @@ export async function addLink(url: string, at?: { x: number; y: number }) {
         const img = await readImage(new File([blob], 'cover', { type: blob.type }))
         image = img.src
         h = 140 + Math.min(200, Math.round((W * img.h) / img.w))
-        cover = await coverColors(img.src)
+        cover = img.colors
       } catch {
         // an unreadable cover is the same as no cover
       }

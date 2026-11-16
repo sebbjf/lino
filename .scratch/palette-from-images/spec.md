@@ -15,3 +15,7 @@ Extract the dominant colors of each image when it is added and feed them into th
 - Do it in a canvas on the client; no server.
 - Decide how many colors per image and how to avoid flooding the palette on image-heavy boards (dedupe near colors, cap, or opt-in per image).
 - Update the docs text, which was corrected to say images do not contribute.
+
+## Comments
+
+2026-11-16: first version shipped. New images get their 3 main colours (`readImage` in `apps/web/src/image.ts`), stored on the element and read by `buildPalette`. Left open: images added before this have no colours (no backfill), and there is no per-image opt-out beyond hiding a colour in the palette.

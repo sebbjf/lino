@@ -5,7 +5,7 @@ import { MESSY_TILT, type BoardStyle, type ElementStyle, type ImageStyle, type N
 
 type Base = Box & ElementStyle & { id: string }
 export type BoardElement =
-  | (Base & { type: 'image'; src: string } & ImageStyle)
+  | (Base & { type: 'image'; src: string; colors?: string[] } & ImageStyle)
   | (Base & { type: 'note'; text: string } & NoteStyle)
   | (Base & { type: 'color'; hex: string })
   | (Base & { type: 'link' } & LinkInfo)
