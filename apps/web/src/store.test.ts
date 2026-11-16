@@ -144,3 +144,14 @@ test('adding twice without a position does not stack the second exactly on the f
   expect([b.x - a.x, b.y - a.y]).toEqual([24, 24])
   vi.unstubAllGlobals()
 })
+
+test('swatchRow lays swatches under an element, as wide as it, in one undo step', () => {
+  const id = board().add({ type: 'image', src: '', w: 100, h: 50 }, { x: 50, y: 25 })
+  board().swatchRow(id, ['#111111', '#222222', '#333333'])
+  const row = board().elements.slice(1)
+  expect(row.map((e) => [e.x, e.y, e.w])).toEqual([[0, 58, 28], [36, 58, 28], [72, 58, 28]])
+  expect(row.at(-1)!.x + row.at(-1)!.w).toBe(100)
+  expect(board().selectedIds).toEqual(row.map((e) => e.id))
+  board().undo()
+  expect(board().elements).toHaveLength(1)
+})

@@ -4,6 +4,23 @@ import { useBoard } from './store.ts'
 const MAX_BYTES = 20 * 1024 * 1024
 const MAX_SIDE = 1600
 
+/** Main colours of anything drawable, read from a small copy. */
+function sample(img: CanvasImageSource, n: number) {
+  const ctx = new OffscreenCanvas(32, 32).getContext('2d')!
+  ctx.drawImage(img, 0, 0, 32, 32)
+  return dominantColors(ctx.getImageData(0, 0, 32, 32).data, n)
+}
+
+/** The main colours of an image already on the board. */
+export async function imageColors(src: string, n = 5) {
+  const bmp = await createImageBitmap(await (await fetch(src)).blob())
+  try {
+    return sample(bmp, n)
+  } finally {
+    bmp.close()
+  }
+}
+
 /** Decodes an image file and downscales it to a WebP data URL (max 1600px on the long side), with its main colours. */
 export async function readImage(file: File): Promise<{ src: string; w: number; h: number; colors: string[] }> {
   if (!file.type.startsWith('image/')) throw new Error(`${file.name} is not an image.`)
@@ -17,10 +34,7 @@ export async function readImage(file: File): Promise<{ src: string; w: number; h
   canvas.height = Math.round(bmp.height * scale)
   canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height)
   bmp.close()
-  // a 24px copy is enough to find the main colours
-  const small = new OffscreenCanvas(24, 24).getContext('2d')!
-  small.drawImage(canvas, 0, 0, 24, 24)
-  const colors = dominantColors(small.getImageData(0, 0, 24, 24).data, 3)
+  const colors = sample(canvas, 3)
   // ponytail: images live as data URLs inside the board record; move to Blobs keyed by id if boards get heavy.
   return { src: canvas.toDataURL('image/webp', 0.85), w: canvas.width, h: canvas.height, colors }
 }

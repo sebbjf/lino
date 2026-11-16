@@ -7,6 +7,7 @@ import {
   AlignStartVerticalIcon,
   AlignVerticalCenterIcon,
   AlignVerticalSpaceBetweenIcon,
+  ColorsIcon,
   Copy01Icon,
   Delete02Icon,
   Image01Icon,
@@ -32,7 +33,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { normalizeHex } from './colors.ts'
 import { zoomAt } from './geometry.ts'
-import { addImages } from './image.ts'
+import { addImages, imageColors } from './image.ts'
 import { addLink, asUrl } from './link.ts'
 import { FileMenu } from './FileMenu.tsx'
 import { ShareButton } from './ShareButton.tsx'
@@ -169,6 +170,17 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
   const readOnly = useBoard((s) => s.readOnly)
   const { add, duplicate, reorder, remove, undo, redo, align, distribute } = useBoard.getState()
   const fileInput = useRef<HTMLInputElement>(null)
+  const imageSelected = useBoard((s) => s.elements.find((e) => e.id === selectedId)?.type === 'image')
+
+  const swatchesFromImage = () => {
+    const { elements, swatchRow, notify } = useBoard.getState()
+    const el = elements.find((e) => e.id === selectedId)
+    if (el?.type !== 'image') return
+    imageColors(el.src).then(
+      (hexes) => swatchRow(el.id, hexes),
+      () => notify('Could not read the colors of that image.'),
+    )
+  }
 
   const zoomTo = (z: number) => {
     const { view, setView } = useBoard.getState()
@@ -215,6 +227,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
             <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" disabled={!selectedIds.length} onClick={() => duplicate(selectedIds)} />
             <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" disabled={!selectedId} onClick={() => selectedId && reorder(selectedId, 'forward')} />
             <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" disabled={!selectedId} onClick={() => selectedId && reorder(selectedId, 'backward')} />
+            <Tool label="Swatches from image" icon={ColorsIcon} disabled={!imageSelected} onClick={swatchesFromImage} />
             <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" disabled={!selectedIds.length} onClick={() => remove(selectedIds)} />
           </div>
 

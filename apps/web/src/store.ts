@@ -73,6 +73,8 @@ type State = {
   /** Adds an element centered on a world point (defaults to the viewport center) and returns its id. */
   add: (el: NewElement, at?: { x: number; y: number }) => string
   update: (id: string, patch: Partial<BoardElement>) => void
+  /** Adds a row of colour swatches under an element, as wide as it is, as one undo step. */
+  swatchRow: (under: string, hexes: string[]) => void
   /** Applies a style patch to several elements. Call checkpoint() first to make it undoable. */
   restyle: (ids: string[], patch: StylePatch) => void
   /** Style copied with copyStyle; unset fields are kept as undefined so pasting resets them. */
@@ -176,6 +178,16 @@ export const useBoard = create<State>()((set, get) => ({
     set((s) => ({ ...pushHistory(s), elements: [...s.elements, full], selectedIds: [id] }))
     return id
   },
+
+  swatchRow: (under, hexes) =>
+    set((s) => {
+      const el = s.elements.find((e) => e.id === under)
+      if (!el || !hexes.length) return s
+      const gap = 8
+      const side = (el.w - gap * (hexes.length - 1)) / hexes.length
+      const row = hexes.map((hex, i): BoardElement => ({ id: crypto.randomUUID(), type: 'color', hex, x: el.x + i * (side + gap), y: el.y + el.h + gap, w: side, h: side, rotation: 0 }))
+      return { ...pushHistory(s), elements: [...s.elements, ...row], selectedIds: row.map((e) => e.id) }
+    }),
 
   update: (id, patch) =>
     set((s) => ({ elements: s.elements.map((e) => (e.id === id ? ({ ...e, ...patch } as BoardElement) : e)) })),

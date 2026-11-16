@@ -19,3 +19,5 @@ Extract the dominant colors of each image when it is added and feed them into th
 ## Comments
 
 2026-11-16: first version shipped. New images get their 3 main colours (`readImage` in `apps/web/src/image.ts`), stored on the element and read by `buildPalette`. Left open: images added before this have no colours (no backfill), and there is no per-image opt-out beyond hiding a colour in the palette.
+
+2026-11-16: added "Swatches from image" in the toolbar: with one image selected it lays a row of up to 5 colour swatches under it (`imageColors` in `image.ts`, `swatchRow` in `store.ts`). Works on images added before colours were stored, since it samples the image again.
