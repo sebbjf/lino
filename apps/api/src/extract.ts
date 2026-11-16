@@ -19,7 +19,10 @@ const TIMEOUT_MS = 8000
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }
 const decode = (s: string) =>
   s
-    .replace(/&#(x?)([0-9a-f]+);/gi, (_, x, n) => String.fromCodePoint(parseInt(n, x ? 16 : 10)))
+    .replace(/&#(x?)([0-9a-f]+);/gi, (m, x, n) => {
+      const code = parseInt(n, x ? 16 : 10)
+      return code <= 0x10ffff ? String.fromCodePoint(code) : m
+    })
     .replace(/&([a-z]+);/gi, (m, name) => ENTITIES[name.toLowerCase()] ?? m)
     .replace(/\s+/g, ' ')
     .trim()

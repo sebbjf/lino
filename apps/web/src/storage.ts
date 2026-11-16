@@ -14,17 +14,21 @@ function db() {
     const req = indexedDB.open('lino', 1)
     req.onupgradeneeded = () => req.result.createObjectStore('boards')
     req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+    req.onerror = () => {
+      dbPromise = undefined // let the next call try again
+      reject(req.error)
+    }
   })
   return dbPromise
 }
 
 async function run<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const store = (await db()).transaction('boards', mode).objectStore('boards')
+  const tx = (await db()).transaction('boards', mode)
   return new Promise((resolve, reject) => {
-    const req = fn(store)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+    const req = fn(tx.objectStore('boards'))
+    // a write only counts once the transaction commits: a full disk aborts it after the request succeeded
+    tx.oncomplete = () => resolve(req.result)
+    tx.onerror = tx.onabort = () => reject(tx.error ?? req.error)
   })
 }
 

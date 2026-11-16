@@ -59,7 +59,7 @@ export function BoardsMenu() {
           render={
             <button
               type="button"
-              aria-label="Boards"
+              aria-label={`Boards. Current: ${current?.name ?? 'Board'}`}
               className="flex max-w-[45vw] items-center gap-1.5 rounded-full border bg-card/90 py-1.5 pr-2.5 pl-3.5 text-sm shadow-soft backdrop-blur outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:max-w-64"
             />
           }

@@ -1,14 +1,14 @@
-import { boardStyleOf } from './boardFile.ts'
+import { parseBoard } from './boardFile.ts'
 import { fitView } from './geometry.ts'
-import type { ColorMeta } from './colors.ts'
-import { useBoard, type BoardElement } from './store.ts'
+import { useBoard } from './store.ts'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 /** Same as MAX_BOARD_BYTES in apps/api/src/routes.ts. */
 const MAX_SHARE_BYTES = 4 * 1024 * 1024
 
 async function call(path: string, init?: RequestInit) {
-  const res = await fetch(`${API}${path}`, init).catch(() => {
+  // a hung API must not leave the page blank forever
+  const res = await fetch(`${API}${path}`, { ...init, signal: AbortSignal.timeout(20_000) }).catch(() => {
     throw new Error('Sharing is not available right now.')
   })
   const data = await res.json().catch(() => ({}))
@@ -30,12 +30,9 @@ export async function shareBoard(): Promise<{ url: string; expiresAt: string }> 
 
 /** Opens a shared board read-only, fitted to the window. */
 export async function loadShared(id: string) {
-  const { elements, colorMeta = {}, board } = (await call(`/boards/${encodeURIComponent(id)}`)) as {
-    elements: BoardElement[]
-    colorMeta?: Record<string, ColorMeta>
-    board?: unknown
-  }
-  useBoard.setState({ elements, colorMeta, board: boardStyleOf(board), readOnly: true, view: fitView(elements, innerWidth, innerHeight) })
+  // anyone can post to the API, so the snapshot is rebuilt field by field like an imported file
+  const { elements, colorMeta, board } = parseBoard(await call(`/boards/${encodeURIComponent(id)}`))
+  useBoard.setState({ elements, colorMeta, board, readOnly: true, view: fitView(elements, innerWidth, innerHeight) })
 }
 
 export const sharedId = () => new URLSearchParams(location.search).get('s')

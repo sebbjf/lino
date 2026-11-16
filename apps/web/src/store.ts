@@ -161,13 +161,18 @@ export const useBoard = create<State>()((set, get) => ({
       return { elements: next, future, past: [...s.past, s.elements], selectedIds: keepSelection(next, s.selectedIds) }
     }),
 
-  add: (el, at = viewportCenter(get().view)) => {
+  add: (el, at) => {
     const id = crypto.randomUUID()
     // messy mode: a small random tilt, like something dropped on a table
     const messy = get().board.messy
     const rotation = messy ? Math.round((Math.random() * 2 - 1) * MESSY_TILT * 10) / 10 : 0
     if (messy) justDropped.add(id)
-    const full = { ...el, id, x: at.x - el.w / 2, y: at.y - el.h / 2, rotation } as BoardElement
+    const c = at ?? viewportCenter(get().view)
+    let x = c.x - el.w / 2
+    let y = c.y - el.h / 2
+    // added from the toolbar twice in a row: step aside so the new one does not hide the last
+    if (!at) while (get().elements.some((e) => e.x === x && e.y === y)) (x += 24), (y += 24)
+    const full = { ...el, id, x, y, rotation } as BoardElement
     set((s) => ({ ...pushHistory(s), elements: [...s.elements, full], selectedIds: [id] }))
     return id
   },

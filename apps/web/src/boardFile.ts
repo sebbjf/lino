@@ -1,6 +1,7 @@
 import type { ColorMeta } from './colors.ts'
 import { fitView } from './geometry.ts'
 import { CORNERS, DECOS, FAMILY, IMAGE_FILTERS, MIN_OPACITY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
+import { createBoard } from './storage.ts'
 import { useBoard, type BoardElement } from './store.ts'
 
 const MAX_FILE = 50 * 1024 * 1024
@@ -18,6 +19,11 @@ const isHttp = (v: unknown): v is string => {
     return false
   }
 }
+
+const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
+/** Same limits as the share API: far enough for any real board, small enough that fitting the view stays finite. */
+const MAX_POS = 1e6
+const MAX_SIDE = 10_000
 
 const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T => list.includes(v as T)
 
@@ -70,7 +76,15 @@ function toElement(raw: unknown): BoardElement | null {
   if (!raw || typeof raw !== 'object') return null
   const e = raw as Record<string, unknown>
   if (!isNum(e.x) || !isNum(e.y) || !isNum(e.w) || !isNum(e.h) || e.w <= 0 || e.h <= 0) return null
-  const box = { id: crypto.randomUUID(), x: e.x, y: e.y, w: e.w, h: e.h, rotation: isNum(e.rotation) ? e.rotation : 0, ...styleOf(e) }
+  const box = {
+    id: crypto.randomUUID(),
+    x: clamp(e.x, -MAX_POS, MAX_POS),
+    y: clamp(e.y, -MAX_POS, MAX_POS),
+    w: clamp(e.w, 1, MAX_SIDE),
+    h: clamp(e.h, 1, MAX_SIDE),
+    rotation: isNum(e.rotation) ? e.rotation % 360 : 0,
+    ...styleOf(e),
+  }
   switch (e.type) {
     case 'image':
       return isStr(e.src, Infinity) && DATA_IMAGE.test(e.src) ? { ...box, type: 'image', src: e.src, ...imageStyleOf(e) } : null
@@ -100,15 +114,19 @@ function toElement(raw: unknown): BoardElement | null {
   }
 }
 
-/** Parses a board file (or a shared-board snapshot). Unusable elements are dropped and counted. */
+/** Parses a board file. Unusable elements are dropped and counted. */
 export function parseBoardFile(text: string) {
-  let data: { elements?: unknown; colorMeta?: unknown; board?: unknown } | null
   try {
-    data = JSON.parse(text)
+    return parseBoard(JSON.parse(text))
   } catch {
     throw new Error('That file is not a Lino board.')
   }
-  if (!data || !Array.isArray(data.elements)) throw new Error('That file is not a Lino board.')
+}
+
+/** Rebuilds a board from untrusted data: a file's JSON or a shared-board snapshot from the API. */
+export function parseBoard(raw: unknown) {
+  const data = raw as { elements?: unknown; colorMeta?: unknown; board?: unknown } | null
+  if (!data || !Array.isArray(data.elements)) throw new Error('That is not a Lino board.')
   const elements = data.elements.map(toElement).filter((e) => e !== null)
   const colorMeta: Record<string, ColorMeta> = {}
   if (data.colorMeta && typeof data.colorMeta === 'object')
@@ -140,17 +158,19 @@ export function exportBoardFile() {
   download(new Blob([body], { type: 'application/json' }), `lino-board-${new Date().toISOString().slice(0, 10)}.lino.json`)
 }
 
-/** Replaces the board with a file's contents. Undo brings the previous board back. */
+/** Opens a file's contents: on the board itself if it is empty, otherwise as a new board, so nothing is replaced. */
 export async function importBoardFile(file: File) {
   const { notify } = useBoard.getState()
   try {
     if (file.size > MAX_FILE) throw new Error('That file is larger than 50 MB.')
     const { elements, colorMeta, board, skipped } = parseBoardFile(await file.text())
     if (!elements.length) throw new Error('That board file has nothing to show.')
+    const kept = useBoard.getState().elements.length > 0
+    if (kept) await createBoard()
     useBoard.getState().replaceBoard(elements, colorMeta, board)
     useBoard.getState().setView(fitView(elements, innerWidth, innerHeight))
     const note = skipped ? ` ${skipped} unreadable ${skipped === 1 ? 'item was' : 'items were'} skipped.` : ''
-    notify(`Board imported.${note} Ctrl+Z brings the old one back.`)
+    notify(`${kept ? 'Imported as a new board; the one you had is still in your boards.' : 'Board imported.'}${note}`)
   } catch (e) {
     notify((e as Error).message)
   }

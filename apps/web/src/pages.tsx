@@ -90,7 +90,7 @@ function Docs() {
 
       <H2>2. Build a palette</H2>
       <p>
-        Open the palette panel to see the colors found in your images and links. Keep the ones you like and name them. Fonts found on linked pages are listed too; the list may be incomplete, because fonts come only from a page's CSS.
+        Open the palette panel to see the colors of your swatches and links, plus any you pick from an image with the eyedropper. Keep the ones you like and name them. Fonts found on linked pages are listed too; the list may be incomplete, because fonts come only from a page's CSS.
       </p>
 
       <H2>3. Export to code</H2>

@@ -196,7 +196,7 @@ function ElementPanel({ ids }: { ids: string[] }) {
       <Choice label="Corners" options={CORNERS} value={cur.corner ?? 'soft'} onChange={(corner) => apply({ corner })} />
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">Shadow</span>
-        <Button variant="outline" size="sm" aria-pressed={cur.shadow !== false} onClick={() => apply({ shadow: cur.shadow === false })}>
+        <Button variant="outline" size="sm" aria-label="Shadow" aria-pressed={cur.shadow !== false} onClick={() => apply({ shadow: cur.shadow === false })}>
           {cur.shadow === false ? 'Off' : 'On'}
         </Button>
       </div>
@@ -315,7 +315,7 @@ function BoardPanel() {
       <Choice label="Pattern" options={PATTERNS} value={board.pattern ?? 'dots'} onChange={(pattern) => setBoard({ pattern })} />
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs font-medium text-muted-foreground">Messy mode: new things land slightly tilted</span>
-        <Button variant="outline" size="sm" aria-pressed={!!board.messy} onClick={() => setBoard({ messy: !board.messy })}>
+        <Button variant="outline" size="sm" aria-label="Messy mode" aria-pressed={!!board.messy} onClick={() => setBoard({ messy: !board.messy })}>
           {board.messy ? 'On' : 'Off'}
         </Button>
       </div>
@@ -371,7 +371,7 @@ export function StyleMenu() {
         </TooltipTrigger>
         <TooltipContent>Style the {target}</TooltipContent>
       </Tooltip>
-      <PopoverContent side="top" sideOffset={12} className={`w-72 gap-3 p-4 max-sm:max-h-(--available-height) max-sm:overflow-y-auto ${wide ? 'sm:w-[40rem] lg:w-[58rem] max-w-[calc(100vw-2rem)]' : ''}`}>
+      <PopoverContent side="top" sideOffset={12} className={`w-72 gap-3 p-4 max-h-(--available-height) overflow-y-auto ${wide ? 'sm:w-[40rem] lg:w-[58rem] max-w-[calc(100vw-2rem)]' : ''}`}>
         <p className="text-lg font-semibold tracking-tight">{ids.length ? 'Style' : 'Board'}</p>
         {ids.length ? <ElementPanel ids={ids} /> : <BoardPanel />}
       </PopoverContent>

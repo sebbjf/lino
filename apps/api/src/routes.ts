@@ -1,6 +1,6 @@
 import Fastify, { type FastifyServerOptions } from 'fastify'
 import { readLink } from './extract.ts'
-import type { BoardStore } from './boards.ts'
+import { StoreFullError, type BoardStore } from './boards.ts'
 import { BlockedError, type Fetcher } from './fetch.ts'
 
 type Opts = FastifyServerOptions & { fetcher?: Fetcher; readsPerMinute?: number; sharesPerHour?: number; boards?: BoardStore }
@@ -21,15 +21,15 @@ const elementSchema = {
   properties: {
     id: { type: 'string', maxLength: 64 },
     type: { enum: ['image', 'note', 'color', 'link'] },
-    x: { type: 'number' },
-    y: { type: 'number' },
+    x: { type: 'number', minimum: -1e6, maximum: 1e6 },
+    y: { type: 'number', minimum: -1e6, maximum: 1e6 },
     w: { type: 'number', minimum: 1, maximum: 10_000 },
     h: { type: 'number', minimum: 1, maximum: 10_000 },
     rotation: { type: 'number' },
     src: dataImage,
     text: { type: 'string', maxLength: 10_000 },
     hex,
-    url: { type: 'string', maxLength: 2048, pattern: '^https?://' },
+    url: { type: 'string', maxLength: 2048, pattern: '^https?://[^\s/?#]+' },
     title: { type: ['string', 'null'], maxLength: 500 },
     image: { anyOf: [dataImage, { type: 'null' }] },
     fonts: strings(20, 100),
@@ -42,7 +42,11 @@ const elementSchema = {
     deco: { enum: ['tape', 'pin'] },
     opacity: { type: 'number', minimum: 0.2, maximum: 1 },
     bg: hex,
-    size: { enum: ['sm', 'md', 'lg'] },
+    color: hex,
+    size: { enum: ['sm', 'md', 'lg', 'xl'] },
+    align: { enum: ['left', 'center', 'right'] },
+    bold: { type: 'boolean' },
+    italic: { type: 'boolean' },
     font: { enum: ['sans', 'serif'] },
     family: { type: 'string', pattern: '^[A-Za-z0-9 _-]{1,60}$' },
     filter: { enum: ['mono', 'duotone'] },
@@ -64,6 +68,7 @@ const boardSchema = {
     colorMeta: {
       type: 'object',
       maxProperties: 300,
+      propertyNames: { pattern: hex.pattern },
       additionalProperties: {
         type: 'object',
         additionalProperties: false,
@@ -85,6 +90,8 @@ function rateLimit(max: number, windowMs: number) {
     const now = Date.now()
     const h = hits.get(ip)
     if (!h || h.reset < now) {
+      // drop finished windows first, so filling the map does not reset everyone's count
+      if (hits.size > 10_000) for (const [k, v] of hits) if (v.reset < now) hits.delete(k)
       if (hits.size > 10_000) hits.clear()
       hits.set(ip, { n: 1, reset: now + windowMs })
       return false
@@ -96,6 +103,15 @@ function rateLimit(max: number, windowMs: number) {
 export function buildApp({ fetcher, readsPerMinute = 30, sharesPerHour = 20, boards, ...opts }: Opts = {}) {
   // base64 images are counted after JSON parsing too; this is the transport cap
   const app = Fastify({ bodyLimit: MAX_BOARD_BYTES + 256 * 1024, ...opts })
+
+  // 5xx messages can carry database details (host, user); log them, answer something generic
+  app.setErrorHandler((err: Error & { statusCode?: number }, req, reply) => {
+    const status = err.statusCode && err.statusCode >= 400 ? err.statusCode : 500
+    if (status < 500) return reply.code(status).send({ error: err.message })
+    req.log.error(err)
+    return reply.code(status).send({ error: 'Something went wrong. Try again later.' })
+  })
+  app.addHook('onSend', async (_req, reply) => void reply.header('x-content-type-options', 'nosniff'))
 
   // The web app lives on another origin in production.
   // browsers send the origin without a trailing slash; tolerate one pasted into the setting
@@ -139,7 +155,8 @@ export function buildApp({ fetcher, readsPerMinute = 30, sharesPerHour = 20, boa
         return reply.header('cache-control', 'public, max-age=3600').send(data)
       } catch (e) {
         if (e instanceof BlockedError) return reply.code(400).send({ error: e.message })
-        req.log.info({ err: e, url: req.query.url }, 'read failed')
+        // the pasted address is not logged: the privacy page says the server does not keep it
+        req.log.info({ err: e }, 'read failed')
         const timeout = (e as Error).name === 'TimeoutError' || (e as Error).name === 'AbortError'
         return reply.code(502).send({ error: timeout ? 'The page took too long to answer.' : 'Could not read that page.' })
       }
@@ -152,7 +169,11 @@ export function buildApp({ fetcher, readsPerMinute = 30, sharesPerHour = 20, boa
     if (bytes > MAX_BOARD_BYTES) return reply.code(413).send({ error: `This board is too large to share (limit ${MAX_BOARD_BYTES / 1024 / 1024} MB).` })
     if (shareLimited(req.ip)) return reply.code(429).send({ error: 'Too many shares. Try again later.' })
     const expiresAt = new Date(Date.now() + SHARE_DAYS * 86_400_000)
-    const id = await boards.create(req.body, bytes, expiresAt)
+    const id = await boards.create(req.body, bytes, expiresAt).catch((e) => {
+      if (e instanceof StoreFullError) return null
+      throw e
+    })
+    if (!id) return reply.code(503).send({ error: 'Sharing is full right now. Try again later.' })
     return reply.code(201).send({ id, expiresAt: expiresAt.toISOString() })
   })
 

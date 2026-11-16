@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEven
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ColorFields } from './ColorFields.tsx'
 import { LinkCard } from './LinkCard.tsx'
-import { drag } from './drag.ts'
+import { drag, touches } from './drag.ts'
 import { harmonies } from './colors.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
@@ -83,6 +83,8 @@ function panIntoView(el: BoardElement) {
 export const ElementView = memo(function ElementView({ el, selected, solo, zoom }: Props) {
   const { update, moveMany, select, remove, duplicate, reorder, checkpoint } = useBoard.getState()
   const readOnly = useBoard((s) => s.readOnly)
+  // the selection outline follows the board background's contrast color, so it shows on dark boards too
+  const outline = useBoard((s) => (s.board.bg && textOn(s.board.bg)) || 'var(--color-primary)')
   // a freshly added empty note opens straight into editing
   const [editing, setEditing] = useState(() => selected && el.type === 'note' && !el.text)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -136,7 +138,12 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     if (readOnly || e.button !== 0 || !e.currentTarget.contains(e.target as Node)) return
     e.stopPropagation()
     // Shift+click adds to or removes from the selection
-    if (e.shiftKey) return select(el.id, true)
+    if (e.shiftKey) {
+      select(el.id, true)
+      // taken out of the selection: drop its focus too, or Delete and the arrows would still act on it
+      if (!useBoard.getState().selectedIds.includes(el.id)) e.currentTarget.blur()
+      return
+    }
     // pressing a selected element drags the whole selection; any other element becomes the selection
     if (!useBoard.getState().selectedIds.includes(el.id)) select(el.id)
     if (editing) return
@@ -149,9 +156,17 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     const others = els.flatMap((o) => (ids.includes(o.id) ? [] : [boundsOf([o])]))
     const setGuides = (guides: Guide[]) => useBoard.setState({ guides })
     checkpoint()
+    let pinched = false
     drag(
       e,
       (dx, dy, ev) => {
+        // a second finger turns the gesture into a pinch-zoom: put things back and stop dragging
+        if (!pinched && touches.size > 1) {
+          pinched = true
+          setGuides([])
+          moveMany(Object.fromEntries(moving.map((o) => [o.id, { x: o.x, y: o.y }])))
+        }
+        if (pinched) return
         let mx = dx / zoom
         let my = dy / zoom
         if (ev.altKey) setGuides([])
@@ -257,7 +272,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   }
 
   // bigger grab targets for fingers
-  const handle = (matchMedia('(pointer: coarse)').matches ? 24 : 12) / zoom
+  const handle = (matchMedia('(pointer: coarse)').matches ? 32 : 12) / zoom
 
   return (
     <div
@@ -273,7 +288,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         width: el.w,
         height: el.h,
         transform: `translate(${el.x}px, ${el.y}px) rotate(${el.rotation}deg)`,
-        boxShadow: selected ? `0 0 0 ${2 / zoom}px var(--color-primary)` : undefined,
+        boxShadow: selected ? `0 0 0 ${2 / zoom}px ${outline}` : undefined,
         cursor: readOnly ? undefined : editing ? 'auto' : 'var(--cursor-move)',
       }}
       onPointerDown={onPointerDown}
@@ -347,7 +362,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
           >
             <PopoverTrigger
               aria-label={`Edit color ${el.hex}`}
-              className="absolute bottom-2 left-2 cursor-pointer rounded-full bg-card/90 px-2 py-0.5 font-mono text-xs text-card-foreground"
+              className="absolute bottom-2 left-2 cursor-pointer rounded-full bg-card/90 px-2 py-0.5 font-mono text-xs text-card-foreground pointer-coarse:px-3 pointer-coarse:py-1.5"
               tabIndex={-1}
               onPointerDown={(e) => {
                 // keep focus (and keyboard shortcuts) on the element itself; Enter opens the picker for keyboard users

@@ -5,7 +5,7 @@ import { findColors, findFonts, parseHtml, readLink } from './extract.ts'
 import { BlockedError, checkUrl, isBlockedIp, safeLookup, type Fetcher } from './fetch.ts'
 
 test('isBlockedIp blocks internal ranges, allows public ones', () => {
-  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.1', '169.254.169.254', '0.0.0.0', '100.64.0.1', '::1', '::', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:7f00:1', 'nope'])
+  for (const ip of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '192.168.1.1', '169.254.169.254', '0.0.0.0', '100.64.0.1', '::1', '::', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '::127.0.0.1', '192.88.99.1', '64:ff9b:1::1', 'nope'])
     assert.equal(isBlockedIp(ip), true, ip)
   for (const ip of ['8.8.8.8', '1.1.1.1', '2606:4700:4700::1111']) assert.equal(isBlockedIp(ip), false, ip)
 })

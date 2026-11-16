@@ -28,13 +28,14 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
   return (
     <aside
       aria-labelledby="palette-title"
+      onKeyDown={(e) => e.key === 'Escape' && !(e.target as HTMLElement).closest('input') && onClose()}
       className="fixed right-4 top-4 flex max-h-[calc(100dvh-7rem)] w-[min(20rem,calc(100vw-2rem))] flex-col gap-3 overflow-y-auto rounded-3xl border bg-card p-4 shadow-soft"
     >
       <header className="flex items-center justify-between">
         <h2 id="palette-title" className="text-2xl font-semibold tracking-tight">
           Palette
         </h2>
-        <Button variant="ghost" size="icon-sm" aria-label="Close palette" onClick={onClose}>
+        <Button autoFocus variant="ghost" size="icon-sm" aria-label="Close palette" onClick={onClose}>
           <HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.8} />
         </Button>
       </header>

@@ -57,7 +57,7 @@ Lino does that step. Paste a link and it reads the page's cover, fonts and color
 
 With nothing selected, it styles the board: themes, background color, dots/grid/plain, and **messy mode**, where new things drop in slightly tilted. Styles travel with exports, shares and the PNG.
 
-**File menu** (folder icon): **Export board** saves a `.lino.json` with every element (images inline) and the palette edits. **Import board** (or dropping a `.lino.json` on the canvas) replaces the board; `Ctrl+Z` brings the old one back. Imported files are checked like shared boards: only http(s) links and `data:image` images, unknown fields dropped, unreadable items skipped and counted.
+**File menu** (folder icon): **Export board** saves a `.lino.json` with every element (images inline) and the palette edits. **Import board** (or dropping a `.lino.json` on the canvas) opens the file as a new board, so the one you had stays in your boards (an empty board is filled in place). Imported files are checked like shared boards: only http(s) links and `data:image` images, unknown fields dropped, unreadable items skipped and counted.
 
 **Download PNG** renders the whole board (not just what is on screen) at 2× with the current theme. It is drawn on a canvas, not screenshotted, so selection outlines never show up.
 

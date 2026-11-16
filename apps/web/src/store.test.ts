@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { useBoard } from './store.ts'
 
 const at = { x: 0, y: 0 }
@@ -133,4 +133,14 @@ test('fan stacks the hand left to right within the same layers', () => {
   const xs = els.slice(0, 4).map((e) => e.x)
   expect(xs).toEqual([...xs].sort((a, b) => a - b))
   expect(els[4].type).toBe('color') // untouched element keeps its layer
+})
+
+test('adding twice without a position does not stack the second exactly on the first', () => {
+  vi.stubGlobal('window', { innerWidth: 800, innerHeight: 600 }) // node has no window; add() centers on the viewport
+  const el = { type: 'color', hex: '#000000', w: 10, h: 10 } as const
+  board().add(el)
+  board().add(el)
+  const [a, b] = board().elements
+  expect([b.x - a.x, b.y - a.y]).toEqual([24, 24])
+  vi.unstubAllGlobals()
 })

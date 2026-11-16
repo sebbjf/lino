@@ -28,9 +28,12 @@ function lines(colors: PaletteColor[], fonts: string[], pre: string, oklch: bool
     used.set(name, n)
     return n === 1 ? name : `${name}-${n}`
   }
+  // hex values and font names can come from someone else's board: nothing that could close the block gets into the CSS
   return [
-    ...colors.map((c, i) => `  --${pre}color-${unique(slug(c.name, `color-${i + 1}`))}: ${oklch ? hexToOklch(c.hex) : c.hex};`),
-    ...fonts.map((f, i) => `  --${pre}font-${unique(slug(f, `font-${i + 1}`))}: "${f.replace(/["\\]/g, '')}", ${fallbackFamily(f)};`),
+    ...colors
+      .filter((c) => /^#[0-9a-f]{3,8}$/i.test(c.hex))
+      .map((c, i) => `  --${pre}color-${unique(slug(c.name, `color-${i + 1}`))}: ${oklch ? hexToOklch(c.hex) : c.hex};`),
+    ...fonts.map((f, i) => `  --${pre}font-${unique(slug(f, `font-${i + 1}`))}: "${f.replace(/[^\p{L}\p{N} ._'-]/gu, '')}", ${fallbackFamily(f)};`),
   ]
 }
 

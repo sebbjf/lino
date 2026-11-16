@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from 'react'
-import { drag } from './drag.ts'
+import { drag, touches } from './drag.ts'
 import { ElementView } from './ElementView.tsx'
 import { boundsOf, zoomAt } from './geometry.ts'
 import { importBoardFile, isBoardFile } from './boardFile.ts'
@@ -68,7 +68,7 @@ export function Canvas() {
     // incremental, from the live view, so a pinch in the middle of a pan doesn't make the view jump back
     let last = [0, 0]
     drag(e, (dx, dy) => {
-      if (touches.current.size < 2) {
+      if (touches.size < 2) {
         const cur = useBoard.getState().view
         setView({ ...cur, x: cur.x + dx - last[0], y: cur.y + dy - last[1] })
       }
@@ -77,15 +77,14 @@ export function Canvas() {
   }
 
   // touch: two fingers pinch-zoom around their midpoint and pan with it
-  const touches = useRef(new Map<number, { x: number; y: number }>())
   const onTouchDownCapture = (e: PointerEvent) => {
     if (e.pointerType !== 'touch') return
-    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    if (touches.current.size > 1) e.stopPropagation() // the second finger never drags an element
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (touches.size > 1) e.stopPropagation() // the second finger never drags an element
   }
   useEffect(() => {
     const node = ref.current!
-    const pts = touches.current
+    const pts = touches
     const move = (e: globalThis.PointerEvent) => {
       const p = pts.get(e.pointerId)
       if (!p) return

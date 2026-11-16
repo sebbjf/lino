@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { parseBoardFile } from './boardFile.ts'
+import { parseBoard, parseBoardFile } from './boardFile.ts'
 
 const box = { x: 0, y: 0, w: 10, h: 10, rotation: 0 }
 
@@ -76,4 +76,18 @@ test('parseBoardFile keeps image filters only when valid', () => {
   expect(elements[0]).toMatchObject({ filter: 'duotone', duo: ['#102030', '#f0e0d0'] })
   for (const e of elements.slice(1)) expect(e).not.toHaveProperty('filter')
   expect(elements[1]).not.toHaveProperty('duo')
+})
+
+test('parseBoard (shared snapshots too) drops unparseable links and keeps boxes within limits', () => {
+  const link = { type: 'link', title: null, image: null, fonts: [], colors: [], status: 'ok', missing: [] }
+  const { elements, colorMeta } = parseBoard({
+    elements: [
+      { ...box, ...link, url: 'https://' },
+      { ...box, type: 'color', hex: '#abc', x: 1e308, y: -1e308, w: 1e9 },
+    ],
+    colorMeta: { 'red;}body{display:none}': { pinned: true } },
+  })
+  expect(elements).toHaveLength(1)
+  expect(elements[0]).toMatchObject({ x: 1e6, y: -1e6, w: 10_000, h: 10 })
+  expect(colorMeta).toEqual({})
 })

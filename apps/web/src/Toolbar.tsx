@@ -10,6 +10,7 @@ import {
   Copy01Icon,
   Delete02Icon,
   Image01Icon,
+  Link01Icon,
   LayerBringForwardIcon,
   LayerSendBackwardIcon,
   MinusSignIcon,
@@ -22,14 +23,17 @@ import {
   UndoIcon,
 } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
-import { useRef, type KeyboardEvent } from 'react'
+import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Kbd } from '@/components/ui/kbd'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { normalizeHex } from './colors.ts'
 import { zoomAt } from './geometry.ts'
 import { addImages } from './image.ts'
+import { addLink, asUrl } from './link.ts'
 import { FileMenu } from './FileMenu.tsx'
 import { ShareButton } from './ShareButton.tsx'
 import { StyleMenu } from './StyleMenu.tsx'
@@ -95,7 +99,66 @@ function moveFocus(e: KeyboardEvent<HTMLDivElement>) {
   e.preventDefault()
 }
 
-const Divider = () => <Separator orientation="vertical" className="mx-1 h-5 self-center" />
+/** Pasting or dropping a URL works too, but a phone has no paste on the canvas and nothing hints at it. */
+function LinkTool() {
+  const [open, setOpen] = useState(false)
+  const [value, setValue] = useState('')
+  const [bad, setBad] = useState(false)
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const text = value.trim()
+    const url = asUrl(text) ?? asUrl(`https://${text}`)
+    if (!url) return setBad(true)
+    addLink(url)
+    setValue('')
+    setOpen(false)
+  }
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o)
+        setBad(false)
+      }}
+    >
+      <Tooltip>
+        <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Add link" />} />}>
+          <HugeiconsIcon icon={Link01Icon} strokeWidth={1.8} />
+        </TooltipTrigger>
+        <TooltipContent>Add link</TooltipContent>
+      </Tooltip>
+      <PopoverContent side="top" sideOffset={12} className="w-80 max-w-[calc(100vw-2rem)]">
+        <form className="flex gap-2" onSubmit={submit}>
+          <Input
+            autoFocus
+            inputMode="url"
+            autoCapitalize="none"
+            aria-label="Link address"
+            aria-invalid={bad}
+            placeholder="https://…"
+            value={value}
+            maxLength={2048}
+            onChange={(e) => {
+              setValue(e.target.value)
+              setBad(false)
+            }}
+          />
+          <Button type="submit" disabled={!value.trim()}>
+            Add
+          </Button>
+        </form>
+        {bad && (
+          <p role="alert" className="text-sm text-destructive">
+            That does not look like a web address.
+          </p>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// hidden on a phone: the bar wraps there, and a divider at the end of a row reads as a stray mark
+const Divider = () => <Separator orientation="vertical" className="mx-1 h-5 self-center max-sm:hidden" />
 
 export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean; onTogglePalette: () => void }) {
   const selectedIds = useBoard((s) => s.selectedIds)
@@ -114,14 +177,18 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
 
   return (
     <div
+      id="board-tools"
+      tabIndex={-1}
       role="toolbar"
       aria-label="Board tools"
       onKeyDown={moveFocus}
-      className="fixed bottom-6 left-1/2 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-full border bg-card/90 p-1.5 [scrollbar-width:none] shadow-soft backdrop-blur"
+      // wraps onto more rows when the window is narrow, instead of scrolling sideways with no scrollbar: every tool stays in reach
+      className="fixed bottom-6 left-1/2 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-0.5 rounded-[1.75rem] border bg-card/90 p-1.5 shadow-soft backdrop-blur outline-none"
     >
       {!readOnly && (
         <>
           <Tool label="Add image" icon={Image01Icon} onClick={() => fileInput.current?.click()} />
+          <LinkTool />
           <Tool label="Add note" icon={StickyNote01Icon} onClick={() => add({ type: 'note', text: '', w: 220, h: 140 })} />
           <Tool label="Add color" icon={PaintBoardIcon} onClick={() => add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 })} />
           {EyeDropper && <Tool label="Pick a color from the screen" icon={PipetteIcon} onClick={pickColor} />}
@@ -141,19 +208,15 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
           <Tool label="Undo" icon={UndoIcon} shortcut="Ctrl+Z" disabled={!canUndo} onClick={undo} />
           <Tool label="Redo" icon={RedoIcon} shortcut="Ctrl+Shift+Z" disabled={!canRedo} onClick={redo} />
 
-          {selectedIds.length > 0 && (
-            <>
-              <Divider />
-              <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" onClick={() => duplicate(selectedIds)} />
-              {selectedId && (
-                <>
-                  <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" onClick={() => reorder(selectedId, 'forward')} />
-                  <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" onClick={() => reorder(selectedId, 'backward')} />
-                </>
-              )}
-              <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" onClick={() => remove(selectedIds)} />
-            </>
-          )}
+          {/* always there, disabled without a selection: the bar keeps its shape, so a second click never lands on another tool.
+              A phone has no room for idle buttons, so there the group shows only while it has something to act on. */}
+          <div className="contents max-sm:[&:not(:has(button:enabled))]:hidden">
+            <Divider />
+            <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" disabled={!selectedIds.length} onClick={() => duplicate(selectedIds)} />
+            <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" disabled={!selectedId} onClick={() => selectedId && reorder(selectedId, 'forward')} />
+            <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" disabled={!selectedId} onClick={() => selectedId && reorder(selectedId, 'backward')} />
+            <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" disabled={!selectedIds.length} onClick={() => remove(selectedIds)} />
+          </div>
 
           {selectedIds.length > 1 && (
             <>
@@ -178,7 +241,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
       )}
 
       <Tool label="Zoom out" icon={MinusSignIcon} onClick={() => zoomTo(zoom / 1.25)} />
-      <Button variant="ghost" size="sm" aria-label="Reset zoom to 100%" className="tabular-nums" onClick={() => zoomTo(1)}>
+      <Button variant="ghost" size="sm" aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%`} className="tabular-nums" onClick={() => zoomTo(1)}>
         {Math.round(zoom * 100)}%
       </Button>
       <Tool label="Zoom in" icon={PlusSignIcon} onClick={() => zoomTo(zoom * 1.25)} />

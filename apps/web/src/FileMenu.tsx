@@ -42,7 +42,7 @@ export function FileMenu() {
       <PopoverContent side="top" sideOffset={12} className="w-72 gap-1 p-2">
         <Item icon={FileExportIcon} label="Export board" hint="A .lino.json file with everything on it" disabled={empty} onClick={run(exportBoardFile)} />
         {!readOnly && (
-          <Item icon={FileImportIcon} label="Import board…" hint="Replaces this board (undo brings it back)" onClick={run(() => input.current?.click())} />
+          <Item icon={FileImportIcon} label="Import board…" hint="Opens a .lino.json as a new board" onClick={run(() => input.current?.click())} />
         )}
         <Item icon={Image02Icon} label="Download PNG" hint="An image of the whole board" disabled={empty} onClick={run(downloadPng)} />
       </PopoverContent>

@@ -17,6 +17,7 @@ for (const [net4, prefix] of [
   ['172.16.0.0', 12],
   ['192.0.0.0', 24],
   ['192.0.2.0', 24],
+  ['192.88.99.0', 24], // 6to4 relay anycast
   ['192.168.0.0', 16],
   ['198.18.0.0', 15],
   ['198.51.100.0', 24],
@@ -25,8 +26,9 @@ for (const [net4, prefix] of [
 ] as const)
   blocked.addSubnet(net4, prefix, 'ipv4')
 for (const [net6, prefix] of [
-  ['::', 127], // unspecified and loopback
+  ['::', 96], // unspecified, loopback and IPv4-compatible (::a.b.c.d)
   ['64:ff9b::', 96], // NAT64
+  ['64:ff9b:1::', 48], // local-use NAT64
   ['100::', 64],
   ['2001::', 23], // IETF protocol assignments (Teredo, ...)
   ['2001:db8::', 32],

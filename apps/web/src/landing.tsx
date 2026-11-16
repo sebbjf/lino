@@ -489,7 +489,7 @@ function StatementSection() {
 // ---------------------------------------------------------------- privacy
 const promises = [
   { label: 'No account', note: 'Open the board and start pinning.', icon: UserBlock01Icon },
-  { label: 'No tracking', note: 'Nothing you add is sent to a server.', icon: ViewOffSlashIcon },
+  { label: 'No tracking', note: 'No analytics. Images and notes stay in your browser.', icon: ViewOffSlashIcon },
   { label: 'No cookies', note: 'Nothing to accept before you start.', icon: CookieIcon },
   { label: 'No ads', note: 'Just your board.', icon: AdvertisimentIcon },
 ]
@@ -565,7 +565,7 @@ function PrivacySection() {
 
 // ---------------------------------------------------------------- faq, cta
 const faqs = [
-  ['Where are my boards saved?', "In your browser's storage on this device. Nothing you pin, images included, is sent to a server unless you share the board."],
+  ['Where are my boards saved?', "In your browser's storage on this device. Images and notes never leave it unless you share the board. A pasted link is the exception: its address goes to Lino's server, which reads the page for you."],
   ['What happens if I clear my browser data?', 'Your board is deleted with it. Export it first as a .lino.json file to keep a copy you can import later, or download it as a PNG.'],
   ['Can I open a board on another device?', 'Export the board as a .lino.json file and import it there. Or share a read-only link: it is a fixed copy that lasts 90 days.'],
   ['How do I use the palette in my project?', 'Open the palette and copy it as CSS variables or a Tailwind v4 theme, in hex or OKLCH. Fonts read from your links come along.'],
@@ -710,16 +710,17 @@ function Hero() {
 
       <main className="relative flex flex-1 flex-col justify-center px-4 pt-8 pb-16 sm:px-8 lg:pb-36">
         <div
-          className={`pointer-events-none relative z-10 mx-auto max-w-4xl text-center transition-opacity duration-700 ${arranged ? 'opacity-15' : ''}`}
+          className="pointer-events-none relative z-10 mx-auto max-w-4xl text-center"
         >
-          <h1 className="text-[clamp(2.75rem,6vw,5.5rem)] leading-[0.98] font-semibold tracking-[-0.055em]">
+          {/* the text steps back behind an arranged stage; the button stays readable, it is still the way in */}
+          <h1 className={`transition-opacity duration-700 ${arranged ? 'opacity-15' : ''} text-[clamp(2.75rem,6vw,5.5rem)] leading-[0.98] font-semibold tracking-[-0.055em]`}>
             <Line delay={0.05}>Your references,</Line>
             <Line delay={0.18}>
               <span className="text-foreground/45">on one board.</span>
             </Line>
           </h1>
           <Reveal delay={0.35}>
-            <p className="mx-auto mt-8 max-w-md text-base leading-8 text-muted-foreground">
+            <p className={`mx-auto mt-8 max-w-md text-base leading-8 text-muted-foreground transition-opacity duration-700 ${arranged ? 'opacity-15' : ''}`}>
               Pin <Tag icon={Image02Icon} color="var(--p-teal)">images</Tag>, <Tag icon={Link01Icon} color="#7c6bd6">links</Tag>, <Tag icon={StickyNote01Icon} color="#d9a21b">notes</Tag> and <Tag icon={SwatchIcon} color="var(--p-orange)">colors</Tag>, and keep the colors you like in a palette.
             </p>
           </Reveal>

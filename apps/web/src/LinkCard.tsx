@@ -16,7 +16,18 @@ export function LinkCard({ el }: { el: Link }) {
       <div className="flex shrink-0 flex-col gap-2 p-4">
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <HugeiconsIcon icon={Link01Icon} size={14} strokeWidth={1.8} />
-          <span className="truncate">{host}</span>
+          {/* the one-click way to open it; double click and Enter on the card do the same */}
+          <a
+            href={el.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            tabIndex={-1}
+            draggable={false}
+            className="truncate underline-offset-4 hover:underline"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {host}
+          </a>
         </p>
 
         {el.status === 'loading' && (

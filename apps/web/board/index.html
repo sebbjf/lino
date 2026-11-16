@@ -9,7 +9,8 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- shown until the app has loaded the board (a shared one waits for the network) -->
+    <div id="root"><p style="position: fixed; inset: 0; display: grid; place-items: center; margin: 0; font: 14px system-ui, sans-serif; color: #777">Loading board…</p></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 import { Share08Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
@@ -14,9 +14,13 @@ export function ShareButton() {
   const empty = useBoard((s) => s.elements.length === 0)
   const [state, setState] = useState<State>({ step: 'idle' })
   const [copied, setCopied] = useState(false)
+  // what was on the board when the link was made, and the field that shows it
+  const shared = useRef<unknown>(null)
+  const field = useRef<HTMLInputElement>(null)
 
   const create = async () => {
     setState({ step: 'busy' })
+    shared.current = useBoard.getState().elements
     try {
       setState({ step: 'done', ...(await shareBoard()) })
     } catch (e) {
@@ -25,14 +29,15 @@ export function ShareButton() {
   }
 
   const copy = async (url: string) => {
-    await navigator.clipboard.writeText(url).then(() => setCopied(true), () => {})
+    // no clipboard access: leave the link selected so it can be copied by hand
+    await navigator.clipboard.writeText(url).then(() => setCopied(true), () => field.current?.select())
   }
 
   return (
     <Popover
       onOpenChange={(open) => {
-        // each share is a new snapshot of the board as it is now
-        if (open) setState({ step: 'idle' })
+        // each share is a new snapshot of the board as it is now; an unchanged board keeps the link it already has
+        if (open && !(state.step === 'done' && shared.current === useBoard.getState().elements)) setState({ step: 'idle' })
         setCopied(false)
       }}
     >
@@ -44,12 +49,12 @@ export function ShareButton() {
         <PopoverHeader>
           <PopoverTitle>Share a read-only link</PopoverTitle>
           <PopoverDescription>
-            Uploads a copy of the board as it is now. Later changes are not included. Anyone with the link can view it for 90 days.
+            Uploads a copy of the board as it is now. Later changes are not included. Anyone with the link can view it for 90 days; it cannot be deleted earlier.
           </PopoverDescription>
         </PopoverHeader>
         {state.step === 'done' ? (
           <div className="flex gap-2">
-            <Input readOnly value={state.url} aria-label="Share link" onFocus={(e) => e.currentTarget.select()} />
+            <Input ref={field} readOnly value={state.url} aria-label="Share link" onFocus={(e) => e.currentTarget.select()} />
             <Button onClick={() => copy(state.url)}>{copied ? 'Copied' : 'Copy'}</Button>
           </div>
         ) : (

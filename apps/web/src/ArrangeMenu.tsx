@@ -38,7 +38,8 @@ export function ArrangeMenu() {
   const [open, setOpen] = useState(false)
   const whole = selectedIds.length < 2
   const target = whole ? 'board' : `${selectedIds.length} selected`
-  if ((whole && count < 2) || selectedIds.length === 1) return null
+  // disabled, not hidden: the toolbar keeps its shape
+  const disabled = (whole && count < 2) || selectedIds.length === 1
 
   const run = (mode: Layout) => {
     const { arrange, elements, setView } = useBoard.getState()
@@ -51,12 +52,12 @@ export function ArrangeMenu() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Tooltip>
-        <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Arrange the ${target}`} />} />}>
+        <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`Arrange the ${target}`} disabled={disabled} />} />}>
           <HugeiconsIcon icon={MagicWand01Icon} strokeWidth={1.8} />
         </TooltipTrigger>
         <TooltipContent>Arrange the {target}</TooltipContent>
       </Tooltip>
-      <PopoverContent side="top" sideOffset={12} className="w-72 gap-1 p-2">
+      <PopoverContent side="top" sideOffset={12} className="max-h-(--available-height) w-72 gap-1 overflow-y-auto p-2">
         <p className="px-3 pt-1 pb-2 text-xs text-muted-foreground">Arrange the {target} (Ctrl+Z undoes)</p>
         {LAYOUTS.map((mode) => (
           <div key={mode} className="contents">

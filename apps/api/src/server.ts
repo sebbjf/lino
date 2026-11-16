@@ -7,7 +7,13 @@ import { migrateDb, pgBoards } from './boards.ts'
 const url = process.env.DATABASE_URL
 if (url && !process.env.VERCEL) await migrateDb(url)
 const boards = url ? pgBoards(url) : undefined
-const app = buildApp({ logger: true, trustProxy: process.env.TRUST_PROXY === '1', boards })
+// one hop only: the client IP is what the nearest proxy saw, not whatever X-Forwarded-For the client sent
+// the query string is left out of request logs: /read?url= carries the address a user pasted
+const app = buildApp({
+  logger: { serializers: { req: (req) => ({ method: req.method, url: req.url?.split('?')[0] }) } },
+  trustProxy: process.env.TRUST_PROXY === '1' ? (_addr: string, hop: number) => hop < 1 : false,
+  boards,
+})
 if (!boards) app.log.warn('DATABASE_URL is not set: sharing is off')
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

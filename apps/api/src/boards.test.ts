@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { buildApp } from './routes.ts'
-import type { BoardStore } from './boards.ts'
+import { StoreFullError, type BoardStore } from './boards.ts'
 
 function memoryStore(): BoardStore {
   const rows = new Map<string, unknown>()
@@ -19,7 +19,7 @@ const board = {
   elements: [
     {
       id: 'a', type: 'note', text: 'hi', x: 0, y: 0, w: 100, h: 80, rotation: 0,
-      bg: '#fff3b0', size: 'lg', font: 'serif', family: 'Inter', corner: 'square', shadow: false, opacity: 0.6, deco: 'tape',
+      bg: '#fff3b0', color: '#222222', size: 'xl', align: 'center', bold: true, italic: false, font: 'serif', family: 'Inter', corner: 'square', shadow: false, opacity: 0.6, deco: 'tape',
     },
     { id: 'b', type: 'color', hex: '#aabbcc', x: 10, y: 10, w: 100, h: 100, rotation: 5 },
     {
@@ -63,10 +63,13 @@ test('rejects content that would be unsafe to render', async () => {
     { ...board.elements[0], corner: '9999px' },
     { id: 'i', type: 'image', src: 'data:image/png;base64,AA==', x: 0, y: 0, w: 10, h: 10, rotation: 0, duo: ['#000', 'url(x)'] },
     { ...board.elements[0], family: 'x", serif; } body {' },
+    { ...link, url: 'https://' },
+    { ...board.elements[1], x: 1e308 },
   ]
   for (const el of bad) assert.equal((await share(app, { elements: [el] })).statusCode, 400, JSON.stringify(el))
   assert.equal((await share(app, { elements: [] })).statusCode, 400)
   assert.equal((await share(app, { ...board, board: { bg: 'url(x)' } })).statusCode, 400)
+  assert.equal((await share(app, { ...board, colorMeta: { 'red;}body{display:none}': { pinned: true } } })).statusCode, 400)
 })
 
 test('too large board is refused', async () => {
@@ -79,6 +82,22 @@ test('too large board is refused', async () => {
 test('share rate limit per IP', async () => {
   const app = buildApp({ boards: memoryStore(), sharesPerHour: 2 })
   for (const code of [201, 201, 429]) assert.equal((await share(app, board)).statusCode, code)
+})
+
+test('a store failure answers 500 without its message; a full store is 503', async () => {
+  const failing = (e: Error): BoardStore => ({ create: () => Promise.reject(e), get: async () => null })
+  const res = await share(buildApp({ boards: failing(new Error('password authentication failed for user "neondb_owner"')) }), board)
+  assert.equal(res.statusCode, 500)
+  assert.doesNotMatch(res.body, /neondb_owner/)
+  assert.equal((await share(buildApp({ boards: failing(new StoreFullError()) }), board)).statusCode, 503)
+})
+
+test('behind one proxy, a forged X-Forwarded-For entry does not dodge the rate limit', async () => {
+  // same setting as server.ts with TRUST_PROXY=1: only the entry the proxy itself appended counts
+  const app = buildApp({ boards: memoryStore(), sharesPerHour: 1, trustProxy: (_addr: string, hop: number) => hop < 1 })
+  const from = (forged: string) => app.inject({ method: 'POST', url: '/boards', payload: board, headers: { 'x-forwarded-for': `${forged}, 9.9.9.9` } })
+  assert.equal((await from('1.1.1.1')).statusCode, 201)
+  assert.equal((await from('2.2.2.2')).statusCode, 429)
 })
 
 test('sharing without a database is 503', async () => {
