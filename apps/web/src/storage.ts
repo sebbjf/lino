@@ -86,6 +86,15 @@ export async function createBoard() {
   show(id, undefined)
 }
 
+/** Saves the shared board on screen as a new local board and makes it the current one. Used from the read-only view. */
+export async function importShared() {
+  const { elements, colorMeta, board, view } = useBoard.getState()
+  const index = (await run<Index | undefined>('readonly', (s) => s.get(INDEX))) ?? { current: 'local', boards: [{ id: 'local', name: 'My board' }] }
+  const id = crypto.randomUUID()
+  await run('readwrite', (s) => s.put({ elements, colorMeta, board, view } satisfies Saved, id))
+  await run('readwrite', (s) => s.put({ current: id, boards: [...index.boards, { id, name: 'Shared board' }] } satisfies Index, INDEX))
+}
+
 export function renameBoard(id: string, name: string) {
   const clean = name.trim().slice(0, 60)
   if (!clean) return

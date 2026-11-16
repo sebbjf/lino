@@ -5,6 +5,7 @@ import { Canvas } from './Canvas.tsx'
 import { PalettePanel } from './PalettePanel.tsx'
 import { addImages } from './image.ts'
 import { addLink, asUrl } from './link.ts'
+import { importShared } from './storage.ts'
 import { useBoard } from './store.ts'
 import { Toolbar } from './Toolbar.tsx'
 
@@ -86,9 +87,24 @@ export function App() {
         {readOnly && (
           <p className="fixed left-1/2 top-16 flex sm:top-4 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border bg-card/90 px-4 py-1.5 text-sm shadow-soft backdrop-blur">
             <span className="text-muted-foreground">Shared board · read-only</span>
-            <a href="/board/" className="font-medium underline-offset-4 hover:underline">
-              Open your board
-            </a>
+            {empty ? (
+              <a href="/board/" className="font-medium underline-offset-4 hover:underline">
+                Open your board
+              </a>
+            ) : (
+              <button
+                type="button"
+                className="rounded-full bg-foreground px-3 py-1 font-medium text-background transition-transform outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.97]"
+                onClick={() =>
+                  importShared().then(
+                    () => location.assign('/board/'),
+                    () => useBoard.getState().notify('Could not save it in this browser.'),
+                  )
+                }
+              >
+                Save to my boards
+              </button>
+            )}
           </p>
         )}
         {empty && readOnly && (
