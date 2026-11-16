@@ -39,7 +39,7 @@ ${ROLES.map((r) => `  --${r}: ${palette[r]};`).join('\n')}
 }
 
 const pill =
-  'inline-flex items-center gap-1.5 rounded-full outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none'
+  'inline-flex items-center gap-1.5 rounded-full outline-none transition-[color,background-color,scale] active:scale-[0.97] focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none'
 const darkButton = `${pill} group bg-foreground font-medium text-background`
 const ease = [0.16, 1, 0.3, 1] as const
 
@@ -654,7 +654,7 @@ function Logo() {
 
 const footerLinks = [
   { title: 'Product', links: [['Open your board', '/board/'], ['How it works', '#how-it-works']] },
-  { title: 'Lino', links: [['Privacy', '#privacy'], ['Questions', '#faq']] },
+  { title: 'Lino', links: [['Docs', '/docs/'], ['Privacy', '/privacy/'], ['Questions', '#faq']] },
 ]
 
 function Footer() {
@@ -726,7 +726,7 @@ function Hero() {
           <Reveal delay={0.45} className="mt-8 flex flex-col items-center gap-4 lg:mt-10">
             <a
               href="/board/"
-              className="pointer-events-auto rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background shadow-soft transition-transform outline-none hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none"
+              className="pointer-events-auto rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background shadow-soft transition-[translate,scale] outline-none hover:-translate-y-0.5 active:scale-[0.97] focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none"
             >
               Start a board
             </a>

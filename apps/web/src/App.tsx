@@ -84,7 +84,7 @@ export function App() {
           {!readOnly && <BoardsMenu />}
         </div>
         {readOnly && (
-          <p className="fixed left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border bg-card/90 px-4 py-1.5 text-sm shadow-soft backdrop-blur">
+          <p className="fixed left-1/2 top-16 flex sm:top-4 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border bg-card/90 px-4 py-1.5 text-sm shadow-soft backdrop-blur">
             <span className="text-muted-foreground">Shared board · read-only</span>
             <a href="/board/" className="font-medium underline-offset-4 hover:underline">
               Open your board

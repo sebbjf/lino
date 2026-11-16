@@ -10,6 +10,16 @@ export default defineConfig({
   // dev: the API runs on :3000; production sets VITE_API_URL
   server: { proxy: { '/api': { target: 'http://localhost:3000', rewrite: (p) => p.replace(/^\/api/, '') } } },
   resolve: { alias: { '@': path('./src') } },
-  // two pages: the landing at / and the board at /board/
-  build: { rolldownOptions: { input: { landing: path('./index.html'), board: path('./board/index.html') } } },
+  // the landing at /, the board at /board/, and small static pages
+  build: {
+    rolldownOptions: {
+      input: {
+        landing: path('./index.html'),
+        board: path('./board/index.html'),
+        privacy: path('./privacy/index.html'),
+        docs: path('./docs/index.html'),
+        notFound: path('./404.html'),
+      },
+    },
+  },
 })
