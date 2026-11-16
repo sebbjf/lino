@@ -26,6 +26,8 @@ Each has its own `.scratch/<slug>/spec.md`.
 | 12 | `community` | Open source |
 | 13 | `collaboration` | Open source, last |
 
+Cheap work that does not need to wait for this order lives in `performance` (measured optimizations) and `quick-wins` (small features).
+
 Touch and mobile gaps are tracked in `audit-followups/issues/04` and `06`.
 
 `image-storage` is the only one with real technical risk: it changes the saved format and needs a migration. `collaboration` is the most expensive and should not start before 1-5 are solid.
