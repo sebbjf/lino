@@ -9,6 +9,8 @@ No account: the board lives in your browser.
 
 [**Try it live**](https://lino-nine.vercel.app) · [Product spec](PRD.md) · [Code map](MAP.md) · [API health](https://lino-api-seven.vercel.app/health)
 
+<img src="docs/images/board.jpg" alt="A Lino board: eighteen photos arranged in the Mosaic layout" width="760" />
+
 </div>
 
 ---

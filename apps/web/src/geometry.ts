@@ -265,12 +265,13 @@ export function layoutPositions(boxes: Box[], mode: Layout, gap = 24): Placed[] 
     })
   } else if (mode === 'mosaic') {
     // staggered rows of flat pieces, each overlapping its neighbours and the row above, like prints pinned to a wall
-    const target = Math.sqrt(boxes.reduce((s, o) => s + o.w * o.h, 0) * 1.8)
+    // a few wide rows of about the same length, so the last one is not left short
     const avgW = boxes.reduce((s, o) => s + o.w, 0) / n
+    const target = (boxes.reduce((s, o) => s + o.w * 0.8, 0) / Math.max(1, Math.round(Math.sqrt(n / 2))))
     const rows: number[][] = [[]]
     let used = 0
     for (const i of order) {
-      if (rows.at(-1)!.length && used + boxes[i].w * 0.8 > target) {
+      if (rows.at(-1)!.length && used + boxes[i].w * 0.4 > target) {
         rows.push([])
         used = 0
       }
