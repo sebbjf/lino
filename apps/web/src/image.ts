@@ -1,5 +1,6 @@
 import { dominantColors } from './colors.ts'
-import { useBoard } from './store.ts'
+import { boundsOf } from './geometry.ts'
+import { useBoard, viewportCenter } from './store.ts'
 
 const MAX_BYTES = 20 * 1024 * 1024
 const MAX_SIDE = 1600
@@ -41,16 +42,36 @@ export async function readImage(file: File): Promise<{ src: string; w: number; h
 
 const MAX_INITIAL_SIDE = 320
 
-/** Reads image files and adds them to the board, cascading from a world point. Failures become notices. */
+/**
+ * Reads image files and adds them to the board. One lands on the point (or the viewport centre); several
+ * land together as a masonry around it, selected, as one undo step. Failures become notices.
+ */
 export async function addImages(files: File[], at?: { x: number; y: number }) {
-  const { add, notify } = useBoard.getState()
-  for (const [i, file] of files.entries()) {
+  const { notify } = useBoard.getState()
+  if (files.length > 1) notify(`Adding ${files.length} images…`)
+  const read: Awaited<ReturnType<typeof readImage>>[] = []
+  for (const file of files) {
     try {
-      const { src, w, h, colors } = await readImage(file)
-      const s = Math.min(1, MAX_INITIAL_SIDE / Math.max(w, h))
-      add({ type: 'image', src, colors, w: w * s, h: h * s }, at && { x: at.x + i * 24, y: at.y + i * 24 })
+      read.push(await readImage(file))
     } catch (e) {
       notify((e as Error).message)
     }
   }
+  // everything below is synchronous, so nothing the user does can slip into the middle of the batch
+  const { add, arrange, selectMany, past, elements } = useBoard.getState()
+  const ids = read.map(({ src, w, h, colors }, i) => {
+    const s = Math.min(1, MAX_INITIAL_SIDE / Math.max(w, h))
+    return add({ type: 'image', src, colors, w: w * s, h: h * s }, at && { x: at.x + i * 24, y: at.y + i * 24 })
+  })
+  if (ids.length < 2) return
+  arrange(ids, 'masonry')
+  // the masonry grows from where the first image landed: centre the whole group on the target instead
+  const { elements: now, view, moveMany } = useBoard.getState()
+  const mine = now.filter((e) => ids.includes(e.id))
+  const b = boundsOf(mine)
+  const c = at ?? viewportCenter(view)
+  moveMany(Object.fromEntries(mine.map((e) => [e.id, { x: e.x + c.x - (b.x + b.w / 2), y: e.y + c.y - (b.y + b.h / 2) }])))
+  selectMany(ids)
+  // the adds and the arrange each took a history step: fold them back into the one before the batch
+  useBoard.setState({ past: past.at(-1) === elements ? past : [...past, elements] })
 }

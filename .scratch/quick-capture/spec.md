@@ -11,3 +11,7 @@ Capture friction decides whether people stay.
 ## Notes
 
 - With no account, the extension has to hand content to the open tab or the local store; decide the mechanism first.
+
+## Comments
+
+2026-11-16: several images added at once (drop, paste or file picker) now land as a masonry centred on the target, selected, as one undo step (`addImages` in `apps/web/src/image.ts`). Left open: extension/bookmarklet, folder import, and progress while a large batch is being read (nothing shows until all are decoded).
