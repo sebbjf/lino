@@ -730,13 +730,6 @@ function Hero() {
             >
               Start a board
             </a>
-            <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              <HugeiconsIcon icon={UserBlock01Icon} size={14} strokeWidth={1.8} aria-hidden />
-              No account
-              <span aria-hidden>·</span>
-              <HugeiconsIcon icon={LaptopIcon} size={14} strokeWidth={1.8} aria-hidden />
-              Saved in your browser
-            </p>
           </Reveal>
         </div>
         <Stage onArranged={setArranged} />
