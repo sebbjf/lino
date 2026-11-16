@@ -1,36 +1,73 @@
 # Roadmap: the best open-source moodboard app
 
-Ideas from 2026-11-16, written after the UX and security audits. They come from reading the code and from general knowledge of the alternatives (PureRef, Milanote, Figma/FigJam, Are.na; open source: BeeRef, Excalidraw, tldraw), not from fresh market research. Some may partly exist already in code that was not read (`geometry.ts`, `png.ts`).
+Status: reference. First written 2026-11-16 after the UX and security audits; updated the same day with what has shipped since and with the architecture review. The ideas come from reading the code and from general knowledge of the alternatives (PureRef, Milanote, Figma/FigJam, Are.na; open source: BeeRef, Excalidraw, tldraw), not from fresh market research. Some may partly exist already in code that was not read (`geometry.ts`, `png.ts`).
 
 ## Positioning
 
-Do not compete as a general whiteboard: Excalidraw and tldraw already win there. The gap Lino can own is **the moodboard that ends in a design system**. It already reads colors and fonts from links and exports CSS/Tailwind; no open-source alternative does. Everything else should serve that idea, with no account and local-first.
+Do not compete as a general whiteboard: Excalidraw and tldraw already win there. The gap Lino can own is **the moodboard that ends in a design system**. It already reads colors and fonts from links and exports CSS, Tailwind and Design Tokens JSON; no open-source alternative does. Everything else should serve that idea, with no account and local-first.
 
-## Specs, in recommended order
+## How to read this
+
+Work comes in four tracks. Pick from the top of a track; the dependency list below says what must come before what.
+
+1. **Cheap, any time**: `performance` items 1-3 and `quick-wins`. They need nothing else.
+2. **Structure**: the architecture review (`architecture-review`). Small refactors that make the feature work cheaper and safer.
+3. **Features**: the numbered specs, in order.
+4. **Reserve**: `idea-backlog` (promote an idea to its own spec when picked up) and `audit-followups` (what the audits left open).
+
+## 1. Cheap, any time
+
+| Spec | What | State |
+|---|---|---|
+| `performance` | 1 save the view apart from images, 2 `memo` on `ElementView` (already wrapped), 3 lazy image decoding | Not started; 1-3 are small |
+| `quick-wins` | Contrast in the palette, selection to PNG, zoom to fit, `?` cheat sheet, lock, paste a hex, final batch notice | Not started |
+
+## 2. Structure (architecture review)
+
+Overview in `architecture-review`. These are not features; they exist so features land in one place instead of four.
+
+| Spec | State | Why it is on the roadmap |
+|---|---|---|
+| `board-snapshot` | Ready for an agent | Do before `image-storage`, `templates-and-gallery`, `collaboration` and "back up all boards": each of them changes or moves the saved shape, and today that shape lives in four files. |
+| `undo-history` | Needs triage | Cheapest win; the snapshot's "open is one undo step" and `collaboration` both lean on it. |
+| `selection-commands` | Needs triage | Do with "lock elements" (`quick-wins`, `image-tools`): the read-only/locked check should live in one place. |
+| `element-kinds` | Needs triage | Do right before `frames-and-groups`, which adds a fifth kind; that is the trigger the spec was waiting for. |
+| `move-gesture` | Needs triage, speculative | Only if drag bugs keep showing up; also relevant once groups change what a drag moves. |
+
+## 3. Features, in recommended order
 
 Each has its own `.scratch/<slug>/spec.md`.
 
-| # | Spec | Group |
-|---|---|---|
-| 1 | `image-storage` | Foundations |
-| 2 | `palette-from-images` | Foundations |
-| 3 | `image-tools` | Foundations |
-| 4 | `frames-and-groups` | Foundations |
-| 5 | `quick-capture` | Foundations |
-| 6 | `design-token-export` | Differentiators |
-| 7 | `local-files-and-pwa` | Open source |
-| 8 | `present-and-export` | Differentiators |
-| 9 | `motion-media` | Differentiators |
-| 10 | `templates-and-gallery` | Differentiators |
-| 11 | `self-hosting` | Open source |
-| 12 | `community` | Open source |
-| 13 | `collaboration` | Open source, last |
+| # | Spec | Group | State | Comes after |
+|---|---|---|---|---|
+| 1 | `image-storage` | Foundations | Not started; the only one with real technical risk (changes the saved format, needs a migration) | `board-snapshot`, so the migration happens in one parse |
+| 2 | `palette-from-images` | Foundations | **First version shipped**: image colours join the palette, swatches from image. Open: backfill for old images, per-image opt-out | |
+| 3 | `image-tools` | Foundations | Not started | `selection-commands` for lock |
+| 4 | `frames-and-groups` | Foundations | Not started | `element-kinds` |
+| 5 | `quick-capture` | Foundations | Not started | |
+| 6 | `design-token-export` | Differentiators | **Partly shipped**: Design Tokens JSON. Open: Figma variables, `.ase`, pair contrast check, type specimen | |
+| 7 | `local-files-and-pwa` | Open source | Not started | `board-snapshot` (the file adapter) |
+| 8 | `present-and-export` | Differentiators | Not started | |
+| 9 | `motion-media` | Differentiators | Not started | `image-storage` (video blobs) |
+| 10 | `templates-and-gallery` | Differentiators | Not started | `board-snapshot` (a template is a snapshot) |
+| 11 | `self-hosting` | Open source | Not started | |
+| 12 | `community` | Open source | Not started | |
+| 13 | `collaboration` | Open source, last | Not started; the most expensive | 1-5 solid, `board-snapshot`, `undo-history` |
 
-Cheap work that does not need to wait for this order lives in `performance` (measured optimizations) and `quick-wins` (small features).
+Since the first draft, 2 and 6 moved from "idea" to partly shipped, and masonry arrange for images added together landed (`9d21fe3`). The list order is otherwise unchanged.
 
-Touch and mobile gaps are tracked in `audit-followups/issues/04` and `06`.
+## Suggested next steps
 
-`image-storage` is the only one with real technical risk: it changes the saved format and needs a migration. `collaboration` is the most expensive and should not start before 1-5 are solid.
+1. `performance` 1-3 and the cheapest `quick-wins` (zoom to fit, paste a hex): hours, visible result.
+2. `board-snapshot`, then `undo-history`: unblock everything that touches the saved shape.
+3. `image-storage`: the real fix for image-heavy boards.
+4. Finish `design-token-export` (contrast, tone scales from `idea-backlog`): this is the positioning, so it should keep moving while the foundations are built.
+5. `element-kinds` then `frames-and-groups`.
+
+## Reserve
+
+- `idea-backlog`: sort by color, back up all boards (needs `board-snapshot`), style tile, tone scales, settings menu. "Do first" there are sort by color, back up all boards and style tile.
+- `audit-followups`: 7 tickets the audits left open (deploy verification, two tabs overwriting each other, CSP, touch editing, revoking a shared board, platform-aware shortcut labels, minor cleanups). Touch and mobile gaps are `04` and `06`. Two tabs overwriting (`02`) relates to `board-snapshot` and to `collaboration`.
 
 ## Non-goals
 

@@ -31,3 +31,7 @@ Newsreader ships about 550 kB of woff2 (normal and italic, three subsets each). 
 ## Related
 
 - `image-storage`: the real fix for image-heavy boards (blobs, thumbnails, viewport culling). Items 1-3 are worth doing first because they are cheap and do not change the image format.
+
+## Comments
+
+2026-11-16: item 2 is already done: `ElementView` is wrapped in `memo` (`apps/web/src/ElementView.tsx`). Items 1 and 3 are still open.
