@@ -37,6 +37,18 @@ test('exportTheme prefixes CSS variables only and can write oklch', () => {
   expect(exportTheme('tailwind', colors, [], prefs)).toBe('@theme {\n  --color-red: oklch(0.628 0.258 29.2);\n}\n')
 })
 
+test('exportTheme writes design tokens JSON, deduping names and dropping bad hex', () => {
+  const colors = [
+    { hex: '#112233', name: 'Ink', pinned: true },
+    { hex: '#445566', name: 'ink', pinned: false },
+    { hex: 'red;}', name: 'bad', pinned: false },
+  ]
+  expect(JSON.parse(exportTheme('tokens', colors, ['JetBrains Mono', 'a"b']))).toEqual({
+    color: { ink: { $type: 'color', $value: '#112233' }, 'ink-2': { $type: 'color', $value: '#445566' } },
+    font: { 'jetbrains-mono': { $type: 'fontFamily', $value: ['JetBrains Mono', 'monospace'] }, 'a-b': { $type: 'fontFamily', $value: ['a"b', 'sans-serif'] } },
+  })
+})
+
 test('exportTheme never lets a hex or a font name break out of the block', () => {
   const css = exportTheme('css', [{ hex: 'red;}body{display:none}', name: 'x', pinned: true }], ['x\n}\nbody{display:none}', 'Söhne'])
   expect(css).toBe(':root {\n  --font-x-body-display-none: "xbodydisplaynone", sans-serif;\n  --font-sohne: "Söhne", sans-serif;\n}\n')

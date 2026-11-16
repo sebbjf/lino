@@ -8,6 +8,8 @@ import { boardFonts, buildPalette, shuffledOrder } from './colors.ts'
 import { exportTheme, slug, type ExportFormat } from './export.ts'
 import { useBoard } from './store.ts'
 
+const LABEL: Record<ExportFormat, string> = { css: 'CSS', tailwind: 'Tailwind', tokens: 'Tokens' }
+
 export function PalettePanel({ onClose }: { onClose: () => void }) {
   const elements = useBoard((s) => s.elements)
   const colorMeta = useBoard((s) => s.colorMeta)
@@ -21,7 +23,7 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
   const code = exportTheme(format, colors, fonts, prefs)
   const copy = () =>
     navigator.clipboard.writeText(code).then(
-      () => notify(format === 'css' ? 'CSS variables copied.' : 'Tailwind theme copied.'),
+      () => notify(`${LABEL[format]} copied.`),
       () => notify('Could not copy to the clipboard.'),
     )
 
@@ -47,7 +49,7 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
               <HugeiconsIcon icon={SwatchIcon} strokeWidth={1.8} />
             </EmptyMedia>
             <EmptyTitle>No colors yet</EmptyTitle>
-            <EmptyDescription>Add a color swatch or paste a link and its colors show up here.</EmptyDescription>
+            <EmptyDescription>Add an image, a color swatch or a link and its colors show up here.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -157,10 +159,10 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            {slug(prefs.prefix, '') ? `CSS writes --${slug(prefs.prefix, '')}-color-…; ` : ''}Tailwind always uses --color-… so its classes work.
+            {slug(prefs.prefix, '') ? `CSS writes --${slug(prefs.prefix, '')}-color-…; ` : ''}Tailwind always uses --color-… so its classes work. Tokens is JSON for Style Dictionary and Figma token plugins.
           </p>
           <div role="group" aria-label="Export as" className="flex gap-1">
-            {(['css', 'tailwind'] as const).map((f) => (
+            {(['css', 'tailwind', 'tokens'] as const).map((f) => (
               <Button
                 key={f}
                 variant={format === f ? 'secondary' : 'ghost'}
@@ -169,12 +171,12 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
                 className={`flex-1 ${format === f ? 'ring-1 ring-ring' : ''}`}
                 onClick={() => setFormat(f)}
               >
-                {f === 'css' ? 'CSS variables' : 'Tailwind'}
+                {LABEL[f]}
               </Button>
             ))}
           </div>
           <pre
-            aria-label={`${format === 'css' ? 'CSS' : 'Tailwind'} preview`}
+            aria-label={`${LABEL[format]} preview`}
             tabIndex={0}
             className="max-h-48 overflow-auto rounded-xl bg-muted p-3 font-mono text-xs leading-relaxed select-text"
           >
@@ -182,7 +184,7 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
           </pre>
           <Button variant="outline" size="sm" onClick={copy}>
             <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
-            Copy {format === 'css' ? 'CSS' : 'Tailwind'}
+            Copy {LABEL[format]}
           </Button>
         </section>
       )}

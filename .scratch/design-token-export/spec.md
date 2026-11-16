@@ -11,3 +11,7 @@ This is the differentiator: Lino already exports CSS and Tailwind (`apps/web/src
 ## Notes
 
 - Every exporter writes user-controlled names and values: sanitize at the sink, as `export.ts` now does.
+
+## Comments
+
+2026-11-16: W3C Design Tokens JSON shipped as a third export format (`tokens` in `apps/web/src/export.ts`, "Tokens" in the palette panel). Left open: Figma variables, `.ase` swatches, WCAG contrast check, type specimen element.
