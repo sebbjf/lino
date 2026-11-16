@@ -38,7 +38,7 @@ Lino does that step. Paste a link and it reads the page's cover, fonts and color
 - **Extract**: the palette panel shows every color and font found. Rename, pin, hide or shuffle colors; preview the code before copying.
 - **Export**: CSS variables (with a custom prefix) or Tailwind v4 `@theme`, colors as hex or OKLCH.
 - **Pick colors**: eyedropper anywhere on screen (Chromium only) and color **harmonies** (complementary, analogous, triad) from any swatch.
-- **Arrange**: grid, masonry, row, column, circle, plus the playful **sunflower**, **fan** and **collage** layouts. Snapping guides, align and distribute.
+- **Arrange**: grid, masonry, row, column, circle, plus the playful **sunflower**, **fan**, **collage** and **mosaic** layouts. Snapping guides, align and distribute.
 - **Style**: corners, shadow, opacity, tape or pin decorations, mono/duotone image filters, note fonts (including the ones found on your links), and board themes (Paper, Kraft, Night, Blueprint).
 - **Many boards**: create as many as you like, rename and delete them from the name menu at the top left.
 - **Save and share**: autosave to IndexedDB, `.lino.json` export/import, **PNG download** of the whole board, and a read-only **share link**.
@@ -156,7 +156,7 @@ lino/
 | --- | --- |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y` |
 | Select several | `Shift`+click, `Shift`+drag on the background (selection box), `Ctrl+A` for all; `Esc` clears |
-| Arrange (layout templates) | Wand button, for the selection (2+) or the whole board when nothing is selected. Sizes stay, `Ctrl+Z` undoes. Templates: **grid**, **masonry**, **row**, **column**, **circle**, **sunflower** (golden-angle spiral around the biggest piece), **fan** (a hand of cards, each showing at least 60%) and **collage** (overlapping, slightly tilted, the same every time) |
+| Arrange (layout templates) | Wand button, for the selection (2+) or the whole board when nothing is selected. Sizes stay, `Ctrl+Z` undoes. Templates: **grid**, **masonry**, **row**, **column**, **circle**, **sunflower** (golden-angle spiral around the biggest piece), **fan** (a hand of cards, each showing at least 60%) **collage** (overlapping, slightly tilted, the same every time) and **mosaic** (flat, staggered rows that overlap like prints on a wall) |
 | Align / distribute | Toolbar buttons with 2+ selected (distribute needs 3+); aligns visible outlines, rotation included |
 | Align while dragging | Snaps to other elements' edges and centers with guide lines; hold `Alt` to move freely |
 | Move selected | Arrows (`Shift` ×10), or drag any selected element |

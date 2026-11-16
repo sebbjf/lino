@@ -2,6 +2,7 @@ import {
   Cards02Icon,
   DashboardCircleIcon,
   FlowerIcon,
+  GridTableIcon,
   GridViewIcon,
   ImageCompositionIcon,
   LayoutGridIcon,
@@ -26,8 +27,9 @@ const INFO: Record<Layout, { label: string; hint: string; icon: IconSvgElement }
   sunflower: { label: 'Sunflower', hint: 'A spiral of seeds, the biggest in the middle', icon: FlowerIcon },
   fan: { label: 'Fan', hint: 'Spread out like a hand of cards', icon: Cards02Icon },
   collage: { label: 'Collage', hint: 'Overlapping and tilted, like photos on a table', icon: ImageCompositionIcon },
+  mosaic: { label: 'Mosaic', hint: 'Staggered rows that overlap, like prints on a wall', icon: GridTableIcon },
 }
-const PLAYFUL: Layout[] = ['sunflower', 'fan', 'collage']
+const PLAYFUL: Layout[] = ['sunflower', 'fan', 'collage', 'mosaic']
 
 /** Layout templates for the selection (2+), or the whole board when nothing is selected. */
 export function ArrangeMenu() {

@@ -108,8 +108,8 @@ test('layoutPositions arranges without overlaps and starts at the bounds', () =>
   const boxes = [box(300, 0, 100, 80), box(0, 0, 200, 120), box(50, 400, 120, 60), box(500, 300, 80, 200), box(10, 200, 140, 140)]
   // what the board in the browser showed overlapping in a circle: two wide images among small swatches
   const mixed = [box(0, 0, 200, 120), box(0, 0, 200, 120), ...Array.from({ length: 6 }, (_, i) => box(i * 300, 500, 90, 90))]
-  // fan and collage overlap on purpose
-  const tidy = LAYOUTS.filter((m) => m !== 'fan' && m !== 'collage')
+  // fan, collage and mosaic overlap on purpose
+  const tidy = LAYOUTS.filter((m) => m !== 'fan' && m !== 'collage' && m !== 'mosaic')
   const big = Array.from({ length: 40 }, (_, i) => box(i * 37, i * 11, 60 + (i % 5) * 40, 50 + (i % 3) * 60))
   for (const set of [boxes, mixed, big]) for (const mode of tidy) {
     const placed = layoutPositions(set, mode).map((p, i) => ({ ...set[i], ...p }))
@@ -156,4 +156,13 @@ test('collage is tilted a little and the same every time', () => {
   expect(layoutPositions(boxes, 'collage')).toEqual(a)
   expect(a.every((p) => Math.abs(p.rotation) <= 6)).toBe(true)
   expect(a.some((p) => p.rotation !== 0)).toBe(true)
+})
+
+test('mosaic overlaps flat pieces in staggered rows and is the same every time', () => {
+  const boxes = Array.from({ length: 8 }, (_, i) => box(i * 150, 0, 120, 160))
+  const a = layoutPositions(boxes, 'mosaic')
+  expect(layoutPositions(boxes, 'mosaic')).toEqual(a)
+  expect(a.every((p) => p.rotation === 0)).toBe(true)
+  const placed = a.map((p, i) => ({ ...boxes[i], ...p }))
+  expect(placed.some((p, i) => placed.some((q, j) => i < j && overlaps(p, q)))).toBe(true)
 })

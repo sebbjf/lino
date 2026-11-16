@@ -155,8 +155,8 @@ export function distributeOffsets(boxes: Box[], axis: 'x' | 'y') {
   return out
 }
 
-export type Layout = 'grid' | 'masonry' | 'row' | 'column' | 'circle' | 'sunflower' | 'fan' | 'collage'
-export const LAYOUTS: Layout[] = ['grid', 'masonry', 'row', 'column', 'circle', 'sunflower', 'fan', 'collage']
+export type Layout = 'grid' | 'masonry' | 'row' | 'column' | 'circle' | 'sunflower' | 'fan' | 'collage' | 'mosaic'
+export const LAYOUTS: Layout[] = ['grid', 'masonry', 'row', 'column', 'circle', 'sunflower', 'fan', 'collage', 'mosaic']
 type Placed = { x: number; y: number; rotation: number }
 
 /** Small deterministic noise in [-1, 1] so a layout looks hand-made but is the same every time. */
@@ -262,6 +262,32 @@ export function layoutPositions(boxes: Box[], mode: Layout, gap = 24): Placed[] 
     order.forEach((i, k) => {
       const t = a[k] - a[n - 1] / 2
       out[i] = { x: cx + radius * Math.sin(t) - boxes[i].w / 2, y: pivotY - radius * Math.cos(t) - boxes[i].h / 2, rotation: Math.round((t * 1800) / Math.PI) / 10 }
+    })
+  } else if (mode === 'mosaic') {
+    // staggered rows of flat pieces, each overlapping its neighbours and the row above, like prints pinned to a wall
+    const target = Math.sqrt(boxes.reduce((s, o) => s + o.w * o.h, 0) * 1.8)
+    const avgW = boxes.reduce((s, o) => s + o.w, 0) / n
+    const rows: number[][] = [[]]
+    let used = 0
+    for (const i of order) {
+      if (rows.at(-1)!.length && used + boxes[i].w * 0.8 > target) {
+        rows.push([])
+        used = 0
+      }
+      rows.at(-1)!.push(i)
+      used += boxes[i].w * 0.8
+    }
+    let top = 0
+    let k = 0
+    rows.forEach((row, r) => {
+      const rowH = Math.max(...row.map((i) => boxes[i].h))
+      let x = b.x + (r % 2 ? avgW * 0.3 : 0)
+      for (const i of row) {
+        const o = boxes[i]
+        out[i] = { x, y: b.y + top + (rowH - o.h) / 2 + noise(k++) * o.h * 0.12, rotation: 0 }
+        x += o.w * 0.8
+      }
+      top += rowH * 0.75
     })
   } else {
     // collage: a masonry that overlaps a little, each piece nudged and tilted like photos on a table
