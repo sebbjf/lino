@@ -39,6 +39,7 @@ import { FileMenu } from './FileMenu.tsx'
 import { ShareButton } from './ShareButton.tsx'
 import { StyleMenu } from './StyleMenu.tsx'
 import { ArrangeMenu } from './ArrangeMenu.tsx'
+import { duplicate, remove, reorder } from './selection.ts'
 import { useBoard } from './store.ts'
 
 // Chromium only for now; elsewhere the button is hidden.
@@ -168,7 +169,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
   const canUndo = useBoard((s) => s.past.some((p) => p !== s.elements))
   const canRedo = useBoard((s) => s.future.length > 0)
   const readOnly = useBoard((s) => s.readOnly)
-  const { add, duplicate, reorder, remove, undo, redo, align, distribute } = useBoard.getState()
+  const { add, undo, redo, align, distribute } = useBoard.getState()
   const fileInput = useRef<HTMLInputElement>(null)
   const imageSelected = useBoard((s) => s.elements.find((e) => e.id === selectedId)?.type === 'image')
 
