@@ -32,7 +32,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { normalizeHex } from './colors.ts'
-import { zoomAt } from './geometry.ts'
+import { fitView, zoomAt } from './geometry.ts'
 import { addImages, imageColors } from './image.ts'
 import { addLink, asUrl } from './link.ts'
 import { FileMenu } from './FileMenu.tsx'
@@ -187,6 +187,11 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
     setView(zoomAt(view, window.innerWidth / 2, window.innerHeight / 2, z))
   }
 
+  const fitAll = () => {
+    const { elements, setView } = useBoard.getState()
+    if (elements.length) setView(fitView(elements, innerWidth, innerHeight))
+  }
+
   return (
     <div
       id="board-tools"
@@ -254,7 +259,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
       )}
 
       <Tool label="Zoom out" icon={MinusSignIcon} onClick={() => zoomTo(zoom / 1.25)} />
-      <Button variant="ghost" size="sm" aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%`} className="tabular-nums" onClick={() => zoomTo(1)}>
+      <Button variant="ghost" size="sm" aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%, double click to fit the board`} className="tabular-nums" onClick={() => zoomTo(1)} onDoubleClick={fitAll}>
         {Math.round(zoom * 100)}%
       </Button>
       <Tool label="Zoom in" icon={PlusSignIcon} onClick={() => zoomTo(zoom * 1.25)} />

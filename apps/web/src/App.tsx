@@ -3,6 +3,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { BoardsMenu } from './BoardsMenu.tsx'
 import { Canvas } from './Canvas.tsx'
 import { PalettePanel } from './PalettePanel.tsx'
+import { normalizeHex } from './colors.ts'
+import { fitView } from './geometry.ts'
 import { addImages } from './image.ts'
 import { addLink, asUrl } from './link.ts'
 import { importShared } from './storage.ts'
@@ -29,7 +31,9 @@ export function App() {
       const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'))
       const text = e.clipboardData?.getData('text/plain').trim()
       const url = text && asUrl(text)
+      const hex = text && /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(text) ? normalizeHex(text) : null
       if (files.length) addImages(files)
+      else if (hex) useBoard.getState().add({ type: 'color', hex, w: 140, h: 140 })
       else if (url) addLink(url)
       else if (text) useBoard.getState().add({ type: 'note', text, w: 240, h: 160 })
       else return
@@ -48,6 +52,11 @@ export function App() {
       if (t === document.body && !e.ctrlKey && !e.metaKey) {
         const { selectedIds, elements, remove, select, readOnly, checkpoint, moveMany } = useBoard.getState()
         const arrow = ARROWS[e.key]
+        if (e.key === '1') {
+          const { elements: all, setView } = useBoard.getState()
+          if (all.length) setView(fitView(all, innerWidth, innerHeight))
+          return
+        }
         if ((e.key === 'Delete' || e.key === 'Backspace') && !readOnly && selectedIds.length) remove(selectedIds)
         else if (e.key === 'Escape') select(null)
         else if (arrow && !e.altKey && !readOnly && selectedIds.length) {

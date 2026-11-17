@@ -19,8 +19,8 @@ Work comes in four tracks. Pick from the top of a track; the dependency list bel
 
 | Spec | What | State |
 |---|---|---|
-| `performance` | 1 save the view apart from images, 2 `memo` on `ElementView` (already wrapped), 3 lazy image decoding | Not started; 1-3 are small |
-| `quick-wins` | Contrast in the palette, selection to PNG, zoom to fit, `?` cheat sheet, lock, paste a hex, final batch notice | Not started |
+| `performance` | 1 save the view apart from images, 2 `memo` on `ElementView` (already wrapped), 3 lazy image decoding | **1-3 done** (`bb6594c`). Open: 4 lazy-load PNG export and style menu, 5 landing fonts |
+| `quick-wins` | Contrast in the palette, selection to PNG, zoom to fit, `?` cheat sheet, lock, paste a hex, final batch notice | **Zoom to fit and paste a hex done** (uncommitted). Open: contrast, selection to PNG, `?` cheat sheet, lock, batch notice |
 
 ## 2. Structure (architecture review)
 
@@ -58,7 +58,7 @@ Since the first draft, 2 and 6 moved from "idea" to partly shipped, and masonry 
 
 ## Suggested next steps
 
-1. `performance` 1-3 and the cheapest `quick-wins` (zoom to fit, paste a hex): hours, visible result.
+1. ~~`performance` 1-3 and the cheapest `quick-wins` (zoom to fit, paste a hex)~~ done.
 2. `board-snapshot`, then `undo-history`: unblock everything that touches the saved shape.
 3. `image-storage`: the real fix for image-heavy boards.
 4. Finish `design-token-export` (contrast, tone scales from `idea-backlog`): this is the positioning, so it should keep moving while the foundations are built.
