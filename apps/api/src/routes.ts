@@ -14,7 +14,7 @@ const dataImage = { type: 'string', pattern: '^data:image/(png|jpeg|webp|gif);ba
 const hex = { type: 'string', pattern: '^#[0-9a-fA-F]{3,8}$' }
 const strings = (maxItems: number, maxLength: number) => ({ type: 'array', maxItems, items: { type: 'string', maxLength } })
 const requires = (type: string, fields: string[]) => ({ if: { properties: { type: { const: type } } }, then: { required: fields } })
-const elementSchema = {
+export const elementSchema = {
   type: 'object',
   required: ['id', 'type', 'x', 'y', 'w', 'h', 'rotation'],
   additionalProperties: false,

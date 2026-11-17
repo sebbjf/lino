@@ -22,7 +22,8 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | Saving/loading boards (IndexedDB, autosave), creating, switching, renaming, deleting boards | [apps/web/src/storage.ts](apps/web/src/storage.ts) |
 | Board name menu (top left: switch, rename, delete, new board) | [apps/web/src/BoardsMenu.tsx](apps/web/src/BoardsMenu.tsx) |
 | Adding images (resize, read file) | [apps/web/src/image.ts](apps/web/src/image.ts) |
-| Board file export/import (`.lino.json`), validation of imported files | [apps/web/src/boardFile.ts](apps/web/src/boardFile.ts) |
+| Board snapshot: its shape, the validating parse for every source (file, share, local save), link repair, `openSnapshot` (replace / new / readonly) | [apps/web/src/snapshot.ts](apps/web/src/snapshot.ts) |
+| Board file export/import (`.lino.json`): download, upload, notices | [apps/web/src/boardFile.ts](apps/web/src/boardFile.ts) |
 | File menu (export, import, PNG) | [apps/web/src/FileMenu.tsx](apps/web/src/FileMenu.tsx) |
 | PNG export (canvas drawing of every element type) | [apps/web/src/png.ts](apps/web/src/png.ts) |
 | Share button, read-only link, loading a shared board | [ShareButton.tsx](apps/web/src/ShareButton.tsx), [share.ts](apps/web/src/share.ts) |

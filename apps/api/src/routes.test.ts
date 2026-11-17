@@ -25,3 +25,12 @@ test('CORS preflight when CORS_ORIGIN is set', async () => {
     delete process.env.CORS_ORIGIN
   }
 })
+
+// Pinned with the web side (snapshot.test.ts, "limits match the share API"): change one, change both.
+test('shared element limits', async () => {
+  const { elementSchema } = await import('./routes.ts')
+  const p = elementSchema.properties
+  assert.deepEqual([p.x.minimum, p.x.maximum, p.y.minimum, p.y.maximum], [-1e6, 1e6, -1e6, 1e6])
+  assert.deepEqual([p.w.minimum, p.w.maximum, p.h.minimum, p.h.maximum], [1, 10_000, 1, 10_000])
+  assert.equal(p.text.maxLength, 10_000)
+})

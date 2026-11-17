@@ -28,7 +28,7 @@ Overview in `architecture-review`. These are not features; they exist so feature
 
 | Spec | State | Why it is on the roadmap |
 |---|---|---|
-| `board-snapshot` | Ready for an agent | Do before `image-storage`, `templates-and-gallery`, `collaboration` and "back up all boards": each of them changes or moves the saved shape, and today that shape lives in four files. |
+| `board-snapshot` | **Done** (uncommitted) | Do before `image-storage`, `templates-and-gallery`, `collaboration` and "back up all boards": each of them changes or moves the saved shape, and today that shape lives in four files. |
 | `undo-history` | Needs triage | Cheapest win; the snapshot's "open is one undo step" and `collaboration` both lean on it. |
 | `selection-commands` | Needs triage | Do with "lock elements" (`quick-wins`, `image-tools`): the read-only/locked check should live in one place. |
 | `element-kinds` | Needs triage | Do right before `frames-and-groups`, which adds a fifth kind; that is the trigger the spec was waiting for. |
@@ -59,7 +59,7 @@ Since the first draft, 2 and 6 moved from "idea" to partly shipped, and masonry 
 ## Suggested next steps
 
 1. ~~`performance` 1-3 and the cheapest `quick-wins` (zoom to fit, paste a hex)~~ done.
-2. `board-snapshot`, then `undo-history`: unblock everything that touches the saved shape.
+2. ~~`board-snapshot`~~ done, then `undo-history`: unblock everything that touches the saved shape.
 3. `image-storage`: the real fix for image-heavy boards.
 4. Finish `design-token-export` (contrast, tone scales from `idea-backlog`): this is the positioning, so it should keep moving while the foundations are built.
 5. `element-kinds` then `frames-and-groups`.

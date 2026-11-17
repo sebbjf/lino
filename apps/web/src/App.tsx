@@ -7,7 +7,8 @@ import { normalizeHex } from './colors.ts'
 import { fitView } from './geometry.ts'
 import { addImages } from './image.ts'
 import { addLink, asUrl } from './link.ts'
-import { importShared } from './storage.ts'
+import { captureSnapshot } from './snapshot.ts'
+import { saveAsLocalBoard } from './storage.ts'
 import { useBoard } from './store.ts'
 import { textOn } from './style.ts'
 import { Toolbar } from './Toolbar.tsx'
@@ -130,7 +131,7 @@ export function App() {
                 onClick={() => {
                   // one copy per press: a second click while saving would store the board twice
                   setSaving(true)
-                  importShared().then(
+                  saveAsLocalBoard(captureSnapshot(), 'Shared board').then(
                     () => location.assign('/board/'),
                     () => {
                       setSaving(false)
