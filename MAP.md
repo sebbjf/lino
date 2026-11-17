@@ -8,8 +8,9 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | --- | --- |
 | Board state, selection (`selectedIds`), undo/redo, add/move/delete/duplicate/reorder/align/distribute elements | [apps/web/src/store.ts](apps/web/src/store.ts) |
 | Element types (`image`, `note`, `color`, `link`) | `BoardElement` in [store.ts](apps/web/src/store.ts) |
-| Global shortcuts (undo/redo), paste handling | [apps/web/src/App.tsx](apps/web/src/App.tsx) |
-| Per-element shortcuts (arrows, Delete, Ctrl+D, `[` `]`, Enter) | [apps/web/src/ElementView.tsx](apps/web/src/ElementView.tsx) |
+| Commands on the selection (nudge, delete, duplicate, rotate, reorder), the read-only gate, "what a command acts on" (`targetOf`) | [apps/web/src/selection.ts](apps/web/src/selection.ts) |
+| Global shortcuts (undo/redo, and keys to selection commands without focus), paste handling | [apps/web/src/App.tsx](apps/web/src/App.tsx) |
+| Per-element shortcuts (key to selection command; Alt+arrows resize, Enter) | [apps/web/src/ElementView.tsx](apps/web/src/ElementView.tsx) |
 | Pan, zoom, wheel, drop files/links/board files | [apps/web/src/Canvas.tsx](apps/web/src/Canvas.tsx) |
 | Align / distribute math | `alignOffsets`, `distributeOffsets` in [geometry.ts](apps/web/src/geometry.ts) |
 | Multi-select: Shift+click, group drag | [ElementView.tsx](apps/web/src/ElementView.tsx); selection box in [Canvas.tsx](apps/web/src/Canvas.tsx); Ctrl+A, Delete/Esc without focus in [App.tsx](apps/web/src/App.tsx) |
@@ -50,6 +51,7 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/main.tsx` | Board entry. With `?s=<id>` opens that shared board read-only; otherwise loads the saved board and starts autosave. Renders `App`. |
 | `src/App.tsx` | Board shell: canvas, toolbar, palette panel, empty state, notices. Window-level paste (image/URL/text) and undo/redo keys. |
 | `src/Canvas.tsx` | The infinite canvas. Wheel pan, Ctrl+wheel zoom, background drag, file/link drop. Renders every `ElementView`. |
+| `src/selection.ts` | Selection commands shared by keyboard and toolbar: `targetOf`, `nudge`, `rotateStep`, `remove`, `duplicate`, `reorder`. One read-only check; one undo step each. |
 | `src/ElementView.tsx` | One element on the board: selection, drag, resize/rotate handles, keyboard actions, note editing, color popover. |
 | `src/LinkCard.tsx` | Content of a link element: cover, title, domain, fonts and colors. |
 | `src/ColorFields.tsx` | Hex input + native color input used in the color popover. |
@@ -74,7 +76,7 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/index.css` | Tailwind import, theme tokens, fonts. |
 | `src/lib/utils.ts` | `cn()` class helper (shadcn). |
 | `src/components/ui/*` | shadcn components: button, empty, field, input, kbd, label, popover, separator, tooltip. |
-| `src/*.test.ts` | Vitest: board file parsing, colors, export, geometry, png text wrap, store. |
+| `src/*.test.ts` | Vitest: board snapshot parsing, images, selection commands, colors, export, geometry, png text wrap, store. |
 | `components.json` | shadcn config. |
 | `.env.example` | `VITE_API_URL`. |
 

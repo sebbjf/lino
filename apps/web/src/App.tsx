@@ -65,7 +65,10 @@ export function App() {
           const step = e.shiftKey ? 10 : 1
           nudge(selectedIds, arrow[0] * step, arrow[1] * step)
           e.preventDefault()
-        } else if (e.key.toLowerCase() === 'r' && selectedIds.length) rotateStep(selectedIds, e.shiftKey ? -1 : 1)
+        } else if (e.key.toLowerCase() === 'r' && !e.altKey && selectedIds.length) {
+          rotateStep(selectedIds, e.shiftKey ? -1 : 1)
+          e.preventDefault()
+        }
         return
       }
       if (!(e.ctrlKey || e.metaKey)) return

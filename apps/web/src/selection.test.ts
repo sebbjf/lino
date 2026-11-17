@@ -58,3 +58,20 @@ test('on a read-only board every command does nothing and leaves no history', ()
   expect(board().elements).toBe(elements)
   expect(board().past).toBe(past)
 })
+
+test('every command is exactly one undo step', () => {
+  const steps = () => board().past.length
+  const run = (command: () => void) => {
+    const before = steps()
+    const elements = board().elements
+    command()
+    expect(steps()).toBe(before + 1)
+    board().undo()
+    expect(board().elements).toBe(elements)
+  }
+  run(() => nudge([a, b], 1, 0))
+  run(() => rotateStep([a, b], 1))
+  run(() => duplicate([a, b]))
+  run(() => remove([a, b]))
+  run(() => reorder(a, 'front'))
+})

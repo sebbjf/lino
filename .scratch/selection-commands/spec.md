@@ -1,6 +1,6 @@
 # Selection commands in one place
 
-Status: ready-for-agent
+Status: done (1f123e2, 14ab729, 4aea2a6)
 
 Origin: architecture review, candidate 3 ([overview](../architecture-review/spec.md)). Not grilled yet: the decisions below are proposals.
 
@@ -40,4 +40,4 @@ Decided to come after `image-storage` and before `undo-history`. Not grilled yet
 - Tests, store level in `selection.test.ts`: nudge moves only the target (1, or 10 with Shift); every command is a no-op on a read-only board (state unchanged, no checkpoint); rotate snaps to the 15° grid and wraps (165+15 gives -180, -180-15 gives 165); `targetOf` rule; remove and duplicate act on the target.
 - Commits: 1 `selection.ts` + tests, 2 the two key handlers become key-to-command, 3 toolbar Delete, Duplicate and reorder call the commands.
 
-Status: ready-for-agent.
+Status: done (1f123e2, 14ab729, 4aea2a6).
