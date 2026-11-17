@@ -37,7 +37,7 @@ Decided to come after `image-storage` and before `undo-history`. Not grilled yet
 - Out of scope: Alt+arrow resize, Ctrl+Alt+C/V style copy/paste.
 - Each command calls `checkpoint()` once. Coalescing held arrow keys belongs to `undo-history`.
 - Behaviour change: `R` / `Shift+R` rotates every element of the target 15° about its own centre (wrap-around kept) and works with nothing focused. Reorder stays single-element, only moved and gated.
-- Tests, store level in `selection.test.ts`: nudge moves only the target (1, or 10 with Shift); every command is a no-op on a read-only board (state unchanged, no checkpoint); rotate wraps (170+15 gives -175, -170-15 gives 175); `targetOf` rule; remove and duplicate act on the target.
+- Tests, store level in `selection.test.ts`: nudge moves only the target (1, or 10 with Shift); every command is a no-op on a read-only board (state unchanged, no checkpoint); rotate snaps to the 15° grid and wraps (165+15 gives -180, -180-15 gives 165); `targetOf` rule; remove and duplicate act on the target.
 - Commits: 1 `selection.ts` + tests, 2 the two key handlers become key-to-command, 3 toolbar Delete, Duplicate and reorder call the commands.
 
 Status: ready-for-agent.
