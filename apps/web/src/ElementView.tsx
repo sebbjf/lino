@@ -7,6 +7,7 @@ import { harmonies } from './colors.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
 import { useImageSrc } from './images.ts'
+import { duplicate, nudge, remove, reorder, rotateStep, targetOf } from './selection.ts'
 import { justDropped, useBoard, type BoardElement } from './store.ts'
 import { DEFAULT_DUO, NOTE_TEXT, loadFamily, noteFontStack, rgb, surface, textOn } from './style.ts'
 
@@ -82,7 +83,7 @@ function panIntoView(el: BoardElement) {
 }
 
 export const ElementView = memo(function ElementView({ el, selected, solo, zoom }: Props) {
-  const { update, moveMany, select, remove, duplicate, reorder, checkpoint } = useBoard.getState()
+  const { update, moveMany, select, checkpoint } = useBoard.getState()
   const readOnly = useBoard((s) => s.readOnly)
   const picture = useImageSrc(el.type === 'image' ? el.src : null)
   // the selection outline follows the board background's contrast color, so it shows on dark boards too
@@ -120,11 +121,6 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     if (solo && !editing && !root.current!.contains(document.activeElement)) root.current!.focus({ preventScroll: true })
   }, [solo, editing])
 
-  /** The elements an action on this one applies to: the whole selection if this is part of it. */
-  const group = () => {
-    const ids = useBoard.getState().selectedIds
-    return ids.includes(el.id) ? ids : [el.id]
-  }
 
   const open = () => {
     if (readOnly && el.type !== 'link') return
@@ -150,7 +146,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     if (!useBoard.getState().selectedIds.includes(el.id)) select(el.id)
     if (editing) return
     e.currentTarget.focus()
-    const ids = group()
+    const ids = targetOf(el.id)
     const els = useBoard.getState().elements
     const moving = els.filter((o) => ids.includes(o.id))
     // snap the visible (rotated) outline of what moves to the other elements' edges and centers; Alt moves freely
@@ -206,9 +202,9 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     if (e.target !== e.currentTarget || (readOnly && e.key !== 'Enter' && e.key !== 'Escape')) return
     const mod = e.metaKey || e.ctrlKey
     const step = e.shiftKey ? 10 : 1
-    if (e.key.startsWith('Arrow') || e.key.toLowerCase() === 'r') checkpoint()
     // Alt+arrows resize from the bottom-right corner, the keyboard twin of the resize handle
     if (e.altKey && e.key.startsWith('Arrow')) {
+      checkpoint()
       const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key]
       if (!d) return
       const world = rotateVec(d[0], d[1], el.rotation)
@@ -220,30 +216,28 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     if (mod && e.altKey && (e.code === 'KeyC' || e.code === 'KeyV')) {
       const { copyStyle, pasteStyle } = useBoard.getState()
       if (e.code === 'KeyC') copyStyle(el.id)
-      else pasteStyle(group())
+      else pasteStyle(targetOf(el.id))
       e.preventDefault()
       return
     }
     switch (e.key) {
       case 'Delete':
       case 'Backspace':
-        remove(group())
+        remove(targetOf(el.id))
         break
       case 'ArrowLeft':
       case 'ArrowRight':
       case 'ArrowUp':
       case 'ArrowDown': {
         const [dx, dy] = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key]
-        const ids = group()
-        moveMany(Object.fromEntries(useBoard.getState().elements.filter((o) => ids.includes(o.id)).map((o) => [o.id, { x: o.x + dx, y: o.y + dy }])))
+        nudge(targetOf(el.id), dx, dy)
         break
       }
       case 'r':
       case 'R': {
         if (mod) return // Ctrl+R stays reload
         // R rotates 15° clockwise, Shift+R counter-clockwise
-        const deg = Math.round((el.rotation + (e.shiftKey ? -15 : 15)) / 15) * 15
-        update(el.id, { rotation: ((((deg + 180) % 360) + 360) % 360) - 180 })
+        rotateStep(targetOf(el.id), e.shiftKey ? -1 : 1)
         break
       }
       case ']':
@@ -265,7 +259,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         break
       case 'd':
         if (!mod) return
-        duplicate(group())
+        duplicate(targetOf(el.id))
         break
       default:
         return
