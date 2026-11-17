@@ -103,6 +103,14 @@ export async function deleteBoard(id: string) {
  * is empty then, and no migration is half done. Gives up if any record cannot be read.
  */
 export async function sweepStoredImages() {
+  // another open tab may hold images no saved record mentions yet: sweep only when this is the only tab (each tab holds the lock shared for its lifetime)
+  const locks = navigator.locks
+  if (!locks) return sweepNow()
+  await locks.request('lino-sweep', { mode: 'exclusive', ifAvailable: true }, (lock) => (lock ? sweepNow() : undefined))
+  void locks.request('lino-sweep', { mode: 'shared' }, () => new Promise(() => {}))
+}
+
+async function sweepNow() {
   const used = new Set<string>()
   const scan = (els: unknown) => {
     if (Array.isArray(els)) for (const e of els as { src?: unknown; image?: unknown }[]) for (const v of [e?.src, e?.image]) if (typeof v === 'string' && IMAGE_ID.test(v)) used.add(v)

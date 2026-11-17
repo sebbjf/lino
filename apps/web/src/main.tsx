@@ -36,7 +36,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
           <h1 className="text-4xl font-semibold tracking-[-0.04em]">This board stopped working</h1>
           <p className="mt-2 text-sm text-muted-foreground">Export a copy to be safe, then reload the page.</p>
           <div className="mt-6 flex justify-center gap-2">
-            <Button onClick={exportBoardFile}>Export board</Button>
+            <Button onClick={() => exportBoardFile().catch(() => alert('Could not export the board.'))}>Export board</Button>
             <Button variant="outline" onClick={() => location.reload()}>
               Reload
             </Button>

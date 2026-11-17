@@ -10,8 +10,8 @@ Every image is a WebP data URL (max 1600px) inside the one IndexedDB record of i
 
 - Local storage keeps images apart: a new `images` store (DB version 2), one blob per image, keyed by the SHA-256 of its bytes. Elements (images and link cards) hold the id.
 - The portable snapshot is unchanged and self-contained. One module, `images.ts`, converts: `externalize` when saving, `inline` for board files and sharing.
-- Migration is lazy, per board, in a single transaction: opening a board that still has data URLs writes its blobs and the rewritten record together. Unopened boards keep loading in the old format.
-- Blobs are never released on delete. One sweep at app start deletes blobs no saved board references, so undo (in memory) can always restore a deleted image.
+- Migration is lazy, per board: opening a board that still has data URLs writes its blobs first and then the rewritten record, so a crash leaves the old record whole (the blobs are content-addressed, and orphans are swept). Unopened boards keep loading in the old format.
+- Blobs are never released on delete. One sweep at app start deletes blobs no saved board references, so undo (in memory) can always restore a deleted image. It runs only when no other tab is open (a shared Web Lock per tab), because another tab may hold images not saved yet.
 - Only the 1600px WebP is stored; no originals.
 
 ## Consequences

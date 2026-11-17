@@ -22,7 +22,8 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | Saving/loading boards (IndexedDB, autosave), creating, switching, renaming, deleting boards | [apps/web/src/storage.ts](apps/web/src/storage.ts) |
 | Board name menu (top left: switch, rename, delete, new board) | [apps/web/src/BoardsMenu.tsx](apps/web/src/BoardsMenu.tsx) |
 | Adding images (resize, read file) | [apps/web/src/image.ts](apps/web/src/image.ts) |
-| Board snapshot: its shape, the validating parse for every source (file, share, local save), link repair, `openSnapshot` (replace / new / readonly) | [apps/web/src/snapshot.ts](apps/web/src/snapshot.ts) |
+| Where images of local boards live: blob store, ids, `externalize` / `inline`, object URLs, sweep (ADR 0002) | [apps/web/src/images.ts](apps/web/src/images.ts) |
+| Board snapshot: its shape, the validating parse for every source (file, share, local save), link repair, `openSnapshot` (replace / new / readonly), `capturePortable` (snapshot with images inline) | [apps/web/src/snapshot.ts](apps/web/src/snapshot.ts) |
 | Board file export/import (`.lino.json`): download, upload, notices | [apps/web/src/boardFile.ts](apps/web/src/boardFile.ts) |
 | File menu (export, import, PNG) | [apps/web/src/FileMenu.tsx](apps/web/src/FileMenu.tsx) |
 | PNG export (canvas drawing of every element type) | [apps/web/src/png.ts](apps/web/src/png.ts) |
@@ -61,6 +62,8 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/geometry.ts` | Box math: rotate, resize with aspect lock, rotation snap, zoom around a point, fit view to content, rotated bounds, `snapMove` (alignment snapping + guides), `alignOffsets`, `distributeOffsets`. |
 | `src/drag.ts` | Pointer-drag helper used by move/resize/rotate. |
 | `src/image.ts` | Read an image file into a data URL and add it to the board. |
+| `src/images.ts` | Image blob store interface, content-hash ids, `externalize`/`inline`, `useImageSrc`, sweep. |
+| `src/db.ts` | The IndexedDB database (`boards` and `images` stores) and the blob store wired to it. |
 | `src/boardFile.ts` | `exportBoardFile()`, `importBoardFile(file)`, `parseBoardFile(text)` (rebuilds each element from untrusted JSON). |
 | `src/FileMenu.tsx` | Toolbar folder popover: export board, import board, download PNG. |
 | `src/png.ts` | `boardPng()` draws all elements to a canvas (theme colors, fonts, rotation); `downloadPng()`; `wrapText()`. |

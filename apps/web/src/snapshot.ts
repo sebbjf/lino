@@ -178,7 +178,13 @@ export function parseSnapshotText(text: string) {
 }
 
 /** The board on screen with its pictures inline, for what leaves this browser (board file, share). */
-export const capturePortable = async () => inline(captureSnapshot())
+export async function capturePortable() {
+  const snap = captureSnapshot()
+  const out = await inline(snap)
+  const lost = snap.elements.length - out.elements.length
+  if (lost) useBoard.getState().notify(`${lost} image${lost === 1 ? ' was' : 's were'} missing from this browser and left out.`)
+  return out
+}
 
 /** The snapshot of the board on screen. */
 export function captureSnapshot(): Snapshot {
