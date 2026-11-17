@@ -1,6 +1,6 @@
 # Image storage that scales to large boards
 
-Status: ready-for-agent
+Status: done (18df2d5, fixes after review)
 
 ## Problem
 
@@ -29,4 +29,4 @@ Scope is blobs + migration + release only; thumbnails and viewport culling becom
 - Tests: externalize/inline round-trip, migration (old record still loads), sweep.
 - Commits: 1 `images.ts` + round-trip test, 2 DB v2 + migration, 3 readers resolve ids + export/share inline, 4 sweep.
 
-Status: ready-for-agent.
+Status: done (18df2d5, fixes after review).

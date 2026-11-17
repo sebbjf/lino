@@ -40,7 +40,7 @@ Each has its own `.scratch/<slug>/spec.md`.
 
 | # | Spec | Group | State | Comes after |
 |---|---|---|---|---|
-| 1 | `image-storage` | Foundations | **Designed, ready for agent** (grilled 2026-11-17, `docs/adr/0002`): blobs in a local store, snapshot stays self-contained, lazy migration, sweep at start. Thumbnails by zoom and viewport culling are split out, to be specced after measuring. The only one with real technical risk | `board-snapshot` (done) |
+| 1 | `image-storage` | Foundations | **Done** (`18df2d5`, `2ab4b0c`; grilled 2026-11-17, `docs/adr/0002`): blobs in a local store, snapshot stays self-contained, lazy migration, sweep at start. Thumbnails by zoom and viewport culling are split out, to be specced after measuring. The only one with real technical risk | `board-snapshot` (done) |
 | 2 | `palette-from-images` | Foundations | **First version shipped**: image colours join the palette, swatches from image. Open: backfill for old images, per-image opt-out | |
 | 3 | `image-tools` | Foundations | Not started | `selection-commands` for lock |
 | 4 | `frames-and-groups` | Foundations | Not started | `element-kinds` |
