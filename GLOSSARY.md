@@ -27,3 +27,6 @@ _Avoid_: Published board, public board
 **Selection**:
 The elements a person has picked to act on together (move, rotate, duplicate, delete). A command acts on the selection, or on the one element it was aimed at if that element is not in it.
 _Avoid_: Group (reserved for the future grouping feature)
+**Undo step**:
+One change to a board snapshot that Undo reverts at once: a drag, a paste of several images, a palette edit. A burst of the same repeatable command (held arrow key) counts as one.
+_Avoid_: Action, history entry

@@ -1,6 +1,6 @@
 # Undo history owned by the store
 
-Status: needs-triage
+Status: ready-for-agent
 
 Origin: architecture review, candidate 2 ([overview](../architecture-review/spec.md)). Not grilled yet: the decisions below are proposals.
 
@@ -34,3 +34,11 @@ Make "one undo step" a concept the store owns: a way to run several store operat
 - Constraint from `image-storage`: undo may restore a deleted image, so blobs are never released mid-session (see `docs/adr/0002`).
 
 - From `selection-commands`: every command makes exactly one checkpoint, so a held arrow key makes one undo step per key repeat. How to coalesce is open here.
+## Decisions (2026-11-17, grilling, round 2)
+
+- A history entry is the whole snapshot: `{ elements, colorMeta, board }`, unchanged parts shared by reference. Undo and redo restore all three; palette actions (pin, hide, rename, board style) push steps. Importing a board file undoes fully.
+- `checkpoint()` stays for continuous gestures; new `step(fn)` runs several store operations as one undo step (`addImages` uses it). No UI code touches `past` or `future`.
+- `update`, `moveMany` and `restyle` stay history-free (they run many times per second); documented on each.
+- `checkpoint(key)` coalesces: skipped when the previous checkpoint had the same key less than 600 ms ago. Used by nudge and rotate (key includes the ids), the palette rename field and board style. Other commands stay one step per call.
+- Two tabs overwriting each other is out of scope (`audit-followups` 02). History stays per tab, in memory.
+- Defaults taken without a question: tests at the store interface (palette and board style undo, `step`, coalescing with fake timers, redo cleared by a new step); commits 1 snapshot-shaped history, 2 `step` and `addImages`, 3 coalescing; glossary gets **Undo step**.
