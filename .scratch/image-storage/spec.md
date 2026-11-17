@@ -1,6 +1,6 @@
 # Image storage that scales to large boards
 
-Status: needs-triage
+Status: ready-for-agent
 
 ## Problem
 
@@ -16,3 +16,17 @@ Images are stored as data URLs inside one board record that is rewritten whole o
 
 - Changes the saved format: needs a migration from data-URL boards and must keep `.lino.json` import/export and sharing (4 MB snapshot limit) working.
 - Deleting a board or element must release its blobs.
+
+## Decisions (2026-11-17, grilling)
+
+Scope is blobs + migration + release only; thumbnails and viewport culling become their own specs after measuring. See `docs/adr/0002-images-in-a-local-blob-store.md`.
+
+- Snapshot stays self-contained; only local storage uses ids. `images.ts` owns `externalize`/`inline`, the blob store and object-URL cache.
+- Ids are SHA-256 of the stored bytes. Link card `image` fields use the same mechanism.
+- Lazy per-board migration in one IndexedDB transaction (DB v2, `images` store).
+- Release: one sweep at app start of blobs no saved board references (undo-safe).
+- Keep the 1600px WebP as the only stored version.
+- Tests: externalize/inline round-trip, migration (old record still loads), sweep.
+- Commits: 1 `images.ts` + round-trip test, 2 DB v2 + migration, 3 readers resolve ids + export/share inline, 4 sweep.
+
+Status: ready-for-agent.

@@ -25,3 +25,10 @@ Make "one undo step" a concept the store owns: a way to run several store operat
 - Does `checkpoint()` stay for gestures, or does everything become a scoped batch?
 - Should `update`, `moveMany` and `restyle` stay history-free by default?
 - Interaction with board snapshot `open` (replace = one undo step): see [board-snapshot](../board-snapshot/spec.md).
+
+## Decisions so far (2026-11-17, grilling; still not fully grilled)
+
+- One undo step is a change to the board snapshot (elements, palette edits, board style). Viewport and per-device preferences are not undoable. Importing a board file is one step.
+- History is per board, in memory only, and cleared on reload or when switching boards.
+- Order: after `image-storage` and `selection-commands`. Open: how steps batch (drag, typing in a note) and the interaction with two tabs overwriting each other (`audit-followups`).
+- Constraint from `image-storage`: undo may restore a deleted image, so blobs are never released mid-session (see `docs/adr/0002`).

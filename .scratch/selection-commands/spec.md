@@ -25,3 +25,7 @@ A selection-commands module: nudge, remove, duplicate, rotate-step, reorder, eac
 - Are commands functions on the store or a separate module over it?
 - Where does "the target" (selection vs the focused element) get decided?
 - Depends loosely on [undo-history](../undo-history/spec.md): commands need a clear "one step" story.
+
+## Order (2026-11-17)
+
+Decided to come after `image-storage` and before `undo-history`. Not grilled yet.

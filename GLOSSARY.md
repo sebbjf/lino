@@ -13,7 +13,7 @@ One thing placed on a board: an image, a note, a color swatch or a link card.
 _Avoid_: Item, card, object
 
 **Board snapshot**:
-The portable content of a board: its elements, palette edits and board style. It carries no viewport and no per-device preferences, and is what a board file, a shared board and a saved local board all have in common.
+The portable content of a board: its elements, palette edits and board style. It is self-contained (its images travel with it), carries no viewport and no per-device preferences, and is what a board file, a shared board and a saved local board all have in common.
 _Avoid_: Board data, board state, save
 
 **Board file**:
