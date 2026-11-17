@@ -32,3 +32,5 @@ Make "one undo step" a concept the store owns: a way to run several store operat
 - History is per board, in memory only, and cleared on reload or when switching boards.
 - Order: after `image-storage` and `selection-commands`. Open: how steps batch (drag, typing in a note) and the interaction with two tabs overwriting each other (`audit-followups`).
 - Constraint from `image-storage`: undo may restore a deleted image, so blobs are never released mid-session (see `docs/adr/0002`).
+
+- From `selection-commands`: every command makes exactly one checkpoint, so a held arrow key makes one undo step per key repeat. How to coalesce is open here.

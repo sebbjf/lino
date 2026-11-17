@@ -23,3 +23,7 @@ _Avoid_: Export, backup
 **Shared board**:
 A read-only copy of a board snapshot reachable by a link, which stops working after 90 days.
 _Avoid_: Published board, public board
+
+**Selection**:
+The elements a person has picked to act on together (move, rotate, duplicate, delete). A command acts on the selection, or on the one element it was aimed at if that element is not in it.
+_Avoid_: Group (reserved for the future grouping feature)
