@@ -66,7 +66,7 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/image.ts` | Read an image file into a data URL and add it to the board. |
 | `src/images.ts` | Image blob store interface, content-hash ids, `externalize`/`inline`, `useImageSrc`, sweep. |
 | `src/db.ts` | The IndexedDB database (`boards` and `images` stores) and the blob store wired to it. |
-| `src/boardFile.ts` | `exportBoardFile()`, `importBoardFile(file)`, `parseBoardFile(text)` (rebuilds each element from untrusted JSON). |
+| `src/boardFile.ts` | `exportBoardFile()` (images inline), `importBoardFile(file)`; parsing lives in `snapshot.ts`. |
 | `src/FileMenu.tsx` | Toolbar folder popover: export board, import board, download PNG. |
 | `src/png.ts` | `boardPng()` draws all elements to a canvas (theme colors, fonts, rotation); `downloadPng()`; `wrapText()`. |
 | `src/share.ts` | `shareBoard()` (POST snapshot, returns link), `loadShared(id)` (read-only, fitted view). |

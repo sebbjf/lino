@@ -60,8 +60,8 @@ Since the first draft, 2 and 6 moved from "idea" to partly shipped, and masonry 
 
 1. ~~`performance` 1-3 and the cheapest `quick-wins` (zoom to fit, paste a hex)~~ done.
 2. ~~`board-snapshot`~~ done.
-3. `image-storage` (designed; 4 commits in its spec): the real fix for image-heavy boards. Then `selection-commands`, then `undo-history` (order chosen 2026-11-17; both still need grilling). After image-storage, measure and decide whether thumbnails by zoom and viewport culling are worth their own specs.
-4. Finish `design-token-export` (contrast, tone scales from `idea-backlog`): this is the positioning, so it should keep moving while the foundations are built.
+3. ~~`image-storage`~~, ~~`selection-commands`~~ and ~~`undo-history`~~ done (2026-11-17; ADR 0002 for the first). Next: measure an image-heavy board and decide whether thumbnails by zoom and viewport culling deserve their own specs.
+4. **Next up.** Finish `design-token-export` (contrast, tone scales from `idea-backlog`): this is the positioning, so it should keep moving while the foundations are built.
 5. `element-kinds` then `frames-and-groups`.
 
 ## Reserve
