@@ -32,14 +32,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { normalizeHex } from './colors.ts'
-import { zoomAt } from './geometry.ts'
+import { fitView, zoomAt } from './geometry.ts'
 import { addImages, imageColors } from './image.ts'
 import { addLink, asUrl } from './link.ts'
 import { FileMenu } from './FileMenu.tsx'
 import { ShareButton } from './ShareButton.tsx'
 import { StyleMenu } from './StyleMenu.tsx'
 import { ArrangeMenu } from './ArrangeMenu.tsx'
-import { useBoard } from './store.ts'
+import { duplicate, remove, reorder } from './selection.ts'
+import { hasUndo, useBoard } from './store.ts'
 
 // Chromium only for now; elsewhere the button is hidden.
 type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> }
@@ -165,10 +166,10 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
   const selectedIds = useBoard((s) => s.selectedIds)
   const selectedId = selectedIds.length === 1 ? selectedIds[0] : null
   const zoom = useBoard((s) => s.view.zoom)
-  const canUndo = useBoard((s) => s.past.some((p) => p !== s.elements))
+  const canUndo = useBoard(hasUndo)
   const canRedo = useBoard((s) => s.future.length > 0)
   const readOnly = useBoard((s) => s.readOnly)
-  const { add, duplicate, reorder, remove, undo, redo, align, distribute } = useBoard.getState()
+  const { add, undo, redo, align, distribute } = useBoard.getState()
   const fileInput = useRef<HTMLInputElement>(null)
   const imageSelected = useBoard((s) => s.elements.find((e) => e.id === selectedId)?.type === 'image')
 
@@ -185,6 +186,11 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
   const zoomTo = (z: number) => {
     const { view, setView } = useBoard.getState()
     setView(zoomAt(view, window.innerWidth / 2, window.innerHeight / 2, z))
+  }
+
+  const fitAll = () => {
+    const { elements, setView } = useBoard.getState()
+    if (elements.length) setView(fitView(elements, innerWidth, innerHeight))
   }
 
   return (
@@ -254,7 +260,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
       )}
 
       <Tool label="Zoom out" icon={MinusSignIcon} onClick={() => zoomTo(zoom / 1.25)} />
-      <Button variant="ghost" size="sm" aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%`} className="tabular-nums" onClick={() => zoomTo(1)}>
+      <Button variant="ghost" size="sm" aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%, double click to fit the board`} className="tabular-nums" onClick={() => zoomTo(1)} onDoubleClick={fitAll}>
         {Math.round(zoom * 100)}%
       </Button>
       <Tool label="Zoom in" icon={PlusSignIcon} onClick={() => zoomTo(zoom * 1.25)} />

@@ -1,5 +1,9 @@
-import { expect, test } from 'vitest'
-import { parseBoard, parseBoardFile } from './boardFile.ts'
+import { expect, test, vi } from 'vitest'
+import { captureSnapshot, openSnapshot, parseSnapshot as parseBoard, parseSnapshotText as parseBoardFile } from './snapshot.ts'
+import { useBoard } from './store.ts'
+
+vi.stubGlobal('innerWidth', 1000)
+vi.stubGlobal('innerHeight', 800)
 
 const box = { x: 0, y: 0, w: 10, h: 10, rotation: 0 }
 
@@ -90,4 +94,54 @@ test('parseBoard (shared snapshots too) drops unparseable links and keeps boxes 
   expect(elements).toHaveLength(1)
   expect(elements[0]).toMatchObject({ x: 1e6, y: -1e6, w: 10_000, h: 10 })
   expect(colorMeta).toEqual({})
+})
+
+test('limits match the share API (pinned in apps/api/src/routes.test.ts)', () => {
+  const { elements } = parseBoard({
+    elements: [{ ...box, type: 'note', text: 'x'.repeat(10_001), x: -1e9, y: 1e9, w: 0.5, h: 1e9 }],
+  })
+  expect(elements[0]).toMatchObject({ x: -1e6, y: 1e6, w: 1, h: 10_000 })
+  expect((elements[0] as { text: string }).text).toHaveLength(10_000)
+})
+
+test('a link still loading comes back as an interrupted error', () => {
+  const { elements } = parseBoard({
+    elements: [{ ...box, type: 'link', url: 'https://example.com/', title: null, image: null, fonts: [], colors: [], status: 'loading', missing: [] }],
+  })
+  expect(elements[0]).toMatchObject({ status: 'error', error: 'Reading was interrupted.' })
+})
+
+const reset = () => useBoard.setState({ elements: [], colorMeta: {}, board: {}, readOnly: false, selectedIds: [], past: [], future: [], guides: [], boards: [{ id: 'a', name: 'A' }], boardId: 'a' })
+const sample = { elements: [{ ...box, type: 'note', text: 'hi' }, { ...box, type: 'color', hex: '#abc' }], colorMeta: { '#abc': { pinned: true } }, board: { bg: '#112233' } }
+const same = () => {
+  const { elements, colorMeta, board } = captureSnapshot()
+  return { types: elements.map((e) => e.type), colorMeta, board }
+}
+const expected = { types: ['note', 'color'], colorMeta: { '#abc': { pinned: true } }, board: { bg: '#112233' } }
+
+test('open replace: round-trips as one undo step', async () => {
+  reset()
+  await openSnapshot(parseBoard(JSON.parse(JSON.stringify(sample))), 'replace')
+  expect(same()).toEqual(expected)
+  expect(useBoard.getState().past).toHaveLength(1)
+})
+
+test('open new: round-trips as another board with a clean history', async () => {
+  reset()
+  useBoard.setState({ selectedIds: ['x'], past: [{} as never] })
+  await openSnapshot(parseBoard(sample), 'new')
+  const s = useBoard.getState()
+  expect(same()).toEqual(expected)
+  expect(s.boards).toHaveLength(2)
+  expect(s.boardId).toBe(s.boards[1].id)
+  expect([s.past, s.selectedIds]).toEqual([[], []])
+})
+
+test('open readonly: round-trips with a clean history and keeps the board id', async () => {
+  reset()
+  useBoard.setState({ past: [{} as never] })
+  await openSnapshot(parseBoard(sample), 'readonly')
+  const s = useBoard.getState()
+  expect(same()).toEqual(expected)
+  expect([s.readOnly, s.boardId, s.past]).toEqual([true, 'a', []])
 })

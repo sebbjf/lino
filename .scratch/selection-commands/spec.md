@@ -1,6 +1,6 @@
 # Selection commands in one place
 
-Status: needs-triage
+Status: done (1f123e2, 14ab729, 4aea2a6)
 
 Origin: architecture review, candidate 3 ([overview](../architecture-review/spec.md)). Not grilled yet: the decisions below are proposals.
 
@@ -25,3 +25,19 @@ A selection-commands module: nudge, remove, duplicate, rotate-step, reorder, eac
 - Are commands functions on the store or a separate module over it?
 - Where does "the target" (selection vs the focused element) get decided?
 - Depends loosely on [undo-history](../undo-history/spec.md): commands need a clear "one step" story.
+
+## Order (2026-11-17)
+
+Decided to come after `image-storage` and before `undo-history`. Not grilled yet.
+
+## Decisions (2026-11-17, grilling)
+
+- A separate module `selection.ts` of plain functions over the store: `nudge`, `remove`, `duplicate`, `rotateStep`, `reorder`. The read-only check lives once there. Store actions stay ungated (import, undo, drag and the shared view use them). Lock (`image-tools`) will plug into the same gate later; nothing built for it now.
+- One helper `targetOf(focusedId?)`: the selection if the focused element is in it, else just that element. Replaces `group()` in `ElementView` (the name clashes with the future Group). Commands take explicit ids.
+- Out of scope: Alt+arrow resize, Ctrl+Alt+C/V style copy/paste.
+- Each command calls `checkpoint()` once. Coalescing held arrow keys belongs to `undo-history`.
+- Behaviour change: `R` / `Shift+R` rotates every element of the target 15° about its own centre (wrap-around kept) and works with nothing focused. Reorder stays single-element, only moved and gated.
+- Tests, store level in `selection.test.ts`: nudge moves only the target (1, or 10 with Shift); every command is a no-op on a read-only board (state unchanged, no checkpoint); rotate snaps to the 15° grid and wraps (165+15 gives -180, -180-15 gives 165); `targetOf` rule; remove and duplicate act on the target.
+- Commits: 1 `selection.ts` + tests, 2 the two key handlers become key-to-command, 3 toolbar Delete, Duplicate and reorder call the commands.
+
+Status: done (1f123e2, 14ab729, 4aea2a6).

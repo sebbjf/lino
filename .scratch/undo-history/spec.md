@@ -1,6 +1,6 @@
 # Undo history owned by the store
 
-Status: needs-triage
+Status: done (bad8e0a and review fixes)
 
 Origin: architecture review, candidate 2 ([overview](../architecture-review/spec.md)). Not grilled yet: the decisions below are proposals.
 
@@ -25,3 +25,20 @@ Make "one undo step" a concept the store owns: a way to run several store operat
 - Does `checkpoint()` stay for gestures, or does everything become a scoped batch?
 - Should `update`, `moveMany` and `restyle` stay history-free by default?
 - Interaction with board snapshot `open` (replace = one undo step): see [board-snapshot](../board-snapshot/spec.md).
+
+## Decisions so far (2026-11-17, grilling; still not fully grilled)
+
+- One undo step is a change to the board snapshot (elements, palette edits, board style). Viewport and per-device preferences are not undoable. Importing a board file is one step.
+- History is per board, in memory only, and cleared on reload or when switching boards.
+- Order: after `image-storage` and `selection-commands`. Open: how steps batch (drag, typing in a note) and the interaction with two tabs overwriting each other (`audit-followups`).
+- Constraint from `image-storage`: undo may restore a deleted image, so blobs are never released mid-session (see `docs/adr/0002`).
+
+- From `selection-commands`: every command makes exactly one checkpoint, so a held arrow key makes one undo step per key repeat. How to coalesce is open here.
+## Decisions (2026-11-17, grilling, round 2)
+
+- A history entry is the whole snapshot: `{ elements, colorMeta, board }`, unchanged parts shared by reference. Undo and redo restore all three; palette actions (pin, hide, rename, board style) push steps. Importing a board file undoes fully.
+- `checkpoint()` stays for continuous gestures; new `step(fn)` runs several store operations as one undo step (`addImages` uses it). No UI code touches `past` or `future`.
+- `update`, `moveMany` and `restyle` stay history-free (they run many times per second); documented on each.
+- `checkpoint(key)` coalesces: skipped when the previous checkpoint had the same key less than 600 ms ago. Used by nudge and rotate (key includes the ids), the palette rename field and board style. Other commands stay one step per call.
+- Two tabs overwriting each other is out of scope (`audit-followups` 02). History stays per tab, in memory.
+- Defaults taken without a question: tests at the store interface (palette and board style undo, `step`, coalescing with fake timers, redo cleared by a new step); commits 1 snapshot-shaped history, 2 `step` and `addImages`, 3 coalescing; glossary gets **Undo step**.

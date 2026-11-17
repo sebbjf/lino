@@ -1,4 +1,5 @@
 import { boundsOf } from './geometry.ts'
+import { resolveImage } from './images.ts'
 import { useBoard, type BoardElement } from './store.ts'
 import { FAMILY, NOTE_TEXT, RADIUS, filterPixels, loadFamily, textOn, type BoardStyle, type Deco, type ImageStyle } from './style.ts'
 
@@ -22,7 +23,8 @@ export function wrapText(text: string, maxWidth: number, measure: (s: string) =>
   return lines
 }
 
-function loadImage(src: string) {
+async function loadImage(source: string) {
+  const src = await resolveImage(source)
   // onload, not decode(): decode() can stall while the tab is in the background
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image()

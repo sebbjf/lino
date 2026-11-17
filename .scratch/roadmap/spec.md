@@ -19,8 +19,8 @@ Work comes in four tracks. Pick from the top of a track; the dependency list bel
 
 | Spec | What | State |
 |---|---|---|
-| `performance` | 1 save the view apart from images, 2 `memo` on `ElementView` (already wrapped), 3 lazy image decoding | Not started; 1-3 are small |
-| `quick-wins` | Contrast in the palette, selection to PNG, zoom to fit, `?` cheat sheet, lock, paste a hex, final batch notice | Not started |
+| `performance` | 1 save the view apart from images, 2 `memo` on `ElementView` (already wrapped), 3 lazy image decoding | **1-3 done** (`bb6594c`). Open: 4 lazy-load PNG export and style menu, 5 landing fonts |
+| `quick-wins` | Contrast in the palette, selection to PNG, zoom to fit, `?` cheat sheet, lock, paste a hex, final batch notice | **Zoom to fit and paste a hex done** (uncommitted). Open: contrast, selection to PNG, `?` cheat sheet, lock, batch notice |
 
 ## 2. Structure (architecture review)
 
@@ -28,9 +28,9 @@ Overview in `architecture-review`. These are not features; they exist so feature
 
 | Spec | State | Why it is on the roadmap |
 |---|---|---|
-| `board-snapshot` | Ready for an agent | Do before `image-storage`, `templates-and-gallery`, `collaboration` and "back up all boards": each of them changes or moves the saved shape, and today that shape lives in four files. |
-| `undo-history` | Needs triage | Cheapest win; the snapshot's "open is one undo step" and `collaboration` both lean on it. |
-| `selection-commands` | Needs triage | Do with "lock elements" (`quick-wins`, `image-tools`): the read-only/locked check should live in one place. |
+| `board-snapshot` | **Done** (`9cd345a`) | Do before `image-storage`, `templates-and-gallery`, `collaboration` and "back up all boards": each of them changes or moves the saved shape, and today that shape lives in four files. |
+| `undo-history` | **Done** (`bad8e0a`) | Cheapest win; the snapshot's "open is one undo step" and `collaboration` both lean on it. |
+| `selection-commands` | **Done** (`1f123e2`..`4aea2a6`) | Do with "lock elements" (`quick-wins`, `image-tools`): the read-only/locked check should live in one place. |
 | `element-kinds` | Needs triage | Do right before `frames-and-groups`, which adds a fifth kind; that is the trigger the spec was waiting for. |
 | `move-gesture` | Needs triage, speculative | Only if drag bugs keep showing up; also relevant once groups change what a drag moves. |
 
@@ -40,7 +40,7 @@ Each has its own `.scratch/<slug>/spec.md`.
 
 | # | Spec | Group | State | Comes after |
 |---|---|---|---|---|
-| 1 | `image-storage` | Foundations | Not started; the only one with real technical risk (changes the saved format, needs a migration) | `board-snapshot`, so the migration happens in one parse |
+| 1 | `image-storage` | Foundations | **Done** (`18df2d5`, `2ab4b0c`; grilled 2026-11-17, `docs/adr/0002`): blobs in a local store, snapshot stays self-contained, lazy migration, sweep at start. Thumbnails by zoom and viewport culling are split out, to be specced after measuring. The only one with real technical risk | `board-snapshot` (done) |
 | 2 | `palette-from-images` | Foundations | **First version shipped**: image colours join the palette, swatches from image. Open: backfill for old images, per-image opt-out | |
 | 3 | `image-tools` | Foundations | Not started | `selection-commands` for lock |
 | 4 | `frames-and-groups` | Foundations | Not started | `element-kinds` |
@@ -58,10 +58,10 @@ Since the first draft, 2 and 6 moved from "idea" to partly shipped, and masonry 
 
 ## Suggested next steps
 
-1. `performance` 1-3 and the cheapest `quick-wins` (zoom to fit, paste a hex): hours, visible result.
-2. `board-snapshot`, then `undo-history`: unblock everything that touches the saved shape.
-3. `image-storage`: the real fix for image-heavy boards.
-4. Finish `design-token-export` (contrast, tone scales from `idea-backlog`): this is the positioning, so it should keep moving while the foundations are built.
+1. ~~`performance` 1-3 and the cheapest `quick-wins` (zoom to fit, paste a hex)~~ done.
+2. ~~`board-snapshot`~~ done.
+3. ~~`image-storage`~~, ~~`selection-commands`~~ and ~~`undo-history`~~ done (2026-11-17; ADR 0002 for the first). Next: measure an image-heavy board and decide whether thumbnails by zoom and viewport culling deserve their own specs.
+4. **Next up.** Finish `design-token-export` (contrast, tone scales from `idea-backlog`): this is the positioning, so it should keep moving while the foundations are built.
 5. `element-kinds` then `frames-and-groups`.
 
 ## Reserve

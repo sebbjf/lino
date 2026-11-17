@@ -1,4 +1,5 @@
 import { readImage } from './image.ts'
+import { toId } from './images.ts'
 import { useBoard, type LinkInfo } from './store.ts'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
@@ -32,7 +33,7 @@ export async function addLink(url: string, at?: { x: number; y: number }) {
       try {
         const blob = await (await fetch(data.image)).blob()
         const img = await readImage(new File([blob], 'cover', { type: blob.type }))
-        image = img.src
+        image = await toId(img.src).catch(() => img.src)
         h = 140 + Math.min(200, Math.round((W * img.h) / img.w))
         cover = img.colors
       } catch {

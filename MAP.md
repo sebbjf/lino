@@ -6,10 +6,11 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 
 | I want to change… | File |
 | --- | --- |
-| Board state, selection (`selectedIds`), undo/redo, add/move/delete/duplicate/reorder/align/distribute elements | [apps/web/src/store.ts](apps/web/src/store.ts) |
+| Board state, selection (`selectedIds`), undo/redo (`HistoryEntry`: elements, palette edits and board style; `checkpoint`, `step`), add/move/delete/duplicate/reorder/align/distribute elements | [apps/web/src/store.ts](apps/web/src/store.ts) |
 | Element types (`image`, `note`, `color`, `link`) | `BoardElement` in [store.ts](apps/web/src/store.ts) |
-| Global shortcuts (undo/redo), paste handling | [apps/web/src/App.tsx](apps/web/src/App.tsx) |
-| Per-element shortcuts (arrows, Delete, Ctrl+D, `[` `]`, Enter) | [apps/web/src/ElementView.tsx](apps/web/src/ElementView.tsx) |
+| Commands on the selection (nudge, delete, duplicate, rotate, reorder), the read-only gate, "what a command acts on" (`targetOf`) | [apps/web/src/selection.ts](apps/web/src/selection.ts) |
+| Global shortcuts (undo/redo, and keys to selection commands without focus), paste handling | [apps/web/src/App.tsx](apps/web/src/App.tsx) |
+| Per-element shortcuts (key to selection command; Alt+arrows resize, Enter) | [apps/web/src/ElementView.tsx](apps/web/src/ElementView.tsx) |
 | Pan, zoom, wheel, drop files/links/board files | [apps/web/src/Canvas.tsx](apps/web/src/Canvas.tsx) |
 | Align / distribute math | `alignOffsets`, `distributeOffsets` in [geometry.ts](apps/web/src/geometry.ts) |
 | Multi-select: Shift+click, group drag | [ElementView.tsx](apps/web/src/ElementView.tsx); selection box in [Canvas.tsx](apps/web/src/Canvas.tsx); Ctrl+A, Delete/Esc without focus in [App.tsx](apps/web/src/App.tsx) |
@@ -22,7 +23,9 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | Saving/loading boards (IndexedDB, autosave), creating, switching, renaming, deleting boards | [apps/web/src/storage.ts](apps/web/src/storage.ts) |
 | Board name menu (top left: switch, rename, delete, new board) | [apps/web/src/BoardsMenu.tsx](apps/web/src/BoardsMenu.tsx) |
 | Adding images (resize, read file) | [apps/web/src/image.ts](apps/web/src/image.ts) |
-| Board file export/import (`.lino.json`), validation of imported files | [apps/web/src/boardFile.ts](apps/web/src/boardFile.ts) |
+| Where images of local boards live: blob store, ids, `externalize` / `inline`, object URLs, sweep (ADR 0002) | [apps/web/src/images.ts](apps/web/src/images.ts) |
+| Board snapshot: its shape, the validating parse for every source (file, share, local save), link repair, `openSnapshot` (replace / new / readonly), `capturePortable` (snapshot with images inline) | [apps/web/src/snapshot.ts](apps/web/src/snapshot.ts) |
+| Board file export/import (`.lino.json`): download, upload, notices | [apps/web/src/boardFile.ts](apps/web/src/boardFile.ts) |
 | File menu (export, import, PNG) | [apps/web/src/FileMenu.tsx](apps/web/src/FileMenu.tsx) |
 | PNG export (canvas drawing of every element type) | [apps/web/src/png.ts](apps/web/src/png.ts) |
 | Share button, read-only link, loading a shared board | [ShareButton.tsx](apps/web/src/ShareButton.tsx), [share.ts](apps/web/src/share.ts) |
@@ -48,19 +51,22 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/main.tsx` | Board entry. With `?s=<id>` opens that shared board read-only; otherwise loads the saved board and starts autosave. Renders `App`. |
 | `src/App.tsx` | Board shell: canvas, toolbar, palette panel, empty state, notices. Window-level paste (image/URL/text) and undo/redo keys. |
 | `src/Canvas.tsx` | The infinite canvas. Wheel pan, Ctrl+wheel zoom, background drag, file/link drop. Renders every `ElementView`. |
+| `src/selection.ts` | Selection commands shared by keyboard and toolbar: `targetOf`, `nudge`, `rotateStep`, `remove`, `duplicate`, `reorder`. One read-only check; one undo step each (a burst of nudges or rotations is one). |
 | `src/ElementView.tsx` | One element on the board: selection, drag, resize/rotate handles, keyboard actions, note editing, color popover. |
 | `src/LinkCard.tsx` | Content of a link element: cover, title, domain, fonts and colors. |
 | `src/ColorFields.tsx` | Hex input + native color input used in the color popover. |
 | `src/Toolbar.tsx` | Floating bottom toolbar: add image/note/color, undo/redo, selected-element actions (duplicate, layers, delete), zoom, palette toggle. |
 | `src/PalettePanel.tsx` | Side panel with the board palette and fonts; copy as CSS or Tailwind. |
-| `src/store.ts` | Zustand store: elements (array order = z-order), selection, view, undo history, palette metadata, `readOnly`. |
+| `src/store.ts` | Zustand store: elements (array order = z-order), selection, view, undo history (whole snapshots), palette metadata, `readOnly`. |
 | `src/storage.ts` | IndexedDB load/save, debounced autosave subscribed to the store. |
 | `src/colors.ts` | `normalizeHex`, `buildPalette` (colors from swatches, links, images + user meta), `boardFonts`, `dominantColors`. |
 | `src/export.ts` | `exportTheme('css' \| 'tailwind', colors, fonts)` and slug naming. |
 | `src/geometry.ts` | Box math: rotate, resize with aspect lock, rotation snap, zoom around a point, fit view to content, rotated bounds, `snapMove` (alignment snapping + guides), `alignOffsets`, `distributeOffsets`. |
 | `src/drag.ts` | Pointer-drag helper used by move/resize/rotate. |
 | `src/image.ts` | Read an image file into a data URL and add it to the board. |
-| `src/boardFile.ts` | `exportBoardFile()`, `importBoardFile(file)`, `parseBoardFile(text)` (rebuilds each element from untrusted JSON). |
+| `src/images.ts` | Image blob store interface, content-hash ids, `externalize`/`inline`, `useImageSrc`, sweep. |
+| `src/db.ts` | The IndexedDB database (`boards` and `images` stores) and the blob store wired to it. |
+| `src/boardFile.ts` | `exportBoardFile()` (images inline), `importBoardFile(file)`; parsing lives in `snapshot.ts`. |
 | `src/FileMenu.tsx` | Toolbar folder popover: export board, import board, download PNG. |
 | `src/png.ts` | `boardPng()` draws all elements to a canvas (theme colors, fonts, rotation); `downloadPng()`; `wrapText()`. |
 | `src/share.ts` | `shareBoard()` (POST snapshot, returns link), `loadShared(id)` (read-only, fitted view). |
@@ -70,7 +76,7 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/index.css` | Tailwind import, theme tokens, fonts. |
 | `src/lib/utils.ts` | `cn()` class helper (shadcn). |
 | `src/components/ui/*` | shadcn components: button, empty, field, input, kbd, label, popover, separator, tooltip. |
-| `src/*.test.ts` | Vitest: board file parsing, colors, export, geometry, png text wrap, store. |
+| `src/*.test.ts` | Vitest: board snapshot parsing, images, selection commands, colors, export, geometry, png text wrap, store. |
 | `components.json` | shadcn config. |
 | `.env.example` | `VITE_API_URL`. |
 

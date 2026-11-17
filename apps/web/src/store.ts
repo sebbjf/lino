@@ -54,35 +54,41 @@ type State = {
   guides: Guide[]
   /** A shared board opened from a link: view only, nothing is saved. */
   readOnly: boolean
-  /** Palette edits keyed by normalized hex. Not part of undo history. */
+  /** Palette edits keyed by normalized hex. */
   colorMeta: Record<string, ColorMeta>
   setColorMeta: (hex: string, patch: ColorMeta) => void
   restoreHiddenColors: () => void
-  /** Canvas background and pattern. Not part of undo history. */
+  /** Canvas background and pattern. */
   board: BoardStyle
   setBoard: (patch: BoardStyle) => void
   exportPrefs: ExportPrefs
   setExportPrefs: (patch: Partial<ExportPrefs>) => void
-  // undo history: whole elements arrays, cheap because updates share unchanged objects
-  past: BoardElement[][]
-  future: BoardElement[][]
-  /** Call once at the start of a continuous gesture (drag, typing) so it undoes as one step. */
-  checkpoint: () => void
+  // undo history: whole snapshots (elements, palette edits, board style), cheap because unchanged parts are shared
+  past: HistoryEntry[]
+  future: HistoryEntry[]
+  /**
+   * Call once at the start of a continuous gesture (drag, typing) so it undoes as one step.
+   * With a `key`, a checkpoint less than 600 ms after one with the same key adds no step (a held arrow key).
+   */
+  checkpoint: (key?: string) => void
+  /** Runs several store operations as one undo step. Synchronous. */
+  step: (fn: () => void) => void
   undo: () => void
   redo: () => void
   /** Adds an element centered on a world point (defaults to the viewport center) and returns its id. */
   add: (el: NewElement, at?: { x: number; y: number }) => string
+  /** Does not push history (it runs many times per second in a drag): call checkpoint() first, or run inside step(). */
   update: (id: string, patch: Partial<BoardElement>) => void
   /** Adds a row of colour swatches under an element, as wide as it is, as one undo step. */
   swatchRow: (under: string, hexes: string[]) => void
-  /** Applies a style patch to several elements. Call checkpoint() first to make it undoable. */
+  /** Applies a style patch to several elements. Does not push history: call checkpoint() first to make it undoable. */
   restyle: (ids: string[], patch: StylePatch) => void
   /** Style copied with copyStyle; unset fields are kept as undefined so pasting resets them. */
   copiedStyle: StylePatch | null
   copyStyle: (id: string) => void
   /** Pastes the copied style as one undo step; fields another type can't have are skipped. */
   pasteStyle: (ids: string[]) => void
-  /** Moves several elements to new positions in one state change. */
+  /** Moves several elements to new positions in one state change. Does not push history: call checkpoint() first. */
   moveMany: (pos: Record<string, { x: number; y: number }>) => void
   remove: (ids: string[]) => void
   duplicate: (ids: string[]) => void
@@ -105,10 +111,27 @@ export function viewportCenter(view: View) {
 }
 
 const HISTORY_LIMIT = 100
+const COALESCE_MS = 600
 
-// Snapshot the current elements unless they are already the latest snapshot (e.g. a click that never moved).
-function pushHistory(s: State) {
-  return s.past.at(-1) === s.elements ? { future: [] } : { past: [...s.past, s.elements].slice(-HISTORY_LIMIT), future: [] }
+export type HistoryEntry = { elements: BoardElement[]; colorMeta: Record<string, ColorMeta>; board: BoardStyle }
+type Snap = Pick<State, 'elements' | 'colorMeta' | 'board'>
+const entryOf = (s: Snap): HistoryEntry => ({ elements: s.elements, colorMeta: s.colorMeta, board: s.board })
+const same = (a: HistoryEntry, s: Snap) => a.elements === s.elements && a.colorMeta === s.colorMeta && a.board === s.board
+/** Whether Undo has anything to revert. */
+export const hasUndo = (s: Snap & { past: HistoryEntry[] }) => s.past.some((p) => !same(p, s))
+
+let batching = 0 // inside step(): its one entry is already pushed
+let lastKey: { key: string; at: number; board: string } | null = null
+
+// Snapshot the current state unless it is already the latest entry (e.g. a click that never moved), or this is part of a step or a burst.
+function pushHistory(s: State, key?: string) {
+  if (batching) return {}
+  const now = Date.now()
+  const burst = !!key && lastKey?.key === key && lastKey.board === s.boardId && now - lastKey.at < COALESCE_MS // a burst never spans two boards
+  lastKey = key ? { key, at: now, board: s.boardId } : null
+  if (burst) return { future: [] as HistoryEntry[] }
+  const last = s.past.at(-1)
+  return last && same(last, s) ? { future: [] as HistoryEntry[] } : { past: [...s.past, entryOf(s)].slice(-HISTORY_LIMIT), future: [] as HistoryEntry[] }
 }
 
 function keepSelection(elements: BoardElement[], ids: string[]) {
@@ -145,22 +168,34 @@ export const useBoard = create<State>()((set, get) => ({
   past: [],
   future: [],
 
-  checkpoint: () => set(pushHistory),
+  checkpoint: (key) => set((s) => pushHistory(s, typeof key === 'string' ? key : undefined)),
+
+  step: (fn) => {
+    set((s) => pushHistory(s))
+    batching++
+    try {
+      fn()
+    } finally {
+      batching--
+    }
+  },
 
   undo: () =>
     set((s) => {
+      lastKey = null
       const past = [...s.past]
-      while (past.at(-1) === s.elements) past.pop()
+      while (past.length && same(past.at(-1)!, s)) past.pop()
       const prev = past.pop()
       if (!prev) return { past }
-      return { elements: prev, past, future: [s.elements, ...s.future], selectedIds: keepSelection(prev, s.selectedIds) }
+      return { ...prev, past, future: [entryOf(s), ...s.future], selectedIds: keepSelection(prev.elements, s.selectedIds) }
     }),
 
   redo: () =>
     set((s) => {
+      lastKey = null
       const [next, ...future] = s.future
       if (!next) return s
-      return { elements: next, future, past: [...s.past, s.elements], selectedIds: keepSelection(next, s.selectedIds) }
+      return { ...next, future, past: [...s.past, entryOf(s)], selectedIds: keepSelection(next.elements, s.selectedIds) }
     }),
 
   add: (el, at) => {
@@ -275,13 +310,16 @@ export const useBoard = create<State>()((set, get) => ({
   setView: (view) => set({ view }),
   notify: (notice) => set({ notice }),
 
-  setColorMeta: (hex, patch) => set((s) => ({ colorMeta: { ...s.colorMeta, [hex]: { ...s.colorMeta[hex], ...patch } } })),
+  // typing a name makes one step per burst; the other palette edits are single clicks
+  setColorMeta: (hex, patch) => set((s) => ({ ...pushHistory(s, 'name' in patch ? `name:${hex}` : undefined), colorMeta: { ...s.colorMeta, [hex]: { ...s.colorMeta[hex], ...patch } } })),
 
-  setBoard: (patch) => set((s) => ({ board: { ...s.board, ...patch } })),
+  // a color picker scrubbed within 600 ms is one step; changing a different field is another
+  setBoard: (patch) => set((s) => ({ ...pushHistory(s, `board:${Object.keys(patch).sort().join()}`), board: { ...s.board, ...patch } })),
   setExportPrefs: (patch) => set((s) => ({ exportPrefs: { ...s.exportPrefs, ...patch } })),
 
   restoreHiddenColors: () =>
     set((s) => ({
+      ...pushHistory(s),
       colorMeta: Object.fromEntries(Object.entries(s.colorMeta).map(([hex, m]) => [hex, { ...m, hidden: false }])),
     })),
 }))

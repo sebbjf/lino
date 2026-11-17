@@ -13,7 +13,7 @@ const LABEL: Record<ExportFormat, string> = { css: 'CSS', tailwind: 'Tailwind', 
 export function PalettePanel({ onClose }: { onClose: () => void }) {
   const elements = useBoard((s) => s.elements)
   const colorMeta = useBoard((s) => s.colorMeta)
-  const { setColorMeta, restoreHiddenColors, notify } = useBoard.getState()
+  const { setColorMeta, restoreHiddenColors, notify, step } = useBoard.getState()
   const { colors, hidden } = useMemo(() => buildPalette(elements, colorMeta), [elements, colorMeta])
   const fonts = useMemo(() => boardFonts(elements), [elements])
 
@@ -99,7 +99,9 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
           className="self-start"
           title="Shuffle the order (pinned colors stay first); unnamed colors get new numbers"
           onClick={() => {
-            for (const [hex, order] of Object.entries(shuffledOrder(colors.map((c) => c.hex)))) setColorMeta(hex, { order })
+            step(() => {
+              for (const [hex, order] of Object.entries(shuffledOrder(colors.map((c) => c.hex)))) setColorMeta(hex, { order })
+            })
           }}
         >
           Shuffle order

@@ -1,6 +1,6 @@
 # Board snapshot module
 
-Status: ready-for-agent
+Status: done (2026-11-17). Notes: note text over 10 000 chars is cut on parse, not dropped, so loading a local save never loses a whole note; the phone fit now uses the default padding.
 
 Origin: architecture review, candidate 1. Vocabulary in `GLOSSARY.md` (Board snapshot, Board file, Shared board). Interface vocabulary: module, interface, seam, adapter.
 

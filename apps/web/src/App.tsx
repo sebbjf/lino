@@ -3,9 +3,13 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { BoardsMenu } from './BoardsMenu.tsx'
 import { Canvas } from './Canvas.tsx'
 import { PalettePanel } from './PalettePanel.tsx'
+import { normalizeHex } from './colors.ts'
+import { fitView } from './geometry.ts'
 import { addImages } from './image.ts'
 import { addLink, asUrl } from './link.ts'
-import { importShared } from './storage.ts'
+import { captureSnapshot } from './snapshot.ts'
+import { duplicate, nudge, remove, rotateStep } from './selection.ts'
+import { saveAsLocalBoard } from './storage.ts'
 import { useBoard } from './store.ts'
 import { textOn } from './style.ts'
 import { Toolbar } from './Toolbar.tsx'
@@ -29,7 +33,9 @@ export function App() {
       const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'))
       const text = e.clipboardData?.getData('text/plain').trim()
       const url = text && asUrl(text)
+      const hex = text && /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(text) ? normalizeHex(text) : null
       if (files.length) addImages(files)
+      else if (hex) useBoard.getState().add({ type: 'color', hex, w: 140, h: 140 })
       else if (url) addLink(url)
       else if (text) useBoard.getState().add({ type: 'note', text, w: 240, h: 160 })
       else return
@@ -46,24 +52,31 @@ export function App() {
       if (t.closest('input, textarea, [contenteditable]')) return
       // after Ctrl+A or a selection box nothing has focus; Delete, Escape and the arrows still act on the selection
       if (t === document.body && !e.ctrlKey && !e.metaKey) {
-        const { selectedIds, elements, remove, select, readOnly, checkpoint, moveMany } = useBoard.getState()
+        const { selectedIds, select } = useBoard.getState()
         const arrow = ARROWS[e.key]
-        if ((e.key === 'Delete' || e.key === 'Backspace') && !readOnly && selectedIds.length) remove(selectedIds)
+        if (e.key === '1') {
+          const { elements: all, setView } = useBoard.getState()
+          if (all.length) setView(fitView(all, innerWidth, innerHeight))
+          return
+        }
+        if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length) remove(selectedIds)
         else if (e.key === 'Escape') select(null)
-        else if (arrow && !e.altKey && !readOnly && selectedIds.length) {
+        else if (arrow && !e.altKey && selectedIds.length) {
           const step = e.shiftKey ? 10 : 1
-          checkpoint()
-          moveMany(Object.fromEntries(elements.filter((o) => selectedIds.includes(o.id)).map((o) => [o.id, { x: o.x + arrow[0] * step, y: o.y + arrow[1] * step }])))
+          nudge(selectedIds, arrow[0] * step, arrow[1] * step)
+          e.preventDefault()
+        } else if (e.key.toLowerCase() === 'r' && !e.altKey && selectedIds.length) {
+          rotateStep(selectedIds, e.shiftKey ? -1 : 1)
           e.preventDefault()
         }
         return
       }
       if (!(e.ctrlKey || e.metaKey)) return
       const key = e.key.toLowerCase()
-      const { undo, redo, readOnly, elements, selectMany, selectedIds, duplicate } = useBoard.getState()
+      const { undo, redo, readOnly, elements, selectMany, selectedIds } = useBoard.getState()
       if (key === 'a' && !readOnly) selectMany(elements.map((el) => el.id))
       // a focused element duplicates by itself (ElementView); this covers a selection with no focus
-      else if (key === 'd' && t === document.body && !readOnly && selectedIds.length) duplicate(selectedIds)
+      else if (key === 'd' && t === document.body && selectedIds.length) duplicate(selectedIds)
       else if (key === 'z' && !e.shiftKey) undo()
       else if ((key === 'z' && e.shiftKey) || key === 'y') redo()
       else return
@@ -121,7 +134,7 @@ export function App() {
                 onClick={() => {
                   // one copy per press: a second click while saving would store the board twice
                   setSaving(true)
-                  importShared().then(
+                  saveAsLocalBoard(captureSnapshot(), 'Shared board').then(
                     () => location.assign('/board/'),
                     () => {
                       setSaving(false)
