@@ -307,6 +307,8 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
           <img
             src={el.src}
             alt=""
+            decoding="async"
+            loading="lazy"
             draggable={false}
             className="pointer-events-none size-full rounded-2xl object-cover shadow-soft"
             style={{ ...surface(el), filter: el.filter === 'mono' ? 'grayscale(1)' : el.filter === 'duotone' ? `url(#duo-${el.id})` : undefined }}
