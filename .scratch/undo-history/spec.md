@@ -1,6 +1,6 @@
 # Undo history owned by the store
 
-Status: ready-for-agent
+Status: done (bad8e0a and review fixes)
 
 Origin: architecture review, candidate 2 ([overview](../architecture-review/spec.md)). Not grilled yet: the decisions below are proposals.
 

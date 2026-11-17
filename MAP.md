@@ -6,7 +6,7 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 
 | I want to change… | File |
 | --- | --- |
-| Board state, selection (`selectedIds`), undo/redo, add/move/delete/duplicate/reorder/align/distribute elements | [apps/web/src/store.ts](apps/web/src/store.ts) |
+| Board state, selection (`selectedIds`), undo/redo (`HistoryEntry`: elements, palette edits and board style; `checkpoint`, `step`), add/move/delete/duplicate/reorder/align/distribute elements | [apps/web/src/store.ts](apps/web/src/store.ts) |
 | Element types (`image`, `note`, `color`, `link`) | `BoardElement` in [store.ts](apps/web/src/store.ts) |
 | Commands on the selection (nudge, delete, duplicate, rotate, reorder), the read-only gate, "what a command acts on" (`targetOf`) | [apps/web/src/selection.ts](apps/web/src/selection.ts) |
 | Global shortcuts (undo/redo, and keys to selection commands without focus), paste handling | [apps/web/src/App.tsx](apps/web/src/App.tsx) |
@@ -51,13 +51,13 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/main.tsx` | Board entry. With `?s=<id>` opens that shared board read-only; otherwise loads the saved board and starts autosave. Renders `App`. |
 | `src/App.tsx` | Board shell: canvas, toolbar, palette panel, empty state, notices. Window-level paste (image/URL/text) and undo/redo keys. |
 | `src/Canvas.tsx` | The infinite canvas. Wheel pan, Ctrl+wheel zoom, background drag, file/link drop. Renders every `ElementView`. |
-| `src/selection.ts` | Selection commands shared by keyboard and toolbar: `targetOf`, `nudge`, `rotateStep`, `remove`, `duplicate`, `reorder`. One read-only check; one undo step each. |
+| `src/selection.ts` | Selection commands shared by keyboard and toolbar: `targetOf`, `nudge`, `rotateStep`, `remove`, `duplicate`, `reorder`. One read-only check; one undo step each (a burst of nudges or rotations is one). |
 | `src/ElementView.tsx` | One element on the board: selection, drag, resize/rotate handles, keyboard actions, note editing, color popover. |
 | `src/LinkCard.tsx` | Content of a link element: cover, title, domain, fonts and colors. |
 | `src/ColorFields.tsx` | Hex input + native color input used in the color popover. |
 | `src/Toolbar.tsx` | Floating bottom toolbar: add image/note/color, undo/redo, selected-element actions (duplicate, layers, delete), zoom, palette toggle. |
 | `src/PalettePanel.tsx` | Side panel with the board palette and fonts; copy as CSS or Tailwind. |
-| `src/store.ts` | Zustand store: elements (array order = z-order), selection, view, undo history, palette metadata, `readOnly`. |
+| `src/store.ts` | Zustand store: elements (array order = z-order), selection, view, undo history (whole snapshots), palette metadata, `readOnly`. |
 | `src/storage.ts` | IndexedDB load/save, debounced autosave subscribed to the store. |
 | `src/colors.ts` | `normalizeHex`, `buildPalette` (colors from swatches, links, images + user meta), `boardFonts`, `dominantColors`. |
 | `src/export.ts` | `exportTheme('css' \| 'tailwind', colors, fonts)` and slug naming. |

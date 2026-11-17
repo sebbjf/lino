@@ -121,14 +121,14 @@ const same = (a: HistoryEntry, s: Snap) => a.elements === s.elements && a.colorM
 export const hasUndo = (s: Snap & { past: HistoryEntry[] }) => s.past.some((p) => !same(p, s))
 
 let batching = 0 // inside step(): its one entry is already pushed
-let lastKey: { key: string; at: number } | null = null
+let lastKey: { key: string; at: number; board: string } | null = null
 
 // Snapshot the current state unless it is already the latest entry (e.g. a click that never moved), or this is part of a step or a burst.
 function pushHistory(s: State, key?: string) {
   if (batching) return {}
   const now = Date.now()
-  const burst = !!key && lastKey?.key === key && now - lastKey.at < COALESCE_MS
-  lastKey = key ? { key, at: now } : null
+  const burst = !!key && lastKey?.key === key && lastKey.board === s.boardId && now - lastKey.at < COALESCE_MS // a burst never spans two boards
+  lastKey = key ? { key, at: now, board: s.boardId } : null
   if (burst) return { future: [] as HistoryEntry[] }
   const last = s.past.at(-1)
   return last && same(last, s) ? { future: [] as HistoryEntry[] } : { past: [...s.past, entryOf(s)].slice(-HISTORY_LIMIT), future: [] as HistoryEntry[] }
@@ -313,8 +313,8 @@ export const useBoard = create<State>()((set, get) => ({
   // typing a name makes one step per burst; the other palette edits are single clicks
   setColorMeta: (hex, patch) => set((s) => ({ ...pushHistory(s, 'name' in patch ? `name:${hex}` : undefined), colorMeta: { ...s.colorMeta, [hex]: { ...s.colorMeta[hex], ...patch } } })),
 
-  // a color picker scrubbed within 600 ms is one step
-  setBoard: (patch) => set((s) => ({ ...pushHistory(s, 'board'), board: { ...s.board, ...patch } })),
+  // a color picker scrubbed within 600 ms is one step; changing a different field is another
+  setBoard: (patch) => set((s) => ({ ...pushHistory(s, `board:${Object.keys(patch).sort().join()}`), board: { ...s.board, ...patch } })),
   setExportPrefs: (patch) => set((s) => ({ exportPrefs: { ...s.exportPrefs, ...patch } })),
 
   restoreHiddenColors: () =>

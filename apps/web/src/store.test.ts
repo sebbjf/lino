@@ -212,3 +212,21 @@ test('a coalescing key folds repeated checkpoints within 600 ms into one step', 
     vi.useRealTimers()
   }
 })
+
+test('board style changes of different fields are separate steps, and undoing an import restores the palette', () => {
+  vi.useFakeTimers()
+  try {
+    useBoard.setState({ colorMeta: { '#111111': { pinned: true } }, board: {} })
+    board().setBoard({ bg: '#222222' })
+    board().setBoard({ pattern: 'grid' }) // right after, but another field
+    board().undo()
+    expect(board().board).toEqual({ bg: '#222222' })
+    board().replaceBoard([], { '#333333': { pinned: true } }, { bg: '#444444' })
+    expect(board().colorMeta['#333333']).toEqual({ pinned: true })
+    board().undo()
+    expect(board().colorMeta).toEqual({ '#111111': { pinned: true } })
+    expect(board().board).toEqual({ bg: '#222222' })
+  } finally {
+    vi.useRealTimers()
+  }
+})

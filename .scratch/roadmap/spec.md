@@ -29,7 +29,7 @@ Overview in `architecture-review`. These are not features; they exist so feature
 | Spec | State | Why it is on the roadmap |
 |---|---|---|
 | `board-snapshot` | **Done** (`9cd345a`) | Do before `image-storage`, `templates-and-gallery`, `collaboration` and "back up all boards": each of them changes or moves the saved shape, and today that shape lives in four files. |
-| `undo-history` | Needs triage | Cheapest win; the snapshot's "open is one undo step" and `collaboration` both lean on it. |
+| `undo-history` | **Done** (`bad8e0a`) | Cheapest win; the snapshot's "open is one undo step" and `collaboration` both lean on it. |
 | `selection-commands` | **Done** (`1f123e2`..`4aea2a6`) | Do with "lock elements" (`quick-wins`, `image-tools`): the read-only/locked check should live in one place. |
 | `element-kinds` | Needs triage | Do right before `frames-and-groups`, which adds a fifth kind; that is the trigger the spec was waiting for. |
 | `move-gesture` | Needs triage, speculative | Only if drag bugs keep showing up; also relevant once groups change what a drag moves. |
