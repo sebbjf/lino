@@ -155,3 +155,60 @@ test('swatchRow lays swatches under an element, as wide as it, in one undo step'
   board().undo()
   expect(board().elements).toHaveLength(1)
 })
+
+test('palette edits and board style undo and redo with the board', () => {
+  useBoard.setState({ colorMeta: {}, board: {} })
+  board().setColorMeta('#aabbcc', { pinned: true })
+  board().setBoard({ bg: '#111111' })
+  board().undo()
+  expect(board().board).toEqual({})
+  expect(board().colorMeta['#aabbcc']).toEqual({ pinned: true })
+  board().undo()
+  expect(board().colorMeta).toEqual({})
+  board().redo()
+  board().redo()
+  expect(board().board).toEqual({ bg: '#111111' })
+  expect(board().colorMeta['#aabbcc']).toEqual({ pinned: true })
+})
+
+test('step runs several operations as one undo step, and a new step clears redo', () => {
+  board().step(() => {
+    for (const text of ['a', 'b', 'c']) board().add({ type: 'note', text, w: 10, h: 10 }, at)
+    board().arrange(ids(), 'masonry')
+  })
+  expect(ids()).toHaveLength(3)
+  board().undo()
+  expect(ids()).toHaveLength(0)
+  board().redo()
+  expect(ids()).toHaveLength(3)
+  board().undo()
+  board().add({ type: 'note', text: 'd', w: 10, h: 10 }, at)
+  expect(board().future).toEqual([])
+})
+
+test('a coalescing key folds repeated checkpoints within 600 ms into one step', () => {
+  vi.useFakeTimers()
+  try {
+    board().add({ type: 'note', text: '', w: 10, h: 10 }, at)
+    const [id] = ids()
+    const x0 = board().elements[0].x
+    const nudge = () => {
+      board().checkpoint('nudge')
+      board().update(id, { x: board().elements[0].x + 1 })
+    }
+    nudge()
+    vi.advanceTimersByTime(300)
+    nudge()
+    vi.advanceTimersByTime(300)
+    nudge() // still within 600 ms of the previous one
+    vi.advanceTimersByTime(700)
+    nudge() // a pause: a new step
+    expect(board().elements[0].x).toBe(x0 + 4)
+    board().undo()
+    expect(board().elements[0].x).toBe(x0 + 3)
+    board().undo()
+    expect(board().elements[0].x).toBe(x0)
+  } finally {
+    vi.useRealTimers()
+  }
+})

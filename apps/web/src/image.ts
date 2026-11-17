@@ -60,20 +60,20 @@ export async function addImages(files: File[], at?: { x: number; y: number }) {
     }
   }
   // everything below is synchronous, so nothing the user does can slip into the middle of the batch
-  const { add, arrange, selectMany, past, elements } = useBoard.getState()
-  const ids = read.map(({ src, w, h, colors }, i) => {
-    const s = Math.min(1, MAX_INITIAL_SIDE / Math.max(w, h))
-    return add({ type: 'image', src, colors, w: w * s, h: h * s }, at && { x: at.x + i * 24, y: at.y + i * 24 })
+  const { add, arrange, selectMany, step } = useBoard.getState()
+  step(() => {
+    const ids = read.map(({ src, w, h, colors }, i) => {
+      const s = Math.min(1, MAX_INITIAL_SIDE / Math.max(w, h))
+      return add({ type: 'image', src, colors, w: w * s, h: h * s }, at && { x: at.x + i * 24, y: at.y + i * 24 })
+    })
+    if (ids.length < 2) return
+    arrange(ids, 'masonry')
+    // the masonry grows from where the first image landed: centre the whole group on the target instead
+    const { elements: now, view, moveMany } = useBoard.getState()
+    const mine = now.filter((e) => ids.includes(e.id))
+    const b = boundsOf(mine)
+    const c = at ?? viewportCenter(view)
+    moveMany(Object.fromEntries(mine.map((e) => [e.id, { x: e.x + c.x - (b.x + b.w / 2), y: e.y + c.y - (b.y + b.h / 2) }])))
+    selectMany(ids)
   })
-  if (ids.length < 2) return
-  arrange(ids, 'masonry')
-  // the masonry grows from where the first image landed: centre the whole group on the target instead
-  const { elements: now, view, moveMany } = useBoard.getState()
-  const mine = now.filter((e) => ids.includes(e.id))
-  const b = boundsOf(mine)
-  const c = at ?? viewportCenter(view)
-  moveMany(Object.fromEntries(mine.map((e) => [e.id, { x: e.x + c.x - (b.x + b.w / 2), y: e.y + c.y - (b.y + b.h / 2) }])))
-  selectMany(ids)
-  // the adds and the arrange each took a history step: fold them back into the one before the batch
-  useBoard.setState({ past: past.at(-1) === elements ? past : [...past, elements] })
 }

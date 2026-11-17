@@ -2,7 +2,7 @@ import { useBoard, type Layer } from './store.ts'
 
 // Commands on the selection, shared by the keyboard and the toolbar. The read-only check lives here, once:
 // the store actions stay ungated because opening a shared board, undo and drags use them too.
-// Each command is one undo step.
+// Each command is one undo step; a burst of nudges or rotations of the same elements (a held key) is one.
 
 const board = () => useBoard.getState()
 /** The ids a command may act on: none on a read-only board. */
@@ -17,7 +17,7 @@ export function targetOf(focusedId?: string) {
 export function nudge(ids: string[], dx: number, dy: number) {
   const target = editable(ids)
   if (!target.length) return
-  board().checkpoint()
+  board().checkpoint(`nudge:${target.join()}`)
   board().moveMany(Object.fromEntries(board().elements.filter((e) => target.includes(e.id)).map((e) => [e.id, { x: e.x + dx, y: e.y + dy }])))
 }
 
@@ -25,7 +25,7 @@ export function nudge(ids: string[], dx: number, dy: number) {
 export function rotateStep(ids: string[], dir: 1 | -1) {
   const target = editable(ids)
   if (!target.length) return
-  board().checkpoint()
+  board().checkpoint(`rotate:${target.join()}`)
   for (const e of board().elements.filter((e) => target.includes(e.id))) {
     const deg = Math.round((e.rotation + dir * 15) / 15) * 15
     board().update(e.id, { rotation: ((((deg + 180) % 360) + 360) % 360) - 180 })

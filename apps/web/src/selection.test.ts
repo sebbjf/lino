@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { duplicate, nudge, remove, reorder, rotateStep, targetOf } from './selection.ts'
 import { useBoard } from './store.ts'
 
@@ -74,4 +74,28 @@ test('every command is exactly one undo step', () => {
   run(() => duplicate([a, b]))
   run(() => remove([a, b]))
   run(() => reorder(a, 'front'))
+})
+
+test('a burst of nudges is one undo step, a pause starts a new one', () => {
+  vi.useFakeTimers()
+  try {
+    const x0 = get(a).x
+    nudge([a], 1, 0)
+    vi.advanceTimersByTime(100)
+    nudge([a], 1, 0)
+    vi.advanceTimersByTime(100)
+    nudge([a], 1, 0)
+    vi.advanceTimersByTime(1000)
+    nudge([a], 1, 0)
+    board().undo()
+    expect(get(a).x).toBe(x0 + 3)
+    board().undo()
+    expect(get(a).x).toBe(x0)
+    nudge([b], 1, 0) // other elements never join an earlier burst
+    nudge([a], 1, 0)
+    board().undo()
+    expect(get(a).x).toBe(x0)
+  } finally {
+    vi.useRealTimers()
+  }
 })

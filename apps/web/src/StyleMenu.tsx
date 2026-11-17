@@ -210,8 +210,8 @@ function ElementPanel({ ids }: { ids: string[] }) {
           step={5}
           value={opacity}
           className="w-full accent-primary"
-          onPointerDown={checkpoint}
-          onKeyDown={checkpoint}
+          onPointerDown={() => checkpoint()}
+          onKeyDown={() => checkpoint()}
           onChange={(e) => restyle(ids, { opacity: Number(e.target.value) / 100 })}
         />
       </Group>

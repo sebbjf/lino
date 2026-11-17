@@ -40,7 +40,7 @@ import { ShareButton } from './ShareButton.tsx'
 import { StyleMenu } from './StyleMenu.tsx'
 import { ArrangeMenu } from './ArrangeMenu.tsx'
 import { duplicate, remove, reorder } from './selection.ts'
-import { useBoard } from './store.ts'
+import { hasUndo, useBoard } from './store.ts'
 
 // Chromium only for now; elsewhere the button is hidden.
 type EyeDropperCtor = new () => { open: () => Promise<{ sRGBHex: string }> }
@@ -166,7 +166,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
   const selectedIds = useBoard((s) => s.selectedIds)
   const selectedId = selectedIds.length === 1 ? selectedIds[0] : null
   const zoom = useBoard((s) => s.view.zoom)
-  const canUndo = useBoard((s) => s.past.some((p) => p !== s.elements))
+  const canUndo = useBoard(hasUndo)
   const canRedo = useBoard((s) => s.future.length > 0)
   const readOnly = useBoard((s) => s.readOnly)
   const { add, undo, redo, align, distribute } = useBoard.getState()
