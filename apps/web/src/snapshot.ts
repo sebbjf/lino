@@ -1,6 +1,7 @@
 import type { ColorMeta } from './colors.ts'
 import { fitView } from './geometry.ts'
 import { CORNERS, DECOS, FAMILY, IMAGE_FILTERS, MIN_OPACITY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
+import { externalize, IMAGE_ID, inline } from './images.ts'
 import { useBoard, type BoardElement, type View } from './store.ts'
 
 // The board snapshot: the portable content of a board (elements, palette edits, board style), shared by
@@ -75,7 +76,9 @@ export function boardStyleOf(raw: unknown): BoardStyle {
  * Rebuilds one element from untrusted JSON, keeping only known fields, or null if it is not usable.
  * Strict on URLs: a file may come from someone else, and links open on Enter.
  */
-function toElement(raw: unknown): BoardElement | null {
+function toElement(raw: unknown, local: boolean): BoardElement | null {
+  // ids point into this browser's image store: only its own records may carry them
+  const isPicture = (v: unknown): v is string => isStr(v, Infinity) && (DATA_IMAGE.test(v) || (local && IMAGE_ID.test(v)))
   if (!raw || typeof raw !== 'object') return null
   const e = raw as Record<string, unknown>
   if (!isNum(e.x) || !isNum(e.y) || !isNum(e.w) || !isNum(e.h) || e.w <= 0 || e.h <= 0) return null
@@ -90,7 +93,7 @@ function toElement(raw: unknown): BoardElement | null {
   }
   switch (e.type) {
     case 'image':
-      return isStr(e.src, Infinity) && DATA_IMAGE.test(e.src) ? { ...box, type: 'image', src: e.src, colors: strList(e.colors, (s) => HEX.test(s)), ...imageStyleOf(e) } : null
+      return isPicture(e.src) ? { ...box, type: 'image', src: e.src, colors: strList(e.colors, (s) => HEX.test(s)), ...imageStyleOf(e) } : null
     case 'note':
       // longer text is cut, not dropped: the share API refuses it and a whole note is worth more than its tail
       return typeof e.text === 'string' ? { ...box, type: 'note', text: e.text.slice(0, MAX_TEXT), ...noteStyleOf(e) } : null
@@ -104,7 +107,7 @@ function toElement(raw: unknown): BoardElement | null {
         type: 'link',
         url: e.url,
         title: isStr(e.title, 500) ? e.title : null,
-        image: isStr(e.image, Infinity) && DATA_IMAGE.test(e.image) ? e.image : null,
+        image: isPicture(e.image) ? e.image : null,
         fonts: strList(e.fonts),
         colors: strList(e.colors, (s) => HEX.test(s)),
         // a link still loading when it was saved will never finish: the one place that rule lives
@@ -131,7 +134,7 @@ export function parseBoardFile(text: string) {
 export function parseBoard(raw: unknown) {
   const data = raw as { elements?: unknown; colorMeta?: unknown; board?: unknown } | null
   if (!data || !Array.isArray(data.elements)) throw new Error('That is not a Lino board.')
-  const elements = data.elements.map(toElement).filter((e) => e !== null)
+  const elements = data.elements.map((e) => toElement(e, false)).filter((e) => e !== null)
   const colorMeta: Record<string, ColorMeta> = {}
   if (data.colorMeta && typeof data.colorMeta === 'object')
     for (const [hex, m] of Object.entries(data.colorMeta as Record<string, Record<string, unknown> | null>)) {
@@ -147,10 +150,10 @@ export function parseBoard(raw: unknown) {
 }
 
 /** Rebuilds a snapshot from untrusted data (a file, the share API, or this browser's own storage). Unusable elements are dropped and counted. */
-export function parseSnapshot(raw: unknown): Snapshot & { skipped: number } {
+export function parseSnapshot(raw: unknown, local = false): Snapshot & { skipped: number } {
   const data = raw as { elements?: unknown; colorMeta?: unknown; board?: unknown } | null
   if (!data || !Array.isArray(data.elements)) throw new Error('That is not a Lino board.')
-  const elements = data.elements.map(toElement).filter((e) => e !== null)
+  const elements = data.elements.map((e) => toElement(e, local)).filter((e) => e !== null)
   const colorMeta: Record<string, ColorMeta> = {}
   if (data.colorMeta && typeof data.colorMeta === 'object')
     for (const [hex, m] of Object.entries(data.colorMeta as Record<string, Record<string, unknown> | null>)) {
@@ -174,6 +177,9 @@ export function parseSnapshotText(text: string) {
   }
 }
 
+/** The board on screen with its pictures inline, for what leaves this browser (board file, share). */
+export const capturePortable = async () => inline(captureSnapshot())
+
 /** The snapshot of the board on screen. */
 export function captureSnapshot(): Snapshot {
   const { elements, colorMeta, board } = useBoard.getState()
@@ -190,7 +196,9 @@ export const onLeaveBoard = (fn: () => Promise<unknown>) => void (leave = fn)
  * - `new`: as another board (`id` given: that board, already in the index; none: a fresh one, after saving the current), with a clean history.
  * - `readonly`: the shared view, with a clean history.
  */
-export async function openSnapshot(snap: Snapshot, mode: 'replace' | 'new' | 'readonly', opts: { view?: View; id?: string } = {}) {
+export async function openSnapshot(opened: Snapshot, mode: 'replace' | 'new' | 'readonly', opts: { view?: View; id?: string } = {}) {
+  // a board you can edit keeps its pictures in the image store; if that is unavailable they stay inline and still show
+  const snap = mode === 'readonly' ? opened : await externalize(opened).catch(() => opened)
   const { elements, colorMeta, board } = snap
   const view = opts.view ?? (elements.length ? fitView(elements, innerWidth, innerHeight) : { x: 0, y: 0, zoom: 1 })
   if (mode === 'replace') {

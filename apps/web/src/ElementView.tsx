@@ -6,6 +6,7 @@ import { drag, touches } from './drag.ts'
 import { harmonies } from './colors.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
+import { useImageSrc } from './images.ts'
 import { justDropped, useBoard, type BoardElement } from './store.ts'
 import { DEFAULT_DUO, NOTE_TEXT, loadFamily, noteFontStack, rgb, surface, textOn } from './style.ts'
 
@@ -83,6 +84,7 @@ function panIntoView(el: BoardElement) {
 export const ElementView = memo(function ElementView({ el, selected, solo, zoom }: Props) {
   const { update, moveMany, select, remove, duplicate, reorder, checkpoint } = useBoard.getState()
   const readOnly = useBoard((s) => s.readOnly)
+  const picture = useImageSrc(el.type === 'image' ? el.src : null)
   // the selection outline follows the board background's contrast color, so it shows on dark boards too
   const outline = useBoard((s) => (s.board.bg && textOn(s.board.bg)) || 'var(--color-primary)')
   // a freshly added empty note opens straight into editing
@@ -305,7 +307,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         <>
           {el.filter === 'duotone' && <DuotoneFilter id={el.id} duo={el.duo ?? DEFAULT_DUO} />}
           <img
-            src={el.src}
+            src={picture}
             alt=""
             decoding="async"
             loading="lazy"

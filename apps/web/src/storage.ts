@@ -1,3 +1,5 @@
+import { run as idb } from './db.ts'
+import { externalize, IMAGE_ID, sweepImages } from './images.ts'
 import { captureSnapshot, onLeaveBoard, openSnapshot, parseSnapshot, type Snapshot } from './snapshot.ts'
 import { useBoard, type BoardMeta, type ExportPrefs, type View } from './store.ts'
 
@@ -8,35 +10,18 @@ type Index = { current: string; boards: BoardMeta[] }
 type Saved = Partial<Snapshot> & { elements: unknown[]; view?: View; exportPrefs?: ExportPrefs }
 const EMPTY: Snapshot = { elements: [], colorMeta: {}, board: {} }
 const DEFAULT_VIEW: View = { x: 0, y: 0, zoom: 1 }
+const run = <T,>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>) => idb('boards', mode, fn)
 const readIndex = async () => (await run<Index | undefined>('readonly', (s) => s.get(INDEX))) ?? undefined
-
-let dbPromise: Promise<IDBDatabase> | undefined
-function db() {
-  dbPromise ??= new Promise((resolve, reject) => {
-    const req = indexedDB.open('lino', 1)
-    req.onupgradeneeded = () => req.result.createObjectStore('boards')
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => {
-      dbPromise = undefined // let the next call try again
-      reject(req.error)
-    }
-  })
-  return dbPromise
-}
-
-async function run<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const tx = (await db()).transaction('boards', mode)
-  return new Promise((resolve, reject) => {
-    const req = fn(tx.objectStore('boards'))
-    // a write only counts once the transaction commits: a full disk aborts it after the request succeeded
-    tx.oncomplete = () => resolve(req.result)
-    tx.onerror = tx.onabort = () => reject(tx.error ?? req.error)
-  })
-}
 
 /** Puts a saved board on screen through the snapshot parse (a clean slate for undo and selection). */
 async function show(id: string, saved: Saved | undefined, savedView?: View) {
-  const snap = parseSnapshot(saved ?? EMPTY)
+  let snap: Snapshot = parseSnapshot(saved ?? EMPTY, true)
+  // a board saved with its images inline moves them to the image store the first time it is opened (blobs first, then the record, so a crash keeps the old record whole)
+  const moved = await externalize(snap).catch(() => snap)
+  if (saved && moved !== snap) {
+    snap = moved
+    await run('readwrite', (s) => s.put({ ...saved, elements: snap.elements }, id)).catch(() => {})
+  }
   const view = savedView ?? saved?.view ?? DEFAULT_VIEW
   // a phone opens a board made on a desktop zoomed to fit, instead of cropped to its top-left
   const untouched = view.x === 0 && view.y === 0 && view.zoom === 1
@@ -87,7 +72,8 @@ export const createBoard = () => openSnapshot(EMPTY, 'new')
 export async function saveAsLocalBoard(snap: Snapshot, name: string) {
   const index = (await readIndex()) ?? { current: 'local', boards: [{ id: 'local', name: 'My board' }] }
   const id = crypto.randomUUID()
-  await run('readwrite', (s) => s.put({ ...snap } satisfies Saved, id))
+  const external = await externalize(snap)
+  await run('readwrite', (s) => s.put({ ...external } satisfies Saved, id))
   await run('readwrite', (s) => s.put({ current: id, boards: [...index.boards, { id, name }] } satisfies Index, INDEX))
 }
 
@@ -110,6 +96,20 @@ export async function deleteBoard(id: string) {
   }
   useBoard.setState({ boards: rest })
   if (id === boardId) await show(rest[0].id, await run<Saved | undefined>('readonly', (s) => s.get(rest[0].id)), await readView(rest[0].id))
+}
+
+/**
+ * Deletes stored images that no saved board uses. Once per start, after the first board is open: undo history
+ * is empty then, and no migration is half done. Gives up if any record cannot be read.
+ */
+export async function sweepStoredImages() {
+  const used = new Set<string>()
+  const scan = (els: unknown) => {
+    if (Array.isArray(els)) for (const e of els as { src?: unknown; image?: unknown }[]) for (const v of [e?.src, e?.image]) if (typeof v === 'string' && IMAGE_ID.test(v)) used.add(v)
+  }
+  for (const rec of await run<unknown[]>('readonly', (s) => s.getAll())) scan((rec as Partial<Saved> | undefined)?.elements)
+  scan(useBoard.getState().elements) // the open board, in case its record could not be rewritten
+  await sweepImages(used)
 }
 
 /** Debounced save on every board change, plus an immediate save when the tab is hidden. */

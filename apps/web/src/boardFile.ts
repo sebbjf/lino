@@ -1,4 +1,4 @@
-import { captureSnapshot, openSnapshot, parseSnapshotText } from './snapshot.ts'
+import { capturePortable, openSnapshot, parseSnapshotText } from './snapshot.ts'
 import { useBoard } from './store.ts'
 
 const MAX_FILE = 50 * 1024 * 1024
@@ -13,8 +13,8 @@ function download(blob: Blob, name: string) {
 }
 
 /** Downloads the board as a .lino.json file that importBoardFile reads back. */
-export function exportBoardFile() {
-  const body = JSON.stringify({ app: 'lino', version: 1, ...captureSnapshot() })
+export async function exportBoardFile() {
+  const body = JSON.stringify({ app: 'lino', version: 1, ...(await capturePortable()) })
   download(new Blob([body], { type: 'application/json' }), `lino-board-${new Date().toISOString().slice(0, 10)}.lino.json`)
 }
 

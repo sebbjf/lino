@@ -1,4 +1,4 @@
-import { captureSnapshot, openSnapshot, parseSnapshot } from './snapshot.ts'
+import { capturePortable, openSnapshot, parseSnapshot } from './snapshot.ts'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 /** Same as MAX_BOARD_BYTES in apps/api/src/routes.ts. */
@@ -16,7 +16,7 @@ async function call(path: string, init?: RequestInit) {
 
 /** Uploads a fixed copy of the board and returns its read-only link. */
 export async function shareBoard(): Promise<{ url: string; expiresAt: string }> {
-  const body = JSON.stringify(captureSnapshot()) // the recipient's parse settles any link still loading
+  const body = JSON.stringify(await capturePortable()) // the recipient's parse settles any link still loading
   // the host refuses bigger requests before the API sees them, so say why here
   if (new Blob([body]).size > MAX_SHARE_BYTES) throw new Error('This board is too large to share (limit 4 MB). Remove or shrink some images.')
   const { id, expiresAt } = await call('/boards', { method: 'POST', headers: { 'content-type': 'application/json' }, body })

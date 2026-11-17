@@ -4,7 +4,7 @@ import { App } from './App.tsx'
 import { exportBoardFile } from './boardFile.ts'
 import { Button } from './components/ui/button.tsx'
 import { loadShared, sharedId } from './share.ts'
-import { loadBoard, startAutosave } from './storage.ts'
+import { loadBoard, startAutosave, sweepStoredImages } from './storage.ts'
 import { useBoard } from './store.ts'
 import './index.css'
 
@@ -15,7 +15,13 @@ if (shared) {
 } else {
   // load before rendering and autosaving, so an empty first render never overwrites the saved board
   // no autosave after a failed load: it would write this empty board over the saved ones
-  await loadBoard().then(startAutosave, () => useBoard.getState().notify('Saved boards could not be loaded, so changes will not be kept. Reload to try again.'))
+  await loadBoard().then(
+    async () => {
+      startAutosave()
+      // before anything renders, so no image added meanwhile can be swept, and with nothing to undo yet
+      await sweepStoredImages().catch(() => {})
+    },
+    () => useBoard.getState().notify('Saved boards could not be loaded, so changes will not be kept. Reload to try again.'))
 }
 
 /** A render error shows a way out instead of a blank page. */

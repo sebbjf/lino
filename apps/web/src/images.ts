@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { BoardElement } from './store.ts'
 import type { Snapshot } from './snapshot.ts'
 
@@ -75,4 +76,35 @@ export const inline = (snap: Snapshot) => mapPictures(snap, toDataUrl, isImageId
 export async function sweepImages(used: Set<string>) {
   const s = blobs()
   await Promise.all((await s.ids()).filter((id) => !used.has(id)).map((id) => s.delete(id)))
+}
+
+// ponytail: object URLs are kept for the whole session (one per image on screen); revoke them if memory ever matters.
+const urls = new Map<string, Promise<string>>()
+/** A URL the browser can draw: ids become object URLs of their blob, anything else is returned as is. */
+export function resolveImage(src: string): Promise<string> {
+  if (!isImageId(src)) return Promise.resolve(src)
+  let url = urls.get(src)
+  if (!url) {
+    url = blobs()
+      .get(src)
+      .then((b) => {
+        if (!b) throw new Error('Image missing.')
+        return URL.createObjectURL(b)
+      })
+    url.catch(() => urls.delete(src)) // try again next time
+    urls.set(src, url)
+  }
+  return url
+}
+
+/** The drawable URL of an element's picture (undefined until its blob is read). */
+export function useImageSrc(src: string | null | undefined) {
+  const [loaded, setLoaded] = useState<{ src: string; url: string }>()
+  useEffect(() => {
+    if (!src || !isImageId(src)) return
+    let live = true
+    resolveImage(src).then((url) => live && setLoaded({ src, url }), () => {})
+    return () => void (live = false)
+  }, [src])
+  return src && !isImageId(src) ? src : loaded && loaded.src === src ? loaded.url : undefined
 }

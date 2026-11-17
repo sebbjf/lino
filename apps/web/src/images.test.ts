@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from 'vitest'
 import { externalize, inline, isImageId, setBlobStore, sweepImages, type BlobStore } from './images.ts'
-import type { Snapshot } from './snapshot.ts'
+import { parseSnapshot, type Snapshot } from './snapshot.ts'
 
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
 const GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
@@ -50,4 +50,13 @@ test('sweep deletes only the blobs no board references', async () => {
   const keep = (out.elements[0] as { src: string }).src
   await sweepImages(new Set([keep]))
   expect([...blobs.keys()]).toEqual([keep])
+})
+
+test('a legacy board record migrates: data URLs become ids, and only local parsing accepts ids', async () => {
+  const legacy = { elements: [image('a', PNG), link('b', GIF)], colorMeta: {}, board: {} }
+  expect(parseSnapshot(legacy).elements).toHaveLength(2) // the old format keeps loading
+  const migrated = await externalize(parseSnapshot(legacy))
+  expect(parseSnapshot(migrated, true).elements).toHaveLength(2)
+  expect(parseSnapshot(JSON.parse(JSON.stringify(migrated))).elements).toHaveLength(1) // a file may not point into this browser's blobs
+  expect(await inline(parseSnapshot(migrated, true))).toMatchObject({ elements: [{ src: PNG }, { image: GIF }] })
 })

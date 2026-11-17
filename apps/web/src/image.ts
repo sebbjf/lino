@@ -1,5 +1,6 @@
 import { dominantColors } from './colors.ts'
 import { boundsOf } from './geometry.ts'
+import { resolveImage, toId } from './images.ts'
 import { useBoard, viewportCenter } from './store.ts'
 
 const MAX_BYTES = 20 * 1024 * 1024
@@ -14,7 +15,7 @@ function sample(img: CanvasImageSource, n: number) {
 
 /** The main colours of an image already on the board. */
 export async function imageColors(src: string, n = 5) {
-  const bmp = await createImageBitmap(await (await fetch(src)).blob())
+  const bmp = await createImageBitmap(await (await fetch(await resolveImage(src))).blob())
   try {
     return sample(bmp, n)
   } finally {
@@ -52,7 +53,8 @@ export async function addImages(files: File[], at?: { x: number; y: number }) {
   const read: Awaited<ReturnType<typeof readImage>>[] = []
   for (const file of files) {
     try {
-      read.push(await readImage(file))
+      const img = await readImage(file)
+      read.push({ ...img, src: await toId(img.src).catch(() => img.src) }) // inline if the image store is unavailable
     } catch (e) {
       notify((e as Error).message)
     }
