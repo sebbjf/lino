@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { BoardsMenu } from './BoardsMenu.tsx'
+import { CommandMenu } from './CommandMenu.tsx'
 import { Canvas } from './Canvas.tsx'
 import { PalettePanel } from './PalettePanel.tsx'
 import { normalizeHex } from './colors.ts'
@@ -171,6 +172,7 @@ export function App() {
         <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-32 z-[60] flex justify-center">
           {notice && <p className="max-w-md rounded-2xl bg-foreground px-4 py-2 text-center text-sm text-background shadow-lg">{notice}</p>}
         </div>
+        <CommandMenu />
         {paletteOpen && <PalettePanel onClose={() => setPaletteOpen(false)} />}
         <Toolbar paletteOpen={paletteOpen} onTogglePalette={() => setPaletteOpen((o) => !o)} />
       </main>
