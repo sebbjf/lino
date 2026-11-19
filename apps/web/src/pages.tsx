@@ -1,5 +1,6 @@
 import { StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { bookmarklet } from './link.ts'
 import './index.css'
 
 // Small static pages (privacy, docs, 404). The page picks its content from <div id="root" data-page="…">.
@@ -86,6 +87,10 @@ function Docs() {
       <H2>1. Add references</H2>
       <p>
         Drop or paste <strong>images</strong>, paste a <strong>link</strong> (it becomes a card with the page's cover, colors and fonts), or add a <strong>note</strong> or a <strong>color</strong> from the toolbar. Drag to move, use the handles to resize and rotate, and <code>Ctrl+Z</code> undoes anything.
+      </p>
+
+      <p>
+        <strong>Send to Lino:</strong> drag this link to your bookmarks bar, then click it on any page to add that page to your board: <a href={bookmarklet(location.origin)} className="font-medium underline">Send to Lino</a>
       </p>
 
       <H2>2. Build a palette</H2>

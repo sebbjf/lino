@@ -1,5 +1,6 @@
 import {
   AlignEndHorizontalIcon,
+  FolderUploadIcon,
   AlignEndVerticalIcon,
   AlignHorizontalCenterIcon,
   AlignHorizontalSpaceBetweenIcon,
@@ -171,6 +172,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
   const readOnly = useBoard((s) => s.readOnly)
   const { add, undo, redo, align, distribute } = useBoard.getState()
   const fileInput = useRef<HTMLInputElement>(null)
+  const folderInput = useRef<HTMLInputElement>(null)
   const imageSelected = useBoard((s) => s.elements.find((e) => e.id === selectedId)?.type === 'image')
 
   const swatchesFromImage = () => {
@@ -210,6 +212,19 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
           <Tool label="Add note" icon={StickyNote01Icon} onClick={() => add({ type: 'note', text: '', w: 220, h: 140 })} />
           <Tool label="Add color" icon={PaintBoardIcon} onClick={() => add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 })} />
           {EyeDropper && <Tool label="Pick a color from the screen" icon={PipetteIcon} onClick={pickColor} />}
+          <Tool label="Import folder" icon={FolderUploadIcon} onClick={() => folderInput.current?.click()} />
+          <input
+            ref={folderInput}
+            type="file"
+            // @ts-expect-error webkitdirectory is not in React's input typings
+            webkitdirectory=""
+            multiple
+            hidden
+            onChange={(e) => {
+              addImages([...(e.target.files ?? [])].filter((f) => f.type.startsWith('image/')))
+              e.target.value = ''
+            }}
+          />
           <input
             ref={fileInput}
             type="file"

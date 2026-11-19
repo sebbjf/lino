@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App.tsx'
 import { exportBoardFile } from './boardFile.ts'
 import { Button } from './components/ui/button.tsx'
+import { addLink, isImageUrl, sharedUrl } from './link.ts'
 import { loadShared, sharedId } from './share.ts'
 import { loadBoard, startAutosave, sweepStoredImages } from './storage.ts'
 import { useBoard } from './store.ts'
@@ -22,6 +23,15 @@ if (shared) {
       await sweepStoredImages().catch(() => {})
     },
     () => useBoard.getState().notify('Saved boards could not be loaded, so changes will not be kept. Reload to try again.'))
+}
+
+// "Send to Lino" bookmarklet: add the page it sent, then drop the param so a reload does not add it again
+const sent = shared ? null : sharedUrl(location.search)
+if (sent) {
+  history.replaceState(null, '', location.pathname)
+  // ponytail: the link reader cannot fetch a bare image, so an image URL is a link card too; add an API image proxy to do better
+  if (isImageUrl(sent)) useBoard.getState().notify('Added as a link: Lino cannot read images from other sites.')
+  addLink(sent)
 }
 
 /** A render error shows a way out instead of a blank page. */

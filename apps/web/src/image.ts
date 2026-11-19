@@ -51,7 +51,8 @@ export async function addImages(files: File[], at?: { x: number; y: number }) {
   const { notify } = useBoard.getState()
   if (files.length > 1) notify(`Adding ${files.length} images…`)
   const read: Awaited<ReturnType<typeof readImage>>[] = []
-  for (const file of files) {
+  for (const [i, file] of files.entries()) {
+    if (files.length > 5) notify(`Reading ${i + 1}/${files.length}…`)
     try {
       const img = await readImage(file)
       read.push({ ...img, src: await toId(img.src).catch(() => img.src) }) // inline if the image store is unavailable
