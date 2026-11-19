@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Kbd } from '@/components/ui/kbd'
 import { Search01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { available, commands, groupOf, iconOf, search } from './commands.ts'
+import { available, commands, dynamicCommands, groupOf, iconOf, search } from './commands.ts'
 
 /** Ctrl/Cmd+K (or Ctrl/Cmd+/, as in Figma): type to find any board action, Enter runs it. Works from a text field too. */
 export function CommandMenu({ open, setOpen }: { open: boolean; setOpen: (o: boolean | ((o: boolean) => boolean)) => void }) {
@@ -29,7 +29,7 @@ export function CommandMenu({ open, setOpen }: { open: boolean; setOpen: (o: boo
   }, [setOpen])
 
   // the list is read when the menu opens or the query changes: the board cannot change under an open dialog
-  const results = open ? search(available(commands), query) : []
+  const results = open ? search([...available(commands), ...available(dynamicCommands())], query) : []
 
   const run = (i: number) => {
     const c = results[i]

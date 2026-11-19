@@ -3,8 +3,12 @@ import {
   Layers01Icon, LayerBringForwardIcon, LayerSendBackwardIcon, MinusSignIcon, PaintBoardIcon, PlusSignIcon, RedoIcon, StickyNote01Icon, UndoIcon,
 } from '@hugeicons/core-free-icons'
 import type { IconSvgElement } from '@hugeicons/react'
-import { fitView, zoomAt } from './geometry.ts'
+import { exportBoardFile, importBoardFile } from './boardFile.ts'
+import { fitView, LAYOUTS, zoomAt, type Layout } from './geometry.ts'
 import { addImages, imageColors } from './image.ts'
+import { downloadPng } from './png.ts'
+import { rotateStep } from './selection.ts'
+import { switchBoard } from './storage.ts'
 import { duplicate, frameSelection, group, remove, reorder, toggleLock, ungroup } from './selection.ts'
 import { hasUndo, useBoard } from './store.ts'
 
@@ -19,6 +23,8 @@ export type Command = {
   keywords?: string
   /** shown as a hint, written like the toolbar's ("Ctrl+Z") */
   shortcut?: string
+  /** section heading; defaults to Edit */
+  group?: string
   /** hidden on a read-only board */
   edit?: boolean
   /** hidden unless this holds for the current board */
@@ -29,6 +35,15 @@ export type Command = {
 const board = () => useBoard.getState()
 const sel = (n: number) => (s: State) => s.selectedIds.length >= n
 const ids = () => board().selectedIds
+const isFrame = (s: State) => s.selectedIds.length === 1 && s.elements.find((e) => e.id === s.selectedIds[0])?.type === 'frame'
+
+function pickJson() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json,application/json'
+  input.onchange = () => input.files?.[0] && importBoardFile(input.files[0])
+  input.click()
+}
 
 function pickFiles(directory: boolean) {
   const input = document.createElement('input')
@@ -96,6 +111,47 @@ export const commands: Command[] = [
   })),
   { id: 'distribute-x', label: 'Distribute horizontally', keywords: 'space', edit: true, when: sel(3), run: () => board().distribute(ids(), 'x') },
   { id: 'distribute-y', label: 'Distribute vertically', keywords: 'space', edit: true, when: sel(3), run: () => board().distribute(ids(), 'y') },
+  { id: 'rotate-cw', label: 'Rotate 15° clockwise', shortcut: 'R', edit: true, when: sel(1), run: () => rotateStep(ids(), 1) },
+  { id: 'rotate-ccw', label: 'Rotate 15° counter-clockwise', shortcut: 'Shift+R', edit: true, when: sel(1), run: () => rotateStep(ids(), -1) },
+  {
+    id: 'shadow',
+    label: 'Toggle shadow',
+    edit: true,
+    when: sel(1),
+    run: () => {
+      const els = board().elements.filter((e) => ids().includes(e.id))
+      const on = !els.every((e) => e.shadow !== false)
+      board().step(() => els.forEach((e) => board().update(e.id, { shadow: on })))
+    },
+  },
+  ...(['flipX', 'flipY'] as const).map((key) => ({
+    id: `flip-${key}`,
+    label: key === 'flipX' ? 'Flip image horizontally' : 'Flip image vertically',
+    edit: true,
+    when: (s: State) => s.selectedIds.length === 1 && s.elements.find((e) => e.id === s.selectedIds[0])?.type === 'image',
+    run: () => {
+      const el = board().elements.find((e) => e.id === ids()[0])
+      if (el?.type === 'image') board().step(() => board().update(el.id, { [key]: el[key] ? undefined : true }))
+    },
+  })),
+  ...LAYOUTS.map((mode: Layout) => ({
+    id: `layout-${mode}`,
+    label: `Arrange as ${mode}`,
+    group: 'Arrange',
+    keywords: 'layout',
+    edit: true,
+    when: (s: State) => (s.selectedIds.length < 2 ? s.elements.length >= 2 || isFrame(s) : true),
+    run: () => {
+      const { arrange, elements, setView, selectedIds } = board()
+      // like the Arrange menu: the selection (2+), a frame's contents, or the whole board when nothing is selected
+      const whole = selectedIds.length < 2 && !isFrame(board())
+      arrange(whole ? elements.map((e) => e.id) : selectedIds, mode)
+      if (whole) setView(fitView(board().elements, innerWidth, innerHeight))
+    },
+  })),
+  { id: 'export', label: 'Export board', group: 'File', keywords: 'save download json', when: (s) => s.elements.length > 0, run: exportBoardFile },
+  { id: 'import', label: 'Import board…', group: 'File', keywords: 'open json', edit: true, run: () => pickJson() },
+  { id: 'png', label: 'Download PNG', group: 'File', keywords: 'image export', when: (s) => s.elements.length > 0, run: downloadPng },
   { id: 'zoom-in', label: 'Zoom in', run: () => zoomTo(board().view.zoom * 1.25) },
   { id: 'zoom-out', label: 'Zoom out', run: () => zoomTo(board().view.zoom / 1.25) },
   { id: 'zoom-reset', label: 'Zoom to 100%', run: () => zoomTo(1) },
@@ -126,7 +182,7 @@ export function search(list: Command[], query: string) {
 }
 
 /** Section a command is listed under, shown as a heading while the search is empty. */
-export const groupOf = (c: Command) => (/^(add|import)/.test(c.id) ? 'Add' : /^(align|distribute)/.test(c.id) ? 'Arrange' : /^(zoom|fit)/.test(c.id) ? 'View' : 'Edit')
+export const groupOf = (c: Command) => c.group ?? (/^(add|import)/.test(c.id) ? 'Add' : /^(align|distribute)/.test(c.id) ? 'Arrange' : /^(zoom|fit)/.test(c.id) ? 'View' : 'Edit')
 
 const ICONS: Record<string, IconSvgElement> = {
   'add-note': StickyNote01Icon, 'add-heading': Heading01Icon, 'add-frame': FrameIcon, 'add-color': PaintBoardIcon, 'add-image': Image01Icon, 'import-folder': FolderUploadIcon,
@@ -134,3 +190,32 @@ const ICONS: Record<string, IconSvgElement> = {
   'frame-selection': ArtboardToolIcon, swatches: ColorsIcon, group: GroupItemsIcon, ungroup: Layers01Icon, 'zoom-in': PlusSignIcon, 'zoom-out': MinusSignIcon, fit: ColorsIcon,
 }
 export const iconOf = (c: Command) => ICONS[c.id] ?? AlignHorizontalCenterIcon
+
+const snippet = (text: string) => text.replace(/\s+/g, ' ').trim().slice(0, 50)
+
+/** Commands that depend on what is on the board: switch to another board, jump to an element by its text. Read when the menu opens. */
+export function dynamicCommands(): Command[] {
+  const s = board()
+  const boards: Command[] = s.readOnly
+    ? []
+    : s.boards
+        .filter((b) => b.id !== s.boardId)
+        .map((b) => ({ id: `board-${b.id}`, label: `Open board: ${b.name}`, group: 'Boards', keywords: 'switch go', run: () => void switchBoard(b.id) }))
+  const jump: Command[] = s.elements.flatMap((e) => {
+    const text = e.type === 'note' ? e.text : e.type === 'frame' ? e.title : e.type === 'link' ? (e.title ?? e.url) : ''
+    if (!snippet(text)) return []
+    return [
+      {
+        id: `go-${e.id}`,
+        label: `Go to ${snippet(text)}`,
+        group: 'Go to',
+        run: () => {
+          const { view, setView, select } = board()
+          select(e.id)
+          setView({ ...view, x: innerWidth / 2 - (e.x + e.w / 2) * view.zoom, y: innerHeight / 2 - (e.y + e.h / 2) * view.zoom })
+        },
+      },
+    ]
+  })
+  return [...boards, ...jump]
+}
