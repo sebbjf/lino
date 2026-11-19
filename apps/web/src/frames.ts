@@ -1,14 +1,27 @@
-import { boundsOf, layoutPositions, type Box, type Layout } from './geometry.ts'
+import { boundsOf, layoutPositions, rotateVec, type Box, type Layout } from './geometry.ts'
 
 // Pure logic for frames and groups; the store and selection commands call these.
 
-/** The elements whose centre lies inside the frame (membership is geometric, nothing is stored). */
+/** The elements whose centre lies inside the frame (membership is geometric, nothing is stored). A tilted frame is tested in its own axes. */
 export function frameContents<T extends Box & { id: string }>(frame: Box & { id: string }, els: T[]): T[] {
   return els.filter((e) => {
-    const cx = e.x + e.w / 2
-    const cy = e.y + e.h / 2
-    return e.id !== frame.id && cx >= frame.x && cx <= frame.x + frame.w && cy >= frame.y && cy <= frame.y + frame.h
+    const p = rotateVec(e.x + e.w / 2 - (frame.x + frame.w / 2), e.y + e.h / 2 - (frame.y + frame.h / 2), -frame.rotation)
+    return e.id !== frame.id && Math.abs(p.x) <= frame.w / 2 && Math.abs(p.y) <= frame.h / 2
   })
+}
+
+type Movable = Box & { id: string; type: string; locked?: boolean; groupId?: string }
+
+/**
+ * What moving `ids` (a drag or a nudge) really moves: unlocked frames carry what lies inside them; a locked element stays,
+ * and so does every member of a group that has a locked one, so a group never splits.
+ */
+export function movingSet<T extends Movable>(ids: string[], els: T[]): T[] {
+  const frozen = new Set(els.flatMap((e) => (e.locked && e.groupId ? [e.groupId] : [])))
+  const free = (e: T) => !e.locked && !(e.groupId && frozen.has(e.groupId))
+  const moved = new Set(els.filter((e) => ids.includes(e.id) && free(e)).map((e) => e.id))
+  for (const f of els) if (f.type === 'frame' && moved.has(f.id)) for (const o of frameContents(f, els)) if (free(o)) moved.add(o.id)
+  return els.filter((e) => moved.has(e.id))
 }
 
 /** The box of a frame that wraps `boxes` with padding on every side. */

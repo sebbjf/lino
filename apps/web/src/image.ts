@@ -1,7 +1,7 @@
 import { dominantColors } from './colors.ts'
 import { boundsOf } from './geometry.ts'
 import { resolveImage, toId } from './images.ts'
-import { useBoard, viewportCenter } from './store.ts'
+import { useBoard, viewportCenter, type HistoryEntry } from './store.ts'
 
 const MAX_BYTES = 20 * 1024 * 1024
 const MAX_SIDE = 1600
@@ -52,7 +52,14 @@ export async function backfillColors() {
     const el = useBoard.getState().elements.find((e) => e.id === id)
     if (el?.type !== 'image' || el.colors) continue // gone, or already sampled
     const colors = await imageColors(el.src, 3).catch(() => null) // a failed read is retried next load
-    if (colors) useBoard.getState().update(id, { colors })
+    if (!colors) continue
+    useBoard.getState().update(id, { colors })
+    // not an undo step: write the colours into the history too, so undo/redo never brings back the uncoloured image
+    const fill = (h: HistoryEntry): HistoryEntry =>
+      h.elements.some((e) => e.id === id && e.type === 'image' && !e.colors)
+        ? { ...h, elements: h.elements.map((e) => (e.id === id && e.type === 'image' ? { ...e, colors } : e)) }
+        : h
+    useBoard.setState((s) => ({ past: s.past.map(fill), future: s.future.map(fill) }))
   }
 }
 

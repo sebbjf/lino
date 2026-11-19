@@ -1,4 +1,4 @@
-import { frameAround } from './frames.ts'
+import { frameAround, movingSet } from './frames.ts'
 import { useBoard, type Layer } from './store.ts'
 
 // Commands on the selection, shared by the keyboard and the toolbar. The read-only check lives here, once:
@@ -19,7 +19,7 @@ export function nudge(ids: string[], dx: number, dy: number) {
   const target = editable(ids)
   if (!target.length) return
   board().checkpoint(`nudge:${target.join()}`)
-  board().moveMany(Object.fromEntries(board().elements.filter((e) => target.includes(e.id)).map((e) => [e.id, { x: e.x + dx, y: e.y + dy }])))
+  board().moveMany(Object.fromEntries(movingSet(target, board().elements).map((e) => [e.id, { x: e.x + dx, y: e.y + dy }])))
 }
 
 /** Turns each element 15° (clockwise for 1, counter-clockwise for -1) about its own centre, within -180..180. */

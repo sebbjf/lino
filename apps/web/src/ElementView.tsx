@@ -6,7 +6,7 @@ import { CropOverlay } from './CropOverlay.tsx'
 import { coverCrop, cropBox, cropStyle, type Crop } from './crop.ts'
 import { drag, touches } from './drag.ts'
 import { harmonies } from './colors.ts'
-import { frameContents } from './frames.ts'
+import { movingSet } from './frames.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
 import { useImageSrc } from './images.ts'
@@ -189,10 +189,9 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     e.currentTarget.focus()
     const ids = targetOf(el.id)
     const els = useBoard.getState().elements
-    // a dragged frame takes what lies inside it (at drag start) along
-    const carried = new Set(ids)
-    for (const f of els) if (f.type === 'frame' && ids.includes(f.id)) frameContents(f, els).forEach((o) => carried.add(o.id))
-    const moving = els.filter((o) => carried.has(o.id) && !o.locked)
+    // a dragged frame takes what lies inside it (at drag start) along; locked elements, and groups holding one, stay
+    const moving = movingSet(ids, els)
+    const carried = new Set([...ids, ...moving.map((o) => o.id)])
     if (!moving.length) return
     // snap the visible (rotated) outline of what moves to the other elements' edges and centers; Alt moves freely
     const own = boundsOf(moving)
