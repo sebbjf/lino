@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState, type KeyboardEvent } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Kbd } from '@/components/ui/kbd'
+import { Search01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { available, commands, groupOf, iconOf, search } from './commands.ts'
 
@@ -47,9 +48,12 @@ export function CommandMenu() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="top-[20%] max-w-md translate-y-0 gap-2 p-3">
+      <DialogContent className="top-auto bottom-24 max-sm:bottom-40 max-w-lg translate-y-0 gap-1 rounded-[1.75rem] p-2">
         <DialogTitle className="sr-only">Command menu</DialogTitle>
+        <div className="relative">
+          <HugeiconsIcon icon={Search01Icon} strokeWidth={1.8} className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          className="h-10 rounded-2xl border-0 pl-9"
           autoFocus
           role="combobox"
           aria-expanded
@@ -64,6 +68,7 @@ export function CommandMenu() {
             setActive(0)
           }}
         />
+        </div>
         <ul id="command-list" role="listbox" aria-label="Commands" className="max-h-72 overflow-y-auto">
           {results.map((c, i) => (
             <Fragment key={c.id}>
