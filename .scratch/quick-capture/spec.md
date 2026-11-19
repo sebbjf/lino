@@ -1,6 +1,6 @@
 # Quick capture
 
-Status: needs-triage
+Status: ready-for-agent
 
 Capture friction decides whether people stay.
 
@@ -15,3 +15,8 @@ Capture friction decides whether people stay.
 ## Comments
 
 2026-11-16: several images added at once (drop, paste or file picker) now land as a masonry centred on the target, selected, as one undo step (`addImages` in `apps/web/src/image.ts`). Left open: extension/bookmarklet, folder import, and progress while a large batch is being read (nothing shows until all are decoded).
+
+2026-11-19 grilled:
+- Bookmarklet "Send to Lino": opens `/board/?add=<url>`; the board adds it to the current local board as a link card, or as an image if the URL is an image, then clears the param. No extension (out of scope).
+- Import a folder (`<input webkitdirectory>`) reusing `addImages`.
+- Progress notice while a large batch is decoded ("Reading 12/40…").

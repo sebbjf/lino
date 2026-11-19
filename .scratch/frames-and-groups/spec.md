@@ -1,6 +1,6 @@
 # Frames, groups and headings
 
-Status: needs-triage
+Status: ready-for-agent
 
 ## Problem
 
@@ -16,3 +16,10 @@ A board with 50 elements is a pile: there is no way to section it.
 
 - Arrange/mosaic should be able to act inside a frame.
 - Out of scope: arrows and connectors (see roadmap non-goals).
+
+## Comments
+
+2026-11-19 grilled:
+- Frame = new element kind `frame` (title + rectangle, drawn behind other elements). Membership is geometric: dragging a frame moves the elements whose centre is inside it at drag start. No membership field. Arrange can act on a frame's contents.
+- Groups: elements get an optional `groupId`. Ctrl+G groups the selection, Ctrl+Shift+G ungroups; clicking any member selects the whole group. One undo step each.
+- Headings: a note style (no card, large size), not a new kind.

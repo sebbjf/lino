@@ -1,6 +1,6 @@
 # Element kinds as a module
 
-Status: needs-triage
+Status: ready-for-agent
 
 Origin: architecture review, candidate 4 ([overview](../architecture-review/spec.md)). Not grilled yet: the decisions below are proposals. Payoff is conditional on planning a fifth kind (types have not changed in recent history).
 
@@ -32,3 +32,7 @@ Start with the data side only: a per-kind module holding validation, the colours
 
 - Is there a fifth kind actually planned? If not, defer.
 - Overlaps with [board-snapshot](../board-snapshot/spec.md): `toElement` moves there first.
+
+## Comments
+
+2026-11-19 grilled: yes, a fifth kind is planned (`frame`, from frames-and-groups). Do the data side only, as proposed: one module per kind with validation, palette colours, own style keys and label; renderers (ElementView, png.ts) stay where they are.
