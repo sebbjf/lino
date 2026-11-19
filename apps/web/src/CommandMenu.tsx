@@ -6,26 +6,23 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { available, commands, groupOf, iconOf, search } from './commands.ts'
 
 /** Ctrl/Cmd+K (or Ctrl/Cmd+/, as in Figma): type to find any board action, Enter runs it. Works from a text field too. */
-export function CommandMenu({ open, setOpen }: { open: boolean; setOpen: (o: boolean | ((o: boolean) => boolean)) => void }) {
+export function CommandMenu() {
+  const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
-
-  // every opening starts with an empty search, whether from the keys or the toolbar button
-  useEffect(() => {
-    setQuery('')
-    setActive(0)
-  }, [open])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent | globalThis.KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key.toLowerCase() === 'k' || e.key === '/')) {
         e.preventDefault()
         setOpen((o) => !o)
+        setQuery('')
+        setActive(0)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [setOpen])
+  }, [])
 
   // the list is read when the menu opens or the query changes: the board cannot change under an open dialog
   const results = open ? search(available(commands), query) : []
