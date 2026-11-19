@@ -15,6 +15,19 @@ export function asUrl(text: string): string | null {
   }
 }
 
+/** The URL a bookmarklet handed over in `?add=`, if it is a plain http(s) URL. */
+export function sharedUrl(search: string): string | null {
+  const v = new URLSearchParams(search).get('add')
+  return v ? asUrl(v) : null
+}
+
+/** Whether a URL's path ends in an image extension. */
+export const isImageUrl = (url: string) => /\.(png|jpe?g|webp|gif|avif)$/i.test(new URL(url).pathname)
+
+/** The `javascript:` link to drag to the bookmarks bar: opens the current page in the user's Lino board. */
+export const bookmarklet = (origin: string) =>
+  `javascript:void(window.open('${origin}/board/?add='+encodeURIComponent(location.href),'_blank'))`
+
 /** Adds a loading link card at once, then fills it with what the API could read. The card stays if reading fails. */
 export async function addLink(url: string, at?: { x: number; y: number }) {
   const { add, update } = useBoard.getState()
