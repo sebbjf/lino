@@ -7,7 +7,7 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | I want to change… | File |
 | --- | --- |
 | Board state, selection (`selectedIds`), undo/redo (`HistoryEntry`: elements, palette edits and board style; `checkpoint`, `step`), add/move/delete/duplicate/reorder/align/distribute elements | [apps/web/src/store.ts](apps/web/src/store.ts) |
-| Element types (`image`, `note`, `color`, `link`) | `BoardElement` in [store.ts](apps/web/src/store.ts) |
+| Element types (`image`, `note`, `color`, `link`): type in `BoardElement` (store.ts); per-kind validation, palette colours, own style keys, label: one module each in [apps/web/src/kinds/](apps/web/src/kinds/) registered in `kinds/index.ts` (a new kind is a compile error until registered) |
 | Commands on the selection (nudge, delete, duplicate, rotate, reorder), the read-only gate, "what a command acts on" (`targetOf`) | [apps/web/src/selection.ts](apps/web/src/selection.ts) |
 | Global shortcuts (undo/redo, and keys to selection commands without focus), paste handling | [apps/web/src/App.tsx](apps/web/src/App.tsx) |
 | Per-element shortcuts (key to selection command; Alt+arrows resize, Enter) | [apps/web/src/ElementView.tsx](apps/web/src/ElementView.tsx) |

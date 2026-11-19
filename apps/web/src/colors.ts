@@ -1,16 +1,11 @@
 import type { BoardElement } from './store.ts'
+import { normalizeHex } from './kinds/check.ts'
+import { colorsOf } from './kinds/index.ts'
 
 /** `order` comes from shuffling; colors without one keep board order after those that have one. */
 export type ColorMeta = { name?: string; pinned?: boolean; hidden?: boolean; order?: number }
 export type PaletteColor = { hex: string; name: string; pinned: boolean }
-
-/** '#ABC', 'abc', '#aabbcc' → '#aabbcc'; anything else → null. */
-export function normalizeHex(value: string): string | null {
-  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value.trim())
-  if (!m) return null
-  const h = m[1].length === 3 ? [...m[1]].map((c) => c + c).join('') : m[1]
-  return `#${h.toLowerCase()}`
-}
+export { normalizeHex }
 
 /**
  * The board palette: every swatch, link and image colour plus pinned colours, minus removed ones, pinned first.
@@ -18,10 +13,7 @@ export function normalizeHex(value: string): string | null {
  */
 export function buildPalette(elements: BoardElement[], meta: Record<string, ColorMeta>) {
   const hexes = new Set<string>()
-  for (const el of elements) {
-    if (el.type === 'color') hexes.add(normalizeHex(el.hex) ?? el.hex)
-    if (el.type === 'link' || el.type === 'image') for (const hex of el.colors ?? []) hexes.add(hex)
-  }
+  for (const el of elements) for (const hex of colorsOf(el)) hexes.add(hex)
   for (const [hex, m] of Object.entries(meta)) if (m.pinned) hexes.add(hex)
   const all = [...hexes]
   const visible = all
