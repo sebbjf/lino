@@ -136,10 +136,9 @@ export function textOn(bg: string) {
   return (l + 0.05) / (dark + 0.05) >= 1.05 / (l + 0.05) ? DARK_TEXT : LIGHT_TEXT
 }
 
-/** '#ff0000' → 'oklch(0.628 0.258 29.2)' (Björn Ottosson's OKLab matrices). */
-export function hexToOklch(hex: string) {
+function toOklch(hex: string) {
   const c = channels(hex)
-  if (!c) return hex
+  if (!c) return null
   const [r, g, b] = c.map(linear)
   const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
   const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
@@ -150,6 +149,60 @@ export function hexToOklch(hex: string) {
   const C = Math.hypot(A, B)
   // greys have no meaningful hue
   const H = C < 0.0005 ? 0 : ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360
+  return { L, C: C < 0.0005 ? 0 : C, H }
+}
+
+/** '#ff0000' → 'oklch(0.628 0.258 29.2)' (Björn Ottosson's OKLab matrices). */
+export function hexToOklch(hex: string) {
+  const o = toOklch(hex)
+  if (!o) return hex
   const n = (v: number, d: number) => String(Number(v.toFixed(d)))
-  return `oklch(${n(L, 3)} ${n(C < 0.0005 ? 0 : C, 3)} ${n(H, 1)})`
+  return `oklch(${n(o.L, 3)} ${n(o.C, 3)} ${n(o.H, 1)})`
+}
+
+/** OKLCH → linear sRGB channels; null when any falls outside the gamut. */
+function oklchToRgb(L: number, C: number, H: number) {
+  const a = C * Math.cos((H * Math.PI) / 180)
+  const b = C * Math.sin((H * Math.PI) / 180)
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3
+  const rgb = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ]
+  return rgb.every((v) => v >= -0.0005 && v <= 1.0005) ? rgb : null
+}
+
+export const TONE_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as const
+const TONE_L = [0.97, 0.93, 0.87, 0.79, 0.7, 0.62, 0.53, 0.44, 0.35, 0.26]
+const TONE_C = [0.25, 0.45, 0.7, 0.9, 1, 1, 1, 0.9, 0.75, 0.6]
+
+/**
+ * Ten tones, 50 (lightest) to 900 (darkest): same hue, fixed lightness per step, chroma eased at the ends and reduced until it fits sRGB.
+ * Null for anything but #rgb / #rrggbb (palette colours from links can carry alpha).
+ */
+export function toneScale(hex: string): Record<(typeof TONE_STEPS)[number], string> | null {
+  const o = toOklch(hex)
+  if (!o) return null
+  const enc = (v: number) => {
+    const x = Math.min(1, Math.max(0, v))
+    const e = x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055
+    return Math.round(e * 255).toString(16).padStart(2, '0')
+  }
+  return Object.fromEntries(
+    TONE_STEPS.map((step, i) => {
+      let lo = 0
+      let hi = o.C * TONE_C[i]
+      if (oklchToRgb(TONE_L[i], hi, o.H)) lo = hi
+      else
+        for (let k = 0; k < 20; k++) {
+          const mid = (lo + hi) / 2
+          if (oklchToRgb(TONE_L[i], mid, o.H)) lo = mid
+          else hi = mid
+        }
+      return [step, '#' + oklchToRgb(TONE_L[i], lo, o.H)!.map(enc).join('')]
+    }),
+  ) as Record<(typeof TONE_STEPS)[number], string>
 }

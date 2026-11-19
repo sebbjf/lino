@@ -45,7 +45,7 @@ Each has its own `.scratch/<slug>/spec.md`.
 | 3 | `image-tools` | Foundations | Not started | `selection-commands` for lock |
 | 4 | `frames-and-groups` | Foundations | Not started | `element-kinds` |
 | 5 | `quick-capture` | Foundations | Not started | |
-| 6 | `design-token-export` | Differentiators | **Partly shipped**: Design Tokens JSON. Open: Figma variables, `.ase`, pair contrast check, type specimen | |
+| 6 | `design-token-export` | Differentiators | **Shipped** (2026-11-19): Design Tokens JSON (also covers Figma variables), tone scales 50-900, `.ase` download, WCAG contrast pairs. Open: type specimen element (with `element-kinds`) | |
 | 7 | `local-files-and-pwa` | Open source | Not started | `board-snapshot` (the file adapter) |
 | 8 | `present-and-export` | Differentiators | Not started | |
 | 9 | `motion-media` | Differentiators | Not started | `image-storage` (video blobs) |
@@ -61,8 +61,8 @@ Since the first draft, 2 and 6 moved from "idea" to partly shipped, and masonry 
 1. ~~`performance` 1-3 and the cheapest `quick-wins` (zoom to fit, paste a hex)~~ done.
 2. ~~`board-snapshot`~~ done.
 3. ~~`image-storage`~~, ~~`selection-commands`~~ and ~~`undo-history`~~ done (2026-11-17; ADR 0002 for the first). Next: measure an image-heavy board and decide whether thumbnails by zoom and viewport culling deserve their own specs.
-4. **Next up.** Finish `design-token-export` (contrast, tone scales from `idea-backlog`): this is the positioning, so it should keep moving while the foundations are built.
-5. `element-kinds` then `frames-and-groups`.
+4. ~~Finish `design-token-export`~~ done 2026-11-19 (contrast, tone scales, `.ase`); type specimen waits for `element-kinds`.
+5. **Next up.** `element-kinds` then `frames-and-groups` (and the type specimen element on top of them). Color roles and dark variant from `idea-backlog` are the next steps of the token story.
 
 ## Reserve
 

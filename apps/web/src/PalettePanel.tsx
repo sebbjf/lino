@@ -4,6 +4,9 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
+import { download } from './boardFile.ts'
+import { toAse } from './ase.ts'
+import { contrastPairs } from './contrast.ts'
 import { boardFonts, buildPalette, shuffledOrder } from './colors.ts'
 import { exportTheme, slug, type ExportFormat } from './export.ts'
 import { useBoard } from './store.ts'
@@ -20,6 +23,14 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
   const prefs = useBoard((s) => s.exportPrefs)
   const { setExportPrefs } = useBoard.getState()
   const [format, setFormat] = useState<ExportFormat>('css')
+  const [allPairs, setAllPairs] = useState(false)
+  const pairs = useMemo(() => contrastPairs(colors), [colors])
+  const shownPairs = allPairs ? pairs : pairs.slice(0, 8)
+  const boardName = useBoard((s) => s.boards.find((b) => b.id === s.boardId)?.name ?? '')
+  const downloadAse = () => {
+    download(new Blob([toAse(colors) as BlobPart], { type: 'application/octet-stream' }), `${slug(boardName, 'palette')}.ase`)
+    notify('Swatches downloaded as .ase.')
+  }
   const code = exportTheme(format, colors, fonts, prefs)
   const copy = () =>
     navigator.clipboard.writeText(code).then(
@@ -114,6 +125,39 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
         </Button>
       )}
 
+      {colors.length > 1 && (
+        <section aria-labelledby="contrast-title" className="flex flex-col gap-2 border-t pt-3">
+          <h3 id="contrast-title" className="text-lg font-semibold tracking-tight">
+            Contrast
+          </h3>
+          {pairs.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No pair of colors reaches 3:1.</p>
+          ) : (
+            <>
+              <ul className="flex flex-col gap-1">
+                {shownPairs.map((p) => (
+                  <li key={p.fg.hex + p.bg.hex} className="flex items-center gap-2 text-xs">
+                    <span aria-hidden className="w-10 shrink-0 rounded-md border py-1 text-center text-sm font-semibold" style={{ background: p.bg.hex, color: p.fg.hex }}>
+                      Aa
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {p.fg.name} on {p.bg.name}
+                    </span>
+                    <span className="font-mono">{p.ratio.toFixed(1)}:1</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 font-medium">{p.level === 'AA-large' ? 'AA large' : p.level}</span>
+                  </li>
+                ))}
+              </ul>
+              {pairs.length > 8 && (
+                <Button variant="link" size="sm" className="self-start px-0" aria-expanded={allPairs} onClick={() => setAllPairs(!allPairs)}>
+                  {allPairs ? 'Show fewer' : `Show all ${pairs.length}`}
+                </Button>
+              )}
+            </>
+          )}
+        </section>
+      )}
+
       {fonts.length > 0 && (
         <section aria-labelledby="fonts-title" className="flex flex-col gap-2 border-t pt-3">
           <h3 id="fonts-title" className="text-lg font-semibold tracking-tight">
@@ -161,8 +205,18 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            {slug(prefs.prefix, '') ? `CSS writes --${slug(prefs.prefix, '')}-color-…; ` : ''}Tailwind always uses --color-… so its classes work. Tokens is JSON for Style Dictionary and Figma token plugins.
+            {slug(prefs.prefix, '') ? `CSS writes --${slug(prefs.prefix, '')}-color-…; ` : ''}Tailwind always uses --color-… so its classes work. Tokens is W3C Design Tokens JSON: Style Dictionary reads it, and it also imports into Figma variables.
           </p>
+          <Button
+            variant={prefs.scales ? 'secondary' : 'ghost'}
+            size="sm"
+            aria-pressed={!!prefs.scales}
+            className={`self-start ${prefs.scales ? 'ring-1 ring-ring' : ''}`}
+            title="Export every color as name-50 to name-900"
+            onClick={() => setExportPrefs({ scales: !prefs.scales })}
+          >
+            Tone scales
+          </Button>
           <div role="group" aria-label="Export as" className="flex gap-1">
             {(['css', 'tailwind', 'tokens'] as const).map((f) => (
               <Button
@@ -187,6 +241,9 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
           <Button variant="outline" size="sm" onClick={copy}>
             <HugeiconsIcon icon={Copy01Icon} strokeWidth={1.8} data-icon="inline-start" />
             Copy {LABEL[format]}
+          </Button>
+          <Button variant="outline" size="sm" disabled={colors.length === 0} onClick={downloadAse}>
+            Download .ase
           </Button>
         </section>
       )}

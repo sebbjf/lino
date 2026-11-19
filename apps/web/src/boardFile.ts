@@ -3,7 +3,7 @@ import { useBoard } from './store.ts'
 
 const MAX_FILE = 50 * 1024 * 1024
 
-function download(blob: Blob, name: string) {
+export function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

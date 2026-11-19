@@ -53,3 +53,29 @@ test('exportTheme never lets a hex or a font name break out of the block', () =>
   const css = exportTheme('css', [{ hex: 'red;}body{display:none}', name: 'x', pinned: true }], ['x\n}\nbody{display:none}', 'Söhne'])
   expect(css).toBe(':root {\n  --font-x-body-display-none: "xbodydisplaynone", sans-serif;\n  --font-sohne: "Söhne", sans-serif;\n}\n')
 })
+
+test('scales add -50..-900 tones in CSS, Tailwind and tokens; off changes nothing', () => {
+  const colors = [{ hex: '#3366cc', name: 'Sky', pinned: false }]
+  const base = { prefix: 'x', format: 'hex' as const }
+  const on = { ...base, scales: true }
+  expect(exportTheme('css', colors, [], { ...base, scales: false })).toBe(exportTheme('css', colors, [], base))
+  expect(exportTheme('tokens', colors, [], { ...base, scales: false })).toBe(exportTheme('tokens', colors, []))
+  const css = exportTheme('css', colors, [], on)
+  expect(css).toContain('--x-color-sky-50: #')
+  expect(css).toContain('--x-color-sky-900: #')
+  expect(css.match(/--x-color-sky/g)).toHaveLength(11)
+  expect(exportTheme('tailwind', colors, [], { ...on, format: 'oklch' })).toMatch(/--color-sky-500: oklch\(/)
+  const t = JSON.parse(exportTheme('tokens', colors, [], on)).color.sky
+  expect(t.$value).toBeUndefined()
+  expect(t.base).toEqual({ $value: '#3366cc' })
+  expect(Object.keys(t).filter((k) => !k.startsWith('$'))).toHaveLength(11)
+  expect(t['900']).toEqual({ $value: expect.stringMatching(/^#[0-9a-f]{6}$/) })
+})
+
+test('tone names never clash with a colour of the same name, and alpha colours skip the scale', () => {
+  const css = exportTheme('css', [{ hex: '#3366cc', name: 'blue', pinned: false }, { hex: '#112233', name: 'blue-50', pinned: false }, { hex: '#ff000080', name: 'see-through', pinned: false }], [], { prefix: '', format: 'hex', scales: true })
+  const names = [...css.matchAll(/--([\w-]+):/g)].map((m) => m[1])
+  expect(new Set(names).size).toBe(names.length)
+  expect(css).toContain('--color-see-through: #ff000080;')
+  expect(css).not.toContain('see-through-50')
+})

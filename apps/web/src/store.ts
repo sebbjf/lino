@@ -20,7 +20,7 @@ const STYLE_KEYS: (keyof StylePatch)[] = ['corner', 'shadow', 'opacity', 'deco',
 /** Ids added in messy mode, so their view plays the drop-in once. */
 export const justDropped = new Set<string>()
 
-export type ExportPrefs = { prefix: string; format: 'hex' | 'oklch' }
+export type ExportPrefs = { prefix: string; format: 'hex' | 'oklch'; scales?: boolean }
 
 export type LinkInfo = {
   url: string
