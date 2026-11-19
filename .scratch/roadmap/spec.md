@@ -31,7 +31,7 @@ Overview in `architecture-review`. These are not features; they exist so feature
 | `board-snapshot` | **Done** (`9cd345a`) | Do before `image-storage`, `templates-and-gallery`, `collaboration` and "back up all boards": each of them changes or moves the saved shape, and today that shape lives in four files. |
 | `undo-history` | **Done** (`bad8e0a`) | Cheapest win; the snapshot's "open is one undo step" and `collaboration` both lean on it. |
 | `selection-commands` | **Done** (`1f123e2`..`4aea2a6`) | Do with "lock elements" (`quick-wins`, `image-tools`): the read-only/locked check should live in one place. |
-| `element-kinds` | Needs triage | Do right before `frames-and-groups`, which adds a fifth kind; that is the trigger the spec was waiting for. |
+| `element-kinds` | **Done** (2026-11-19, data side: `apps/web/src/kinds/`) | Do right before `frames-and-groups`, which adds a fifth kind; that is the trigger the spec was waiting for. |
 | `move-gesture` | Needs triage, speculative | Only if drag bugs keep showing up; also relevant once groups change what a drag moves. |
 
 ## 3. Features, in recommended order
@@ -41,10 +41,10 @@ Each has its own `.scratch/<slug>/spec.md`.
 | # | Spec | Group | State | Comes after |
 |---|---|---|---|---|
 | 1 | `image-storage` | Foundations | **Done** (`18df2d5`, `2ab4b0c`; grilled 2026-11-17, `docs/adr/0002`): blobs in a local store, snapshot stays self-contained, lazy migration, sweep at start. Thumbnails by zoom and viewport culling are split out, to be specced after measuring. The only one with real technical risk | `board-snapshot` (done) |
-| 2 | `palette-from-images` | Foundations | **First version shipped**: image colours join the palette, swatches from image. Open: backfill for old images, per-image opt-out | |
-| 3 | `image-tools` | Foundations | Not started | `selection-commands` for lock |
-| 4 | `frames-and-groups` | Foundations | Not started | `element-kinds` |
-| 5 | `quick-capture` | Foundations | Not started | |
+| 2 | `palette-from-images` | Foundations | **Done** (2026-11-19): image colours join the palette, swatches from image, backfill for old images, per-image opt-out | |
+| 3 | `image-tools` | Foundations | **Done** (2026-11-19): lock (any element), flip, non-destructive crop mode; grayscale/opacity already existed | `selection-commands` for lock |
+| 4 | `frames-and-groups` | Foundations | **Done** (2026-11-19): frame kind with geometric membership, groups (Ctrl+G), headings as a note style | `element-kinds` |
+| 5 | `quick-capture` | Foundations | **Done** (2026-11-19): Send to Lino bookmarklet, folder import, batch progress. Open: remote image URLs become link cards (no image proxy) | |
 | 6 | `design-token-export` | Differentiators | **Shipped** (2026-11-19): Design Tokens JSON (also covers Figma variables), tone scales 50-900, `.ase` download, WCAG contrast pairs. Open: type specimen element (with `element-kinds`) | |
 | 7 | `local-files-and-pwa` | Open source | Not started | `board-snapshot` (the file adapter) |
 | 8 | `present-and-export` | Differentiators | Not started | |
@@ -62,7 +62,8 @@ Since the first draft, 2 and 6 moved from "idea" to partly shipped, and masonry 
 2. ~~`board-snapshot`~~ done.
 3. ~~`image-storage`~~, ~~`selection-commands`~~ and ~~`undo-history`~~ done (2026-11-17; ADR 0002 for the first). Next: measure an image-heavy board and decide whether thumbnails by zoom and viewport culling deserve their own specs.
 4. ~~Finish `design-token-export`~~ done 2026-11-19 (contrast, tone scales, `.ase`); type specimen waits for `element-kinds`.
-5. **Next up.** `element-kinds` then `frames-and-groups` (and the type specimen element on top of them). Color roles and dark variant from `idea-backlog` are the next steps of the token story.
+5. ~~`element-kinds` then `frames-and-groups`~~ done 2026-11-19, with every Foundations spec.
+6. **Next up.** `local-files-and-pwa` (7) and the type specimen element (now a one-module kind). Color roles and dark variant from `idea-backlog` continue the token story.
 
 ## Reserve
 

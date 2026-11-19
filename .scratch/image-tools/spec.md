@@ -1,6 +1,6 @@
 # Basic image tools
 
-Status: ready-for-agent
+Status: done
 
 Crop, flip, grayscale, opacity and lock for image elements. These are table stakes in reference-board tools.
 
