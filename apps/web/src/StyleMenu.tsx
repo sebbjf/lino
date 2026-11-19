@@ -223,6 +223,11 @@ function ElementPanel({ ids }: { ids: string[] }) {
             value={image.filter ?? 'none'}
             onChange={(f) => apply({ filter: f === 'none' ? undefined : f, ...(f === 'duotone' && { duo }) })}
           />
+          <Group label="Palette">
+            <Toggle label="Use colors in palette" on={!image.paletteOff} onClick={() => apply({ paletteOff: image.paletteOff ? undefined : true })}>
+              Use colors in palette
+            </Toggle>
+          </Group>
           {image.filter === 'duotone' && (
             <>
               <Swatches label="Shadows" value={duo[0]} onStart={checkpoint} onChange={(hex) => setDuo(0, hex)} />

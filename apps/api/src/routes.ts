@@ -51,6 +51,7 @@ export const elementSchema = {
     family: { type: 'string', pattern: '^[A-Za-z0-9 _-]{1,60}$' },
     filter: { enum: ['mono', 'duotone'] },
     duo: { type: 'array', minItems: 2, maxItems: 2, items: hex },
+    paletteOff: { type: 'boolean' },
   },
   allOf: [
     requires('image', ['src']),

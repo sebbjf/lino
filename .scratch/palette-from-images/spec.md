@@ -1,6 +1,6 @@
 # Palette from images
 
-Status: ready-for-agent
+Status: done <!-- backfill of stored colours and the per-image palette opt-out shipped 2026-11-19 -->
 
 ## Problem
 

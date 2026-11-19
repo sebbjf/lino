@@ -1,4 +1,5 @@
 import { run as idb } from './db.ts'
+import { backfillColors } from './image.ts'
 import { externalize, IMAGE_ID, sweepImages } from './images.ts'
 import { captureSnapshot, onLeaveBoard, openSnapshot, parseSnapshot, type Snapshot } from './snapshot.ts'
 import { useBoard, type BoardMeta, type ExportPrefs, type View } from './store.ts'
@@ -27,6 +28,7 @@ async function show(id: string, saved: Saved | undefined, savedView?: View) {
   const untouched = view.x === 0 && view.y === 0 && view.zoom === 1
   await openSnapshot(snap, 'new', { id, view: innerWidth < 700 && snap.elements.length && untouched ? undefined : view })
   if (saved?.exportPrefs) useBoard.setState({ exportPrefs: saved.exportPrefs })
+  void backfillColors()
 }
 
 // The view has its own small record, so panning does not rewrite every image. Older boards still carry it inside the board record.

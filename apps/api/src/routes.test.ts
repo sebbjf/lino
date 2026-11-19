@@ -26,6 +26,11 @@ test('CORS preflight when CORS_ORIGIN is set', async () => {
   }
 })
 
+test('image elements may carry paletteOff as a boolean', async () => {
+  const { elementSchema } = await import('./routes.ts')
+  assert.equal(elementSchema.properties.paletteOff.type, 'boolean')
+})
+
 // Pinned with the web side (snapshot.test.ts, "limits match the share API"): change one, change both.
 test('shared element limits', async () => {
   const { elementSchema } = await import('./routes.ts')

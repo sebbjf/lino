@@ -24,6 +24,12 @@ test('buildPalette dedupes, pins first, keeps pinned without swatch, hides remov
   expect(hidden).toEqual(['#111111'])
 })
 
+test('buildPalette skips images opted out of the palette', () => {
+  const img = (paletteOff?: boolean) => ({ id: 'i', type: 'image', src: '', colors: ['#abcdef'], paletteOff, x: 0, y: 0, w: 1, h: 1, rotation: 0 }) as BoardElement
+  expect(buildPalette([img(true), img()], {}).colors.map((c) => c.hex)).toEqual(['#abcdef'])
+  expect(buildPalette([img(true)], {}).colors).toEqual([])
+})
+
 test('buildPalette reads image colours; images saved before they had any add none', () => {
   const img = (colors?: string[]) => ({ id: 'i', type: 'image', src: '', colors, x: 0, y: 0, w: 1, h: 1, rotation: 0 }) as BoardElement
   expect(buildPalette([img(['#abcdef', '#123456']), img()], {}).colors.map((c) => c.hex)).toEqual(['#abcdef', '#123456'])

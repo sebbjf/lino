@@ -41,6 +41,21 @@ export async function readImage(file: File): Promise<{ src: string; w: number; h
   return { src: canvas.toDataURL('image/webp', 0.85), w: canvas.width, h: canvas.height, colors }
 }
 
+/**
+ * Samples the colours of images saved before colours were stored, one at a time, after a board loads.
+ * Writes with update(), so it adds no undo step. Read-only boards are left alone.
+ */
+export async function backfillColors() {
+  if (useBoard.getState().readOnly) return
+  const ids = useBoard.getState().elements.filter((e) => e.type === 'image' && !e.colors).map((e) => e.id)
+  for (const id of ids) {
+    const el = useBoard.getState().elements.find((e) => e.id === id)
+    if (el?.type !== 'image' || el.colors) continue // gone, or already sampled
+    const colors = await imageColors(el.src, 3).catch(() => null) // a failed read is retried next load
+    if (colors) useBoard.getState().update(id, { colors })
+  }
+}
+
 const MAX_INITIAL_SIDE = 320
 
 /**
