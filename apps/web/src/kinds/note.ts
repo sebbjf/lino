@@ -4,7 +4,7 @@ import type { Kind } from './types.ts'
 
 export const note: Kind<'note'> = {
   label: 'Note',
-  styleKeys: ['bg', 'color', 'size', 'font', 'family', 'align', 'bold', 'italic'],
+  styleKeys: ['bg', 'color', 'size', 'font', 'family', 'align', 'bold', 'italic', 'heading'],
   colors: () => [],
   parse(e, box) {
     // longer text is cut, not dropped: the share API refuses it and a whole note is worth more than its tail
@@ -19,6 +19,7 @@ export const note: Kind<'note'> = {
       ...(oneOf(NOTE_ALIGNS, e.align) && { align: e.align }),
       ...(typeof e.bold === 'boolean' && { bold: e.bold }),
       ...(typeof e.italic === 'boolean' && { italic: e.italic }),
+      ...(typeof e.heading === 'boolean' && { heading: e.heading }),
       ...(oneOf(NOTE_FONTS, e.font) && { font: e.font }),
       ...(isStr(e.family, 60) && FAMILY.test(e.family) && { family: e.family }),
     }

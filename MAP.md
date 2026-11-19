@@ -7,7 +7,7 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | I want to change… | File |
 | --- | --- |
 | Board state, selection (`selectedIds`), undo/redo (`HistoryEntry`: elements, palette edits and board style; `checkpoint`, `step`), add/move/delete/duplicate/reorder/align/distribute elements | [apps/web/src/store.ts](apps/web/src/store.ts) |
-| Element types (`image`, `note`, `color`, `link`): type in `BoardElement` (store.ts); per-kind validation, palette colours, own style keys, label: one module each in [apps/web/src/kinds/](apps/web/src/kinds/) registered in `kinds/index.ts` (a new kind is a compile error until registered) |
+| Element types (`frame`, `image`, `note`, `color`, `link`): type in `BoardElement` (store.ts); per-kind validation, palette colours, own style keys, label: one module each in [apps/web/src/kinds/](apps/web/src/kinds/) registered in `kinds/index.ts` (a new kind is a compile error until registered) |
 | Commands on the selection (nudge, delete, duplicate, rotate, reorder), the read-only gate, "what a command acts on" (`targetOf`) | [apps/web/src/selection.ts](apps/web/src/selection.ts) |
 | Global shortcuts (undo/redo, and keys to selection commands without focus), paste handling | [apps/web/src/App.tsx](apps/web/src/App.tsx) |
 | Per-element shortcuts (key to selection command; Alt+arrows resize, Enter) | [apps/web/src/ElementView.tsx](apps/web/src/ElementView.tsx) |
@@ -51,6 +51,7 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/main.tsx` | Board entry. With `?s=<id>` opens that shared board read-only; otherwise loads the saved board and starts autosave. Renders `App`. |
 | `src/App.tsx` | Board shell: canvas, toolbar, palette panel, empty state, notices. Window-level paste (image/URL/text) and undo/redo keys. |
 | `src/Canvas.tsx` | The infinite canvas. Wheel pan, Ctrl+wheel zoom, background drag, file/link drop. Renders every `ElementView`. |
+| `src/frames.ts` | Pure logic: `frameContents` (geometric membership), `frameAround`, `expandGroups`, `layoutInFrame`. |
 | `src/selection.ts` | Selection commands shared by keyboard and toolbar: `targetOf`, `nudge`, `rotateStep`, `remove`, `duplicate`, `reorder`. One read-only check; one undo step each (a burst of nudges or rotations is one). |
 | `src/ElementView.tsx` | One element on the board: selection, drag, resize/rotate handles, keyboard actions, note editing, color popover. |
 | `src/LinkCard.tsx` | Content of a link element: cover, title, domain, fonts and colors. |

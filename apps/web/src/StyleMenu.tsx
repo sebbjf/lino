@@ -272,7 +272,12 @@ function ElementPanel({ ids }: { ids: string[] }) {
         <>
           <Swatches label="Note color" value={note.bg} presets={STICKY_COLORS} onStart={checkpoint} onChange={(bg) => restyle(ids, { bg })} />
           <Swatches label="Text color" value={note.color} onStart={checkpoint} onChange={(color) => restyle(ids, { color })} />
-          <Choice label="Text size" options={NOTE_SIZES} value={note.size ?? 'md'} onChange={(size) => apply({ size })} />
+          <Group label="Heading">
+            <Toggle label="Heading: large text, no card" on={!!note.heading} onClick={() => apply({ heading: note.heading ? undefined : true })}>
+              <span className="font-semibold">H</span>
+            </Toggle>
+          </Group>
+          {!note.heading && <Choice label="Text size" options={NOTE_SIZES} value={note.size ?? 'md'} onChange={(size) => apply({ size })} />}
           <Choice label="Align" options={NOTE_ALIGNS} value={note.align ?? 'left'} onChange={(align) => apply({ align })} />
           <Group label="Emphasis">
             <div className="flex gap-1">

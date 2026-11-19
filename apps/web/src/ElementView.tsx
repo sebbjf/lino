@@ -6,19 +6,22 @@ import { CropOverlay } from './CropOverlay.tsx'
 import { coverCrop, cropBox, cropStyle, type Crop } from './crop.ts'
 import { drag, touches } from './drag.ts'
 import { harmonies } from './colors.ts'
+import { frameContents } from './frames.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
 import { useImageSrc } from './images.ts'
-import { duplicate, nudge, remove, reorder, rotateStep, targetOf } from './selection.ts'
+import { duplicate, frameSelection, group, nudge, remove, reorder, rotateStep, targetOf, ungroup } from './selection.ts'
 import { justDropped, useBoard, type BoardElement } from './store.ts'
-import { DEFAULT_DUO, NOTE_TEXT, loadFamily, noteFontStack, rgb, surface, textOn } from './style.ts'
+import { DEFAULT_DUO, loadFamily, noteFontStack, noteText as noteSizes, rgb, surface, textOn } from './style.ts'
 
 /** Snap distance in screen pixels. */
 const SNAP_PX = 6
 
-const LABELS = { image: 'Image', note: 'Note', color: 'Color', link: 'Link' }
+const LABELS = { image: 'Image', note: 'Note', color: 'Color', link: 'Link', frame: 'Frame' }
 
 function label(el: BoardElement) {
+  if (el.type === 'frame') return el.title ? `Frame: ${el.title}` : 'Frame'
+  if (el.type === 'note' && el.heading) return 'Heading'
   if (el.type === 'color') return `Color ${el.hex}`
   if (el.type === 'link') return `Link: ${el.title ?? new URL(el.url).hostname}`
   return LABELS[el.type]
@@ -90,8 +93,10 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   const picture = useImageSrc(el.type === 'image' ? el.src : null)
   // the selection outline follows the board background's contrast color, so it shows on dark boards too
   const outline = useBoard((s) => (s.board.bg && textOn(s.board.bg)) || 'var(--color-primary)')
-  // a freshly added empty note opens straight into editing
-  const [editing, setEditing] = useState(() => selected && el.type === 'note' && !el.text)
+  // the ink of the board (frames and headings draw in it, not on a card)
+  const ink = useBoard((s) => (s.board.bg && textOn(s.board.bg)) || 'var(--foreground)')
+  // a freshly added empty note or untitled frame opens straight into editing
+  const [editing, setEditing] = useState(() => selected && ((el.type === 'note' && !el.text) || (el.type === 'frame' && !el.title)))
   const [pickerOpen, setPickerOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
@@ -160,7 +165,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     if ((readOnly || el.locked) && el.type !== 'link') return
     if (el.type === 'image') return setCropId(el.id)
     if (el.type !== 'link') checkpoint()
-    if (el.type === 'note') setEditing(true)
+    if (el.type === 'note' || el.type === 'frame') setEditing(true)
     if (el.type === 'color') setPickerOpen(true)
     if (el.type === 'link') window.open(el.url, '_blank', 'noopener,noreferrer')
   }
@@ -184,11 +189,14 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     e.currentTarget.focus()
     const ids = targetOf(el.id)
     const els = useBoard.getState().elements
-    const moving = els.filter((o) => ids.includes(o.id) && !o.locked)
+    // a dragged frame takes what lies inside it (at drag start) along
+    const carried = new Set(ids)
+    for (const f of els) if (f.type === 'frame' && ids.includes(f.id)) frameContents(f, els).forEach((o) => carried.add(o.id))
+    const moving = els.filter((o) => carried.has(o.id) && !o.locked)
     if (!moving.length) return
     // snap the visible (rotated) outline of what moves to the other elements' edges and centers; Alt moves freely
     const own = boundsOf(moving)
-    const others = els.flatMap((o) => (ids.includes(o.id) ? [] : [boundsOf([o])]))
+    const others = els.flatMap((o) => (carried.has(o.id) ? [] : [boundsOf([o])]))
     const setGuides = (guides: Guide[]) => useBoard.setState({ guides })
     checkpoint()
     let pinched = false
@@ -265,7 +273,19 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       e.preventDefault()
       return
     }
+    if (mod && e.altKey && e.code === 'KeyF') {
+      frameSelection(targetOf(el.id))
+      e.preventDefault()
+      return
+    }
     switch (e.key) {
+      case 'g':
+      case 'G':
+        if (!mod) return
+        // Ctrl+G groups the selection, Ctrl+Shift+G takes it apart
+        if (e.shiftKey) ungroup(targetOf(el.id))
+        else group(targetOf(el.id))
+        break
       case 'Delete':
       case 'Backspace':
         remove(targetOf(el.id))
@@ -322,7 +342,8 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       tabIndex={0}
       aria-label={el.locked ? `${label(el)}, locked` : label(el)}
       aria-roledescription="board element"
-      className={`absolute left-0 top-0 rounded-2xl outline-none ${drop ? 'element-drop' : ''}`}
+      // a frame is hollow: only its title and edges take the pointer, so the board inside it stays reachable
+      className={`absolute left-0 top-0 rounded-2xl outline-none ${drop ? 'element-drop' : ''} ${el.type === 'frame' ? 'pointer-events-none' : ''}`}
       style={{
         borderRadius: surface(el).borderRadius,
         opacity: el.opacity,
@@ -342,6 +363,37 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         panIntoView(el)
       }}
     >
+      {el.type === 'frame' && (
+        <>
+          <div
+            aria-hidden
+            className="absolute inset-0 border"
+            style={{ ...surface(el), boxShadow: 'none', background: `color-mix(in srgb, ${ink} 6%, transparent)`, borderColor: `color-mix(in srgb, ${ink} 25%, transparent)` }}
+          />
+          {(['left-0 top-0 w-full', 'bottom-0 left-0 w-full', 'left-0 top-0 h-full', 'right-0 top-0 h-full'] as const).map((side, i) => (
+            <div key={side} aria-hidden className={`pointer-events-auto absolute ${side}`} style={{ [i < 2 ? 'height' : 'width']: 10 / zoom }} />
+          ))}
+          <div className="pointer-events-auto absolute bottom-full left-0 mb-1 origin-bottom-left" style={{ transform: `scale(${1 / zoom})`, color: ink }}>
+            {editing ? (
+              <input
+                autoFocus
+                aria-label="Frame title"
+                className="w-56 rounded bg-card/90 px-1 text-sm font-medium text-card-foreground outline-none"
+                value={el.title}
+                maxLength={100}
+                placeholder="Frame title"
+                onChange={(e) => update(el.id, { title: e.target.value })}
+                onBlur={() => setEditing(false)}
+                onKeyDown={(e) => (e.key === 'Escape' || e.key === 'Enter') && e.currentTarget.blur()}
+                onPointerDown={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span className="block max-w-56 truncate px-1 text-sm font-medium">{el.title || <span className="opacity-60">Untitled frame</span>}</span>
+            )}
+          </div>
+        </>
+      )}
+
       {el.type === 'image' && (
         <>
           {el.filter === 'duotone' && <DuotoneFilter id={el.id} duo={el.duo ?? DEFAULT_DUO} />}
@@ -369,15 +421,16 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
 
       {el.type === 'note' && (
         <div
-          className="size-full overflow-hidden rounded-2xl bg-card p-4 text-card-foreground shadow-soft"
+          className={`size-full overflow-hidden rounded-2xl p-4 ${el.heading && !el.bg ? '' : 'bg-card text-card-foreground shadow-soft'}`}
           style={{
             ...surface(el),
             fontFamily: noteFontStack(el),
-            fontSize: NOTE_TEXT[el.size ?? 'md'][0],
-            lineHeight: `${NOTE_TEXT[el.size ?? 'md'][1]}px`,
+            fontSize: noteSizes(el)[0],
+            lineHeight: `${noteSizes(el)[1]}px`,
             textAlign: el.align,
             fontWeight: el.bold ? 700 : undefined,
             fontStyle: el.italic ? 'italic' : undefined,
+            ...(el.heading && !el.bg && { color: ink }),
             ...(el.bg && { background: el.bg, color: textOn(el.bg) ?? undefined }),
             ...(el.color && { color: el.color }),
           }}
@@ -465,15 +518,17 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
 
       {solo && !editing && !readOnly && !el.locked && !cropping && (
         <>
+          {el.type !== 'frame' && (
+            <div
+              aria-hidden
+              className="absolute left-1/2 rounded-full border-ring bg-card"
+              style={{ width: handle, height: handle, top: -28 / zoom, marginLeft: -handle / 2, borderWidth: 1.5 / zoom, cursor: 'grab' }}
+              onPointerDown={onRotate}
+            />
+          )}
           <div
             aria-hidden
-            className="absolute left-1/2 rounded-full border-ring bg-card"
-            style={{ width: handle, height: handle, top: -28 / zoom, marginLeft: -handle / 2, borderWidth: 1.5 / zoom, cursor: 'grab' }}
-            onPointerDown={onRotate}
-          />
-          <div
-            aria-hidden
-            className="absolute rounded-full border-ring bg-card"
+            className="pointer-events-auto absolute rounded-full border-ring bg-card"
             style={{ width: handle, height: handle, right: -handle / 2, bottom: -handle / 2, borderWidth: 1.5 / zoom, cursor: 'nwse-resize' }}
             onPointerDown={onResize}
           />

@@ -1,13 +1,15 @@
 import { create } from 'zustand'
 import type { ColorMeta } from './colors.ts'
 import type { Crop } from './crop.ts'
+import { expandGroups, frameContents, layoutInFrame } from './frames.ts'
 import { alignOffsets, distributeOffsets, layoutPositions, type AlignMode, type Box, type Guide, type Layout } from './geometry.ts'
 import { ownStyleKeys, TYPED_KEYS } from './kinds/index.ts'
 import { MESSY_TILT, type BoardStyle, type ElementStyle, type ImageStyle, type NoteStyle } from './style.ts'
 
-/** `locked`: can't be moved, resized, rotated, edited or deleted until unlocked. */
-type Base = Box & ElementStyle & { id: string; locked?: boolean }
+/** `locked`: can't be moved, resized, rotated, edited or deleted until unlocked. `groupId`: elements sharing one are selected together. */
+type Base = Box & ElementStyle & { id: string; locked?: boolean; groupId?: string }
 export type BoardElement =
+  | (Base & { type: 'frame'; title: string })
   | (Base & { type: 'image'; src: string; colors?: string[]; crop?: Crop } & ImageStyle)
   | (Base & { type: 'note'; text: string } & NoteStyle)
   | (Base & { type: 'color'; hex: string })
@@ -265,9 +267,15 @@ export const useBoard = create<State>()((set, get) => ({
     })),
 
   duplicate: (ids) => {
+    // a copied group becomes a group of its own, not new members of the original
+    const groups = new Map<string, string>()
     const copies = get()
       .elements.filter((e) => ids.includes(e.id))
-      .map((src) => ({ ...src, id: crypto.randomUUID(), x: src.x + 24, y: src.y + 24 }))
+      .map((src) => {
+        const copy = { ...src, id: crypto.randomUUID(), x: src.x + 24, y: src.y + 24 }
+        if (src.groupId) copy.groupId = groups.get(src.groupId) ?? groups.set(src.groupId, crypto.randomUUID()).get(src.groupId)
+        return copy
+      })
     if (!copies.length) return
     set((s) => ({ ...pushHistory(s), elements: [...s.elements, ...copies], selectedIds: copies.map((c) => c.id) }))
   },
@@ -280,10 +288,16 @@ export const useBoard = create<State>()((set, get) => ({
 
   arrange: (ids, mode) =>
     set((s) => {
-      const els = s.elements.filter((e) => ids.includes(e.id) && !e.locked)
+      // one frame alone: arrange what is inside it, within it (the frame grows if the result needs room)
+      const only = ids.length === 1 ? s.elements.find((e) => e.id === ids[0]) : undefined
+      const frame = only?.type === 'frame' && !only.locked ? only : undefined
+      const els = frame ? frameContents(frame, s.elements.filter((e) => !e.locked)) : s.elements.filter((e) => ids.includes(e.id) && !e.locked)
       if (els.length < 2) return s
-      const pos = new Map(layoutPositions(els, mode).map((p, i) => [els[i].id, p]))
-      let elements = s.elements.map((e) => (pos.has(e.id) ? { ...e, ...pos.get(e.id)! } : e))
+      let placed = layoutPositions(els, mode)
+      let size: { w: number; h: number } | undefined
+      if (frame) ({ placed, size } = layoutInFrame(frame, els, mode))
+      const pos = new Map(placed.map((p, i) => [els[i].id, p]))
+      let elements = s.elements.map((e) => (pos.has(e.id) ? { ...e, ...pos.get(e.id)! } : e.id === frame?.id ? { ...e, ...size } : e))
       if (mode === 'fan') {
         // stack the hand left to right, each card over the previous one, in the layers these elements already had
         const hand = elements.filter((e) => pos.has(e.id)).sort((a, b) => a.x + a.w / 2 - (b.x + b.w / 2))
@@ -308,10 +322,12 @@ export const useBoard = create<State>()((set, get) => ({
   select: (id, toggle) =>
     set((s) => {
       if (!id) return { selectedIds: [] }
-      if (!toggle) return { selectedIds: [id] }
-      return { selectedIds: s.selectedIds.includes(id) ? s.selectedIds.filter((x) => x !== id) : [...s.selectedIds, id] }
+      // a group is picked (or dropped) as a unit
+      const ids = expandGroups([id], s.elements)
+      if (!toggle) return { selectedIds: ids }
+      return { selectedIds: s.selectedIds.includes(id) ? s.selectedIds.filter((x) => !ids.includes(x)) : [...s.selectedIds, ...ids.filter((x) => !s.selectedIds.includes(x))] }
     }),
-  selectMany: (selectedIds) => set({ selectedIds }),
+  selectMany: (ids) => set((s) => ({ selectedIds: expandGroups(ids, s.elements) })),
   setView: (view) => set({ view }),
   notify: (notice) => set({ notice }),
 

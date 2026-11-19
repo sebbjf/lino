@@ -26,7 +26,15 @@ _Avoid_: Published board, public board
 
 **Selection**:
 The elements a person has picked to act on together (move, rotate, duplicate, delete). A command acts on the selection, or on the one element it was aimed at if that element is not in it.
-_Avoid_: Group (reserved for the future grouping feature)
+_Avoid_: Group (that is a different thing, below)
+
+**Group**:
+Elements that share a `groupId`: picking one picks them all, so they move, rotate and delete together. Ctrl+G makes one from the selection, Ctrl+Shift+G dissolves it.
+_Avoid_: Selection, frame
+
+**Frame**:
+A titled rectangle drawn behind everything else. It stores no members: the elements whose centre is inside it when a drag starts move with it, and Arrange on a lone frame lays out what is inside it.
+_Avoid_: Group, section, container
 
 **Undo step**:
 One change to a board snapshot that Undo reverts at once: a drag, a paste of several images, a palette edit. A burst of the same repeatable edit (a held arrow key, typing a color name, scrubbing the board color) counts as one.

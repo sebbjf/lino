@@ -39,3 +39,11 @@ test('shared element limits', async () => {
   assert.deepEqual([p.w.minimum, p.w.maximum, p.h.minimum, p.h.maximum], [1, 10_000, 1, 10_000])
   assert.equal(p.text.maxLength, 10_000)
 })
+
+test('frames, groups and headings are allowed in a shared board', async () => {
+  const { elementSchema } = await import('./routes.ts')
+  assert.ok(elementSchema.properties.type.enum.includes('frame'))
+  assert.equal(elementSchema.properties.groupId.type, 'string')
+  assert.equal(elementSchema.properties.heading.type, 'boolean')
+  assert.ok(JSON.stringify(elementSchema.allOf).includes('"frame"'))
+})

@@ -17,7 +17,7 @@ export const MESSY_TILT = 5
  * Notes only; `bg` unset means the theme's card color, `color` unset means whichever of dark or light reads best on it.
  * `family` (any Google Font, or one found on a link) wins over `font`.
  */
-export type NoteStyle = { bg?: string; color?: string; size?: NoteSize; font?: NoteFont; family?: string; align?: NoteAlign; bold?: boolean; italic?: boolean }
+export type NoteStyle = { bg?: string; color?: string; size?: NoteSize; font?: NoteFont; family?: string; align?: NoteAlign; bold?: boolean; italic?: boolean; heading?: boolean }
 
 export type ImageFilter = 'mono' | 'duotone'
 export const IMAGE_FILTERS: ImageFilter[] = ['mono', 'duotone']
@@ -102,6 +102,9 @@ export const PATTERNS: Pattern[] = ['dots', 'grid', 'plain']
 export const RADIUS: Record<Corner, number> = { square: 0, soft: 25, round: 48 }
 /** Font size and line height in px. */
 export const NOTE_TEXT: Record<NoteSize, [number, number]> = { sm: [13, 20], md: [15, 24], lg: [20, 30], xl: [30, 38] }
+/** A heading is a note without its card, at this size (the size choice does not apply). */
+export const HEADING_TEXT: [number, number] = [44, 52]
+export const noteText = (n: NoteStyle): [number, number] => (n.heading ? HEADING_TEXT : NOTE_TEXT[n.size ?? 'md'])
 export const MIN_OPACITY = 0.2
 
 /** Inline styles for an element's surface; they override the default rounded-2xl/shadow-soft classes. */

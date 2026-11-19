@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-import { duplicate, nudge, remove, reorder, rotateStep, targetOf, toggleLock } from './selection.ts'
+import { duplicate, frameSelection, group, nudge, remove, reorder, rotateStep, targetOf, toggleLock, ungroup } from './selection.ts'
 import { useBoard } from './store.ts'
 
 const board = () => useBoard.getState()
@@ -134,4 +134,56 @@ test('a read-only board cannot be locked', () => {
   useBoard.setState({ readOnly: true })
   toggleLock([a])
   expect(get(a).locked).toBeUndefined()
+})
+
+test('group and ungroup are one undo step each and respect locks', () => {
+  group([a, b])
+  expect(get(a).groupId).toBeTruthy()
+  expect(get(a).groupId).toBe(get(b).groupId)
+  expect(get(c).groupId).toBeUndefined()
+  board().select(null)
+  board().select(b)
+  expect(board().selectedIds).toEqual([a, b]) // clicking one member picks the group
+  ungroup([a, b])
+  expect(get(a).groupId).toBeUndefined()
+  board().undo()
+  expect(get(a).groupId).toBeTruthy()
+  board().undo()
+  expect(get(a).groupId).toBeUndefined()
+  toggleLock([a])
+  group([a, b, c])
+  expect(get(a).groupId).toBeUndefined() // locked: untouched
+  expect(get(b).groupId).toBe(get(c).groupId)
+  group([c])
+  expect(get(c).groupId).toBe(get(b).groupId) // fewer than two: no-op
+})
+
+test('duplicating a group makes a group of its own', () => {
+  group([a, b])
+  duplicate([a, b])
+  const [x, y] = board().selectedIds.map(get)
+  expect(x.groupId).toBeTruthy()
+  expect(x.groupId).toBe(y.groupId)
+  expect(x.groupId).not.toBe(get(a).groupId)
+})
+
+test('frameSelection adds a padded frame around the selection, selected', () => {
+  frameSelection([a, b])
+  const f = board().elements.at(-1)!
+  expect(f.type).toBe('frame')
+  expect(board().selectedIds).toEqual([f.id])
+  expect(f).toMatchObject({ x: -32 - 5, w: 10 + 64 })
+})
+
+test('arranging a lone frame lays out its contents inside it', () => {
+  useBoard.setState({ elements: [], past: [], future: [], selectedIds: [] })
+  const f = board().add({ type: 'frame', title: 'f', w: 400, h: 300 }, { x: 200, y: 150 })
+  const ids = [50, 300].map((x) => board().add({ type: 'note', text: 'n', w: 40, h: 40 }, { x, y: 100 }))
+  const outside = board().add({ type: 'note', text: 'o', w: 40, h: 40 }, { x: 900, y: 100 })
+  board().arrange([f], 'column')
+  const [p, q] = ids.map(get)
+  expect(Math.abs(p.x - q.x)).toBeLessThan(1) // a column
+  expect(p.y).not.toBe(q.y)
+  expect(get(outside).x).toBe(880)
+  expect(get(f)).toMatchObject({ x: 0, y: 0, w: 400, h: 300 })
 })

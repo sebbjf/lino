@@ -8,7 +8,7 @@ import { fitView } from './geometry.ts'
 import { addImages } from './image.ts'
 import { addLink, asUrl } from './link.ts'
 import { captureSnapshot } from './snapshot.ts'
-import { duplicate, nudge, remove, rotateStep } from './selection.ts'
+import { duplicate, frameSelection, group, nudge, remove, rotateStep, ungroup } from './selection.ts'
 import { saveAsLocalBoard } from './storage.ts'
 import { useBoard } from './store.ts'
 import { textOn } from './style.ts'
@@ -77,6 +77,9 @@ export function App() {
       if (key === 'a' && !readOnly) selectMany(elements.map((el) => el.id))
       // a focused element duplicates by itself (ElementView); this covers a selection with no focus
       else if (key === 'd' && t === document.body && selectedIds.length) duplicate(selectedIds)
+      // a focused element handles these itself (ElementView)
+      else if (key === 'g' && t === document.body) (e.shiftKey ? ungroup : group)(selectedIds)
+      else if (e.altKey && e.code === 'KeyF' && t === document.body) frameSelection(selectedIds)
       else if (key === 'z' && !e.shiftKey) undo()
       else if ((key === 'z' && e.shiftKey) || key === 'y') redo()
       else return

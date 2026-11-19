@@ -36,10 +36,12 @@ export function ArrangeMenu() {
   const selectedIds = useBoard((s) => s.selectedIds)
   const count = useBoard((s) => s.elements.length)
   const [open, setOpen] = useState(false)
-  const whole = selectedIds.length < 2
-  const target = whole ? 'board' : `${selectedIds.length} selected`
+  // one frame selected: its contents are arranged inside it
+  const inFrame = useBoard((s) => s.selectedIds.length === 1 && s.elements.find((e) => e.id === s.selectedIds[0])?.type === 'frame')
+  const whole = selectedIds.length < 2 && !inFrame
+  const target = inFrame ? 'frame contents' : whole ? 'board' : `${selectedIds.length} selected`
   // disabled, not hidden: the toolbar keeps its shape
-  const disabled = (whole && count < 2) || selectedIds.length === 1
+  const disabled = !inFrame && ((whole && count < 2) || selectedIds.length === 1)
 
   const run = (mode: Layout) => {
     const { arrange, elements, setView } = useBoard.getState()

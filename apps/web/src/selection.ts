@@ -1,3 +1,4 @@
+import { frameAround } from './frames.ts'
 import { useBoard, type Layer } from './store.ts'
 
 // Commands on the selection, shared by the keyboard and the toolbar. The read-only check lives here, once:
@@ -38,6 +39,28 @@ export function toggleLock(ids: string[]) {
   const els = board().elements.filter((e) => ids.includes(e.id))
   const locked = !els.every((e) => e.locked)
   board().step(() => els.forEach((e) => board().update(e.id, { locked: locked || undefined })))
+}
+
+/** Groups two or more elements under a new id (they then select together): one undo step. */
+export function group(ids: string[]) {
+  const target = editable(ids)
+  if (target.length < 2) return
+  const groupId = crypto.randomUUID()
+  board().step(() => target.forEach((id) => board().update(id, { groupId })))
+}
+
+/** Takes the elements out of their groups: one undo step. */
+export function ungroup(ids: string[]) {
+  const target = editable(ids).filter((id) => board().elements.find((e) => e.id === id)?.groupId)
+  if (target.length) board().step(() => target.forEach((id) => board().update(id, { groupId: undefined })))
+}
+
+/** Wraps the selection's bounds, plus padding, in a new frame (selected, its title open for editing). */
+export function frameSelection(ids: string[]) {
+  const els = board().elements.filter((e) => ids.includes(e.id))
+  if (board().readOnly || !els.length) return
+  const f = frameAround(els)
+  board().add({ type: 'frame', title: '', w: f.w, h: f.h }, { x: f.x + f.w / 2, y: f.y + f.h / 2 })
 }
 
 export function remove(ids: string[]) {

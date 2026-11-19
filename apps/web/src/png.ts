@@ -2,7 +2,7 @@ import type { Crop } from './crop.ts'
 import { boundsOf } from './geometry.ts'
 import { resolveImage } from './images.ts'
 import { useBoard, type BoardElement } from './store.ts'
-import { FAMILY, NOTE_TEXT, RADIUS, filterPixels, loadFamily, textOn, type BoardStyle, type Deco, type ImageStyle } from './style.ts'
+import { FAMILY, RADIUS, noteText, filterPixels, loadFamily, textOn, type BoardStyle, type Deco, type ImageStyle } from './style.ts'
 
 const PAD = 48
 const MAX_SIDE = 8000 // browsers refuse much larger canvases
@@ -125,7 +125,10 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
     }),
   )
 
-  for (const el of elements) {
+  // frames and headings are drawn in the board's ink, not on a card
+  const ink = (board.bg && textOn(board.bg)) || v('--foreground')
+  // frames first: they sit behind everything else
+  for (const el of [...elements.filter((e) => e.type === 'frame'), ...elements.filter((e) => e.type !== 'frame')]) {
     const { w, h } = el
     ctx.save()
     ctx.translate(el.x + w / 2, el.y + h / 2)
@@ -134,10 +137,28 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
     ctx.globalAlpha = el.opacity ?? 1
     const radius = Math.min(RADIUS[el.corner ?? 'soft'], w / 2, h / 2)
     const noteBg = el.type === 'note' ? el.bg : undefined
+    const bare = el.type === 'note' && el.heading && !el.bg
+
+    if (el.type === 'frame') {
+      ctx.fillStyle = ink
+      ctx.strokeStyle = ink
+      ctx.beginPath()
+      ctx.roundRect(0, 0, w, h, radius)
+      ctx.globalAlpha *= 0.06
+      ctx.fill()
+      ctx.globalAlpha = (el.opacity ?? 1) * 0.25
+      ctx.stroke()
+      ctx.globalAlpha = el.opacity ?? 1
+      ctx.font = `500 14px ${sans}`
+      ctx.textBaseline = 'bottom'
+      ctx.fillText(el.title, 4, -6)
+      ctx.restore()
+      continue
+    }
 
     // soft shadow, then clip to the rounded card
     ctx.save()
-    if (el.shadow !== false) {
+    if (el.shadow !== false && !bare) {
       ctx.shadowColor = 'rgb(0 0 0 / 0.08)'
       ctx.shadowBlur = 24
       ctx.shadowOffsetY = 6
@@ -145,7 +166,7 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
     ctx.fillStyle = el.type === 'color' ? el.hex : (noteBg ?? theme.card)
     ctx.beginPath()
     ctx.roundRect(0, 0, w, h, radius)
-    ctx.fill()
+    if (!bare) ctx.fill()
     ctx.restore()
     ctx.save()
     ctx.beginPath()
@@ -162,8 +183,8 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
     }
 
     if (el.type === 'note') {
-      const [size, lineH] = NOTE_TEXT[el.size ?? 'md']
-      ctx.fillStyle = el.color ?? ((el.bg && textOn(el.bg)) || theme.fg)
+      const [size, lineH] = noteText(el)
+      ctx.fillStyle = el.color ?? ((el.bg && textOn(el.bg)) || (bare ? ink : theme.fg))
       const base = el.font === 'serif' ? serif : sans
       ctx.font = `${el.italic ? 'italic ' : ''}${el.bold ? '700 ' : ''}${size}px ${el.family && FAMILY.test(el.family) ? `"${el.family}", ${base}` : base}`
       lines(ctx, el.text, 16, 16 + (lineH - size) / 2, w - 32, lineH, Math.floor((h - 32) / lineH), el.align)

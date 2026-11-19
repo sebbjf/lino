@@ -1,5 +1,10 @@
 import {
   AlignEndHorizontalIcon,
+  ArtboardToolIcon,
+  FrameIcon,
+  GroupItemsIcon,
+  Heading01Icon,
+  Layers01Icon,
   FolderUploadIcon,
   AlignEndVerticalIcon,
   AlignHorizontalCenterIcon,
@@ -40,7 +45,7 @@ import { FileMenu } from './FileMenu.tsx'
 import { ShareButton } from './ShareButton.tsx'
 import { StyleMenu } from './StyleMenu.tsx'
 import { ArrangeMenu } from './ArrangeMenu.tsx'
-import { duplicate, remove, reorder } from './selection.ts'
+import { duplicate, frameSelection, group, remove, reorder, ungroup } from './selection.ts'
 import { hasUndo, useBoard } from './store.ts'
 
 // Chromium only for now; elsewhere the button is hidden.
@@ -173,7 +178,8 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
   const { add, undo, redo, align, distribute } = useBoard.getState()
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
-  const imageSelected = useBoard((s) => s.elements.find((e) => e.id === selectedId)?.type === 'image')
+  const grouped = useBoard((s) => s.elements.some((e) => e.groupId && selectedIds.includes(e.id)))
+  const imageSelected =useBoard((s) => s.elements.find((e) => e.id === selectedId)?.type === 'image')
 
   const swatchesFromImage = () => {
     const { elements, swatchRow, notify } = useBoard.getState()
@@ -210,6 +216,8 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
           <Tool label="Add image" icon={Image01Icon} onClick={() => fileInput.current?.click()} />
           <LinkTool />
           <Tool label="Add note" icon={StickyNote01Icon} onClick={() => add({ type: 'note', text: '', w: 220, h: 140 })} />
+          <Tool label="Add heading" icon={Heading01Icon} onClick={() => add({ type: 'note', text: '', w: 480, h: 84, heading: true, bold: true })} />
+          <Tool label="Add frame" icon={FrameIcon} onClick={() => add({ type: 'frame', title: '', w: 480, h: 320 })} />
           <Tool label="Add color" icon={PaintBoardIcon} onClick={() => add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 })} />
           {EyeDropper && <Tool label="Pick a color from the screen" icon={PipetteIcon} onClick={pickColor} />}
           <Tool label="Import folder" icon={FolderUploadIcon} onClick={() => folderInput.current?.click()} />
@@ -248,6 +256,9 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
             <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" disabled={!selectedIds.length} onClick={() => duplicate(selectedIds)} />
             <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" disabled={!selectedId} onClick={() => selectedId && reorder(selectedId, 'forward')} />
             <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" disabled={!selectedId} onClick={() => selectedId && reorder(selectedId, 'backward')} />
+            <Tool label="Frame selection" icon={ArtboardToolIcon} shortcut="Ctrl+Alt+F" disabled={!selectedIds.length} onClick={() => frameSelection(selectedIds)} />
+            <Tool label="Group" icon={GroupItemsIcon} shortcut="Ctrl+G" disabled={selectedIds.length < 2} onClick={() => group(selectedIds)} />
+            <Tool label="Ungroup" icon={Layers01Icon} shortcut="Ctrl+Shift+G" disabled={!grouped} onClick={() => ungroup(selectedIds)} />
             <Tool label="Swatches from image" icon={ColorsIcon} disabled={!imageSelected} onClick={swatchesFromImage} />
             <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" disabled={!selectedIds.length} onClick={() => remove(selectedIds)} />
           </div>

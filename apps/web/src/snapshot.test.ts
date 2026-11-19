@@ -163,3 +163,21 @@ test('lock, flip and crop survive a round trip; a bad crop is clamped or dropped
   const again = parseBoardFile(JSON.stringify({ elements }))
   expect(again.elements.map(({ id, ...e }) => e)).toEqual(elements.map(({ id, ...e }) => e))
 })
+
+test('frames, groupId and headings survive a round trip, bad values are dropped', () => {
+  const file = JSON.stringify({
+    elements: [
+      { ...box, type: 'frame', title: 'Moods', groupId: 'g1' },
+      { ...box, type: 'frame', title: 5 },
+      { ...box, type: 'note', text: 'H', heading: true, groupId: 'g1' },
+      { ...box, type: 'note', text: 'n', heading: 'yes', groupId: 7 },
+    ],
+  })
+  const { elements, skipped } = parseBoardFile(file)
+  expect(skipped).toBe(1)
+  expect(elements[0]).toMatchObject({ type: 'frame', title: 'Moods', groupId: 'g1' })
+  expect(elements[1]).toMatchObject({ heading: true, groupId: 'g1' })
+  for (const k of ['heading', 'groupId']) expect(elements[2]).not.toHaveProperty(k)
+  const again = parseBoardFile(JSON.stringify({ elements }))
+  expect(again.elements.map(({ id, ...e }) => e)).toEqual(elements.map(({ id, ...e }) => e))
+})

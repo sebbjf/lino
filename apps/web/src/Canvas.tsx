@@ -159,7 +159,8 @@ export function Canvas() {
         className="absolute left-0 top-0 origin-top-left"
         style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
       >
-        {elements.map((el) => (
+        {/* frames always sit behind everything else, whatever the array order (which is the z-order of the rest) */}
+        {[...elements.filter((el) => el.type === 'frame'), ...elements.filter((el) => el.type !== 'frame')].map((el) => (
           <ElementView key={el.id} el={el} selected={selected.has(el.id)} solo={selected.size === 1 && selected.has(el.id)} zoom={view.zoom} />
         ))}
         {marquee && (

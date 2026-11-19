@@ -20,7 +20,7 @@ export const elementSchema = {
   additionalProperties: false,
   properties: {
     id: { type: 'string', maxLength: 64 },
-    type: { enum: ['image', 'note', 'color', 'link'] },
+    type: { enum: ['frame', 'image', 'note', 'color', 'link'] },
     x: { type: 'number', minimum: -1e6, maximum: 1e6 },
     y: { type: 'number', minimum: -1e6, maximum: 1e6 },
     w: { type: 'number', minimum: 1, maximum: 10_000 },
@@ -53,6 +53,8 @@ export const elementSchema = {
     duo: { type: 'array', minItems: 2, maxItems: 2, items: hex },
     paletteOff: { type: 'boolean' },
     locked: { type: 'boolean' },
+    groupId: { type: 'string', maxLength: 64 },
+    heading: { type: 'boolean' },
     flipX: { type: 'boolean' },
     flipY: { type: 'boolean' },
     crop: {
@@ -63,6 +65,7 @@ export const elementSchema = {
     },
   },
   allOf: [
+    requires('frame', ['title']),
     requires('image', ['src']),
     requires('note', ['text']),
     requires('color', ['hex']),

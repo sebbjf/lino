@@ -1,6 +1,8 @@
 # Frames, groups and headings
 
-Status: ready-for-agent
+Status: done
+
+Done 2026-11-19: `frame` kind (kinds/frame.ts, pure logic in frames.ts), `groupId` + Ctrl+G / Ctrl+Shift+G, note `heading` style, "Add frame" / "Frame selection" (Ctrl+Alt+F) / "Add heading" in the toolbar. Frames render behind everything at render time (and in the PNG).
 
 ## Problem
 
