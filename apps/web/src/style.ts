@@ -22,7 +22,7 @@ export type NoteStyle = { bg?: string; color?: string; size?: NoteSize; font?: N
 export type ImageFilter = 'mono' | 'duotone'
 export const IMAGE_FILTERS: ImageFilter[] = ['mono', 'duotone']
 /** Images only. `duo` is [shadows, highlights] for the duotone filter. */
-export type ImageStyle = { filter?: ImageFilter; duo?: [string, string]; paletteOff?: boolean }
+export type ImageStyle = { filter?: ImageFilter; duo?: [string, string]; paletteOff?: boolean; flipX?: boolean; flipY?: boolean }
 export const DEFAULT_DUO: [string, string] = ['#2f4858', '#f4efe6']
 
 /** RGB 0-255 of a hex color, or null. */

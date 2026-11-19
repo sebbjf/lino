@@ -6,7 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { boardFonts, buildPalette } from './colors.ts'
+import { cropBox, FULL } from './crop.ts'
 import { boundsOf } from './geometry.ts'
+import { toggleLock } from './selection.ts'
 import { useBoard, type StylePatch } from './store.ts'
 import { CORNERS, DECOS, FAMILY, GOOGLE_FONTS, MIN_OPACITY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES, PATTERNS, STICKY_COLORS, loadFamily, loadFontPreviews, DEFAULT_DUO, IMAGE_FILTERS, type Pattern } from './style.ts'
 
@@ -161,7 +163,7 @@ function ElementPanel({ ids }: { ids: string[] }) {
   const elements = useBoard((s) => s.elements)
   const copied = useBoard((s) => s.copiedStyle)
   const { copyStyle, pasteStyle } = useBoard.getState()
-  const { restyle, checkpoint } = useBoard.getState()
+  const { restyle, checkpoint, step, update, setCropId } = useBoard.getState()
   const sel = elements.filter((e) => ids.includes(e.id))
   // controls show the most recently picked element's values
   const cur = sel.find((e) => e.id === ids.at(-1)) ?? sel[0]
@@ -180,6 +182,8 @@ function ElementPanel({ ids }: { ids: string[] }) {
     checkpoint()
     restyle(ids, patch)
   }
+  const allLocked = sel.every((e) => e.locked)
+  const resetCrop = () => image?.crop && step(() => update(image.id, { ...cropBox(image, image.crop!, FULL, { x: image.flipX, y: image.flipY }), crop: undefined }))
   const opacity = Math.round((cur.opacity ?? 1) * 100)
   const fonts = boardFonts(elements).filter((f) => FAMILY.test(f))
 
@@ -191,6 +195,12 @@ function ElementPanel({ ids }: { ids: string[] }) {
         </Button>
         <Button variant="outline" size="sm" className="flex-1" aria-keyshortcuts="Control+Alt+V" title="Ctrl+Alt+V" disabled={!copied} onClick={() => pasteStyle(ids)}>
           Paste style
+        </Button>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">Lock</span>
+        <Button variant="outline" size="sm" aria-label="Lock" aria-pressed={allLocked} onClick={() => toggleLock(ids)}>
+          {allLocked ? 'Locked' : 'Unlocked'}
         </Button>
       </div>
       <Choice label="Corners" options={CORNERS} value={cur.corner ?? 'soft'} onChange={(corner) => apply({ corner })} />
@@ -228,6 +238,28 @@ function ElementPanel({ ids }: { ids: string[] }) {
               Use colors in palette
             </Toggle>
           </Group>
+          <Group label="Flip">
+            <div className="flex gap-1">
+              <Toggle label="Flip horizontally" on={!!image.flipX} onClick={() => apply({ flipX: image.flipX ? undefined : true })}>
+                Horizontal
+              </Toggle>
+              <Toggle label="Flip vertically" on={!!image.flipY} onClick={() => apply({ flipY: image.flipY ? undefined : true })}>
+                Vertical
+              </Toggle>
+            </div>
+          </Group>
+          {ids.length === 1 && (
+            <Group label="Crop">
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" className="flex-1" disabled={!!image.locked} onClick={() => setCropId(image.id)}>
+                  Crop
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1" disabled={!image.crop || !!image.locked} onClick={resetCrop}>
+                  Reset crop
+                </Button>
+              </div>
+            </Group>
+          )}
           {image.filter === 'duotone' && (
             <>
               <Swatches label="Shadows" value={duo[0]} onStart={checkpoint} onChange={(hex) => setDuo(0, hex)} />

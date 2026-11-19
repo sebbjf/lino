@@ -145,3 +145,21 @@ test('open readonly: round-trips with a clean history and keeps the board id', a
   expect(same()).toEqual(expected)
   expect([s.readOnly, s.boardId, s.past]).toEqual([true, 'a', []])
 })
+
+test('lock, flip and crop survive a round trip; a bad crop is clamped or dropped', () => {
+  const src = 'data:image/png;base64,AA=='
+  const file = JSON.stringify({
+    elements: [
+      { ...box, type: 'image', src, locked: true, flipX: true, flipY: 'yes', crop: { x: 0.9, y: 0, w: 0.5, h: 0.5 } },
+      { ...box, type: 'image', src, locked: 'true', crop: { x: 'a', y: 0, w: 1, h: 1 } },
+      { ...box, type: 'note', text: 'n', locked: true },
+    ],
+  })
+  const { elements } = parseBoardFile(file)
+  expect(elements[0]).toMatchObject({ locked: true, flipX: true, crop: { x: 0.5, y: 0, w: 0.5, h: 0.5 } })
+  expect(elements[0]).not.toHaveProperty('flipY')
+  for (const k of ['locked', 'crop']) expect(elements[1]).not.toHaveProperty(k)
+  expect(elements[2]).toMatchObject({ locked: true })
+  const again = parseBoardFile(JSON.stringify({ elements }))
+  expect(again.elements.map(({ id, ...e }) => e)).toEqual(elements.map(({ id, ...e }) => e))
+})

@@ -1,12 +1,14 @@
 import { create } from 'zustand'
 import type { ColorMeta } from './colors.ts'
+import type { Crop } from './crop.ts'
 import { alignOffsets, distributeOffsets, layoutPositions, type AlignMode, type Box, type Guide, type Layout } from './geometry.ts'
 import { ownStyleKeys, TYPED_KEYS } from './kinds/index.ts'
 import { MESSY_TILT, type BoardStyle, type ElementStyle, type ImageStyle, type NoteStyle } from './style.ts'
 
-type Base = Box & ElementStyle & { id: string }
+/** `locked`: can't be moved, resized, rotated, edited or deleted until unlocked. */
+type Base = Box & ElementStyle & { id: string; locked?: boolean }
 export type BoardElement =
-  | (Base & { type: 'image'; src: string; colors?: string[] } & ImageStyle)
+  | (Base & { type: 'image'; src: string; colors?: string[]; crop?: Crop } & ImageStyle)
   | (Base & { type: 'note'; text: string } & NoteStyle)
   | (Base & { type: 'color'; hex: string })
   | (Base & { type: 'link' } & LinkInfo)
@@ -52,6 +54,9 @@ type State = {
   guides: Guide[]
   /** A shared board opened from a link: view only, nothing is saved. */
   readOnly: boolean
+  /** The image being cropped (crop mode), if any. */
+  cropId: string | null
+  setCropId: (id: string | null) => void
   /** Palette edits keyed by normalized hex. */
   colorMeta: Record<string, ColorMeta>
   setColorMeta: (hex: string, patch: ColorMeta) => void
@@ -138,7 +143,7 @@ function keepSelection(elements: BoardElement[], ids: string[]) {
 
 /** Applies per-element offsets as one undo step. */
 function shift(s: State, ids: string[], offsets: (els: BoardElement[]) => { dx: number; dy: number }[]) {
-  const els = s.elements.filter((e) => ids.includes(e.id))
+  const els = s.elements.filter((e) => ids.includes(e.id) && !e.locked)
   if (els.length < 2) return s
   const by = new Map(offsets(els).map((o, i) => [els[i].id, o]))
   return {
@@ -158,6 +163,8 @@ export const useBoard = create<State>()((set, get) => ({
   view: { x: 0, y: 0, zoom: 1 },
   notice: null,
   readOnly: false,
+  cropId: null,
+  setCropId: (cropId) => set({ cropId }),
   guides: [],
   colorMeta: {},
   board: {},
@@ -228,7 +235,7 @@ export const useBoard = create<State>()((set, get) => ({
   restyle: (ids, patch) =>
     set((s) => ({
       elements: s.elements.map((e) => {
-        if (!ids.includes(e.id)) return e
+        if (!ids.includes(e.id) || e.locked) return e
         // type-specific fields (note color, image filter...) never land on other element types
         const own = ownStyleKeys(e.type)
         const keep = Object.fromEntries(Object.entries(patch).filter(([k]) => !TYPED_KEYS.includes(k as keyof StylePatch) || own.includes(k as keyof StylePatch)))
@@ -273,7 +280,7 @@ export const useBoard = create<State>()((set, get) => ({
 
   arrange: (ids, mode) =>
     set((s) => {
-      const els = s.elements.filter((e) => ids.includes(e.id))
+      const els = s.elements.filter((e) => ids.includes(e.id) && !e.locked)
       if (els.length < 2) return s
       const pos = new Map(layoutPositions(els, mode).map((p, i) => [els[i].id, p]))
       let elements = s.elements.map((e) => (pos.has(e.id) ? { ...e, ...pos.get(e.id)! } : e))

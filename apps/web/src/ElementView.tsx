@@ -2,6 +2,8 @@ import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEven
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ColorFields } from './ColorFields.tsx'
 import { LinkCard } from './LinkCard.tsx'
+import { CropOverlay } from './CropOverlay.tsx'
+import { coverCrop, cropBox, cropStyle, type Crop } from './crop.ts'
 import { drag, touches } from './drag.ts'
 import { harmonies } from './colors.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
@@ -83,7 +85,7 @@ function panIntoView(el: BoardElement) {
 }
 
 export const ElementView = memo(function ElementView({ el, selected, solo, zoom }: Props) {
-  const { update, moveMany, select, checkpoint } = useBoard.getState()
+  const { update, moveMany, select, checkpoint, step, setCropId } = useBoard.getState()
   const readOnly = useBoard((s) => s.readOnly)
   const picture = useImageSrc(el.type === 'image' ? el.src : null)
   // the selection outline follows the board background's contrast color, so it shows on dark boards too
@@ -92,6 +94,11 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   const [editing, setEditing] = useState(() => selected && el.type === 'note' && !el.text)
   const [pickerOpen, setPickerOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
+  // crop mode: `from` is the crop the box shows now, `draft` the one being dragged out
+  const cropId = useBoard((s) => s.cropId)
+  const [session, setSession] = useState<{ from: Crop; draft: Crop } | null>(null)
+  const cropping = !!session && cropId === el.id
   const noteText = useRef<HTMLParagraphElement>(null)
 
   // keep keyboard focus on the selected element (e.g. after duplicate or add)
@@ -118,12 +125,40 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   }, [el.id, el.w, readOnly, update])
 
   useEffect(() => {
-    if (solo && !editing && !root.current!.contains(document.activeElement)) root.current!.focus({ preventScroll: true })
-  }, [solo, editing])
+    if ((solo || cropping) && !editing && !root.current!.contains(document.activeElement)) root.current!.focus({ preventScroll: true })
+  }, [solo, editing, cropping])
+
+  useEffect(() => {
+    if (cropId !== el.id || el.type !== 'image') return setSession(null)
+    const i = imgRef.current
+    if (!i?.naturalWidth) return setCropId(null)
+    const from = el.crop ?? coverCrop(el.w, el.h, i.naturalWidth, i.naturalHeight)
+    setSession({ from, draft: from })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cropId])
+
+  /** Confirms or cancels crop mode; a confirmed change is one undo step. */
+  const finishCrop = (ok: boolean) => {
+    if (ok && session && el.type === 'image' && (['x', 'y', 'w', 'h'] as const).some((k) => session.draft[k] !== session.from[k]))
+      step(() => update(el.id, { ...cropBox(el, session.from, session.draft, { x: el.flipX, y: el.flipY }), crop: session.draft }))
+    setCropId(null)
+  }
+  const finishRef = useRef(finishCrop)
+  useEffect(() => {
+    finishRef.current = finishCrop
+  })
+  // a press outside the element confirms
+  useEffect(() => {
+    if (!cropping) return
+    const out = (e: globalThis.PointerEvent) => !root.current?.contains(e.target as Node) && finishRef.current(true)
+    document.addEventListener('pointerdown', out, true)
+    return () => document.removeEventListener('pointerdown', out, true)
+  }, [cropping])
 
 
   const open = () => {
-    if (readOnly && el.type !== 'link') return
+    if ((readOnly || el.locked) && el.type !== 'link') return
+    if (el.type === 'image') return setCropId(el.id)
     if (el.type !== 'link') checkpoint()
     if (el.type === 'note') setEditing(true)
     if (el.type === 'color') setPickerOpen(true)
@@ -135,6 +170,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     // read-only: let the press reach the canvas so it pans
     if (readOnly || e.button !== 0 || !e.currentTarget.contains(e.target as Node)) return
     e.stopPropagation()
+    if (cropping) return
     // Shift+click adds to or removes from the selection
     if (e.shiftKey) {
       select(el.id, true)
@@ -148,7 +184,8 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     e.currentTarget.focus()
     const ids = targetOf(el.id)
     const els = useBoard.getState().elements
-    const moving = els.filter((o) => ids.includes(o.id))
+    const moving = els.filter((o) => ids.includes(o.id) && !o.locked)
+    if (!moving.length) return
     // snap the visible (rotated) outline of what moves to the other elements' edges and centers; Alt moves freely
     const own = boundsOf(moving)
     const others = els.flatMap((o) => (ids.includes(o.id) ? [] : [boundsOf([o])]))
@@ -202,8 +239,16 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     if (e.target !== e.currentTarget || (readOnly && e.key !== 'Enter' && e.key !== 'Escape')) return
     const mod = e.metaKey || e.ctrlKey
     const step = e.shiftKey ? 10 : 1
+    if (cropping) {
+      if (e.key !== 'Enter' && e.key !== 'Escape') return
+      finishCrop(e.key === 'Enter')
+      e.stopPropagation()
+      e.preventDefault()
+      return
+    }
     // Alt+arrows resize from the bottom-right corner, the keyboard twin of the resize handle
     if (e.altKey && e.key.startsWith('Arrow')) {
+      if (el.locked) return
       checkpoint()
       const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key]
       if (!d) return
@@ -275,7 +320,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       ref={root}
       role="group"
       tabIndex={0}
-      aria-label={label(el)}
+      aria-label={el.locked ? `${label(el)}, locked` : label(el)}
       aria-roledescription="board element"
       className={`absolute left-0 top-0 rounded-2xl outline-none ${drop ? 'element-drop' : ''}`}
       style={{
@@ -285,7 +330,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         height: el.h,
         transform: `translate(${el.x}px, ${el.y}px) rotate(${el.rotation}deg)`,
         boxShadow: selected ? `0 0 0 ${2 / zoom}px ${outline}` : undefined,
-        cursor: readOnly ? undefined : editing ? 'auto' : 'var(--cursor-move)',
+        cursor: readOnly || el.locked ? undefined : editing ? 'auto' : 'var(--cursor-move)',
       }}
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => e.currentTarget.contains(e.target as Node) && open()}
@@ -300,15 +345,25 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       {el.type === 'image' && (
         <>
           {el.filter === 'duotone' && <DuotoneFilter id={el.id} duo={el.duo ?? DEFAULT_DUO} />}
-          <img
-            src={picture}
-            alt=""
-            decoding="async"
-            loading="lazy"
-            draggable={false}
-            className="pointer-events-none size-full rounded-2xl object-cover shadow-soft"
-            style={{ ...surface(el), filter: el.filter === 'mono' ? 'grayscale(1)' : el.filter === 'duotone' ? `url(#duo-${el.id})` : undefined }}
-          />
+          {cropping && session ? (
+            <CropOverlay src={picture} box={el} from={session.from} draft={session.draft} zoom={zoom} flipX={el.flipX} flipY={el.flipY} onChange={(draft) => setSession({ ...session, draft })} />
+          ) : (
+            <div
+              className="relative size-full overflow-hidden rounded-2xl shadow-soft"
+              style={{ ...surface(el), transform: el.flipX || el.flipY ? `scale(${el.flipX ? -1 : 1}, ${el.flipY ? -1 : 1})` : undefined }}
+            >
+              <img
+                ref={imgRef}
+                src={picture}
+                alt=""
+                decoding="async"
+                loading="lazy"
+                draggable={false}
+                className="pointer-events-none size-full object-cover"
+                style={{ ...(el.crop && cropStyle(el.crop)), filter: el.filter === 'mono' ? 'grayscale(1)' : el.filter === 'duotone' ? `url(#duo-${el.id})` : undefined }}
+              />
+            </div>
+          )}
         </>
       )}
 
@@ -395,7 +450,20 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         />
       )}
 
-      {solo && !editing && !readOnly && (
+      {el.locked && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute right-1.5 top-1.5 grid size-5 origin-top-right place-items-center rounded-full bg-card/90 text-card-foreground shadow-soft"
+          style={{ transform: `scale(${1 / zoom})` }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="11" width="16" height="10" rx="2" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+          </svg>
+        </span>
+      )}
+
+      {solo && !editing && !readOnly && !el.locked && !cropping && (
         <>
           <div
             aria-hidden
