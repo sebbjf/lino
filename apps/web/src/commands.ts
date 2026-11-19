@@ -4,7 +4,7 @@ import {
 } from '@hugeicons/core-free-icons'
 import type { IconSvgElement } from '@hugeicons/react'
 import { fitView, zoomAt } from './geometry.ts'
-import { addImages } from './image.ts'
+import { addImages, imageColors } from './image.ts'
 import { duplicate, frameSelection, group, remove, reorder, toggleLock, ungroup } from './selection.ts'
 import { hasUndo, useBoard } from './store.ts'
 
@@ -71,6 +71,21 @@ export const commands: Command[] = [
   { id: 'frame-selection', label: 'Frame selection', shortcut: 'Ctrl+Alt+F', keywords: 'wrap', edit: true, when: sel(1), run: () => frameSelection(ids()) },
   { id: 'group', label: 'Group', shortcut: 'Ctrl+G', edit: true, when: sel(2), run: () => group(ids()) },
   { id: 'ungroup', label: 'Ungroup', shortcut: 'Ctrl+Shift+G', edit: true, when: (s) => s.elements.some((e) => e.groupId && s.selectedIds.includes(e.id)), run: () => ungroup(ids()) },
+  {
+    id: 'swatches',
+    label: 'Swatches from image',
+    keywords: 'colors palette extract',
+    edit: true,
+    when: (s) => s.selectedIds.length === 1 && s.elements.find((e) => e.id === s.selectedIds[0])?.type === 'image',
+    run: () => {
+      const el = board().elements.find((e) => e.id === ids()[0])
+      if (el?.type !== 'image') return
+      imageColors(el.src).then(
+        (hexes) => board().swatchRow(el.id, hexes),
+        () => board().notify('Could not read the colors of that image.'),
+      )
+    },
+  },
   { id: 'lock', label: 'Lock or unlock', keywords: 'freeze', edit: true, when: sel(1), run: () => toggleLock(ids()) },
   ...(Object.keys(ALIGN) as (keyof typeof ALIGN)[]).map((mode) => ({
     id: `align-${mode}`,
@@ -116,6 +131,6 @@ export const groupOf = (c: Command) => (/^(add|import)/.test(c.id) ? 'Add' : /^(
 const ICONS: Record<string, IconSvgElement> = {
   'add-note': StickyNote01Icon, 'add-heading': Heading01Icon, 'add-frame': FrameIcon, 'add-color': PaintBoardIcon, 'add-image': Image01Icon, 'import-folder': FolderUploadIcon,
   undo: UndoIcon, redo: RedoIcon, duplicate: Copy01Icon, delete: Delete02Icon, forward: LayerBringForwardIcon, backward: LayerSendBackwardIcon,
-  'frame-selection': ArtboardToolIcon, group: GroupItemsIcon, ungroup: Layers01Icon, 'zoom-in': PlusSignIcon, 'zoom-out': MinusSignIcon, fit: ColorsIcon,
+  'frame-selection': ArtboardToolIcon, swatches: ColorsIcon, group: GroupItemsIcon, ungroup: Layers01Icon, 'zoom-in': PlusSignIcon, 'zoom-out': MinusSignIcon, fit: ColorsIcon,
 }
 export const iconOf = (c: Command) => ICONS[c.id] ?? AlignHorizontalCenterIcon
