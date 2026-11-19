@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-import { duplicate, nudge, remove, reorder, rotateStep, targetOf } from './selection.ts'
+import { duplicate, nudge, remove, reorder, rotateStep, targetOf, toggleLock } from './selection.ts'
 import { useBoard } from './store.ts'
 
 const board = () => useBoard.getState()
@@ -98,4 +98,40 @@ test('a burst of nudges is one undo step, a pause starts a new one', () => {
   } finally {
     vi.useRealTimers()
   }
+})
+
+test('a locked element is skipped by every command, and by align and restyle', () => {
+  board().update(a, { locked: true })
+  const before = { a: get(a).x, b: get(b).x }
+  nudge([a, b], 10, 0)
+  rotateStep([a, b], 1)
+  remove([a])
+  duplicate([a])
+  expect([get(a).x, get(a).rotation, get(b).x, get(b).rotation]).toEqual([before.a, 0, before.b + 10, 15])
+  expect(board().elements).toHaveLength(3)
+  board().restyle([a, b], { corner: 'round' })
+  expect([get(a).corner, get(b).corner]).toEqual([undefined, 'round'])
+  board().update(b, { x: 500 })
+  board().align([a, b, c], 'left')
+  expect(get(a).x).toBe(before.a)
+})
+
+test('toggleLock locks the selection in one undo step, then unlocks it', () => {
+  toggleLock([a, b])
+  expect([get(a).locked, get(b).locked, get(c).locked]).toEqual([true, true, undefined])
+  board().undo()
+  expect([get(a).locked, get(b).locked]).toEqual([undefined, undefined])
+  board().redo()
+  toggleLock([a, c]) // not all locked: locks the rest
+  expect(get(c).locked).toBe(true)
+  toggleLock([a, b, c])
+  expect([a, b, c].map((id) => get(id).locked)).toEqual([undefined, undefined, undefined])
+  board().selectMany([a, b, c]) // a locked element can still be selected
+  expect(board().selectedIds).toHaveLength(3)
+})
+
+test('a read-only board cannot be locked', () => {
+  useBoard.setState({ readOnly: true })
+  toggleLock([a])
+  expect(get(a).locked).toBeUndefined()
 })

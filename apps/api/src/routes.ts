@@ -51,6 +51,15 @@ export const elementSchema = {
     family: { type: 'string', pattern: '^[A-Za-z0-9 _-]{1,60}$' },
     filter: { enum: ['mono', 'duotone'] },
     duo: { type: 'array', minItems: 2, maxItems: 2, items: hex },
+    locked: { type: 'boolean' },
+    flipX: { type: 'boolean' },
+    flipY: { type: 'boolean' },
+    crop: {
+      type: 'object',
+      required: ['x', 'y', 'w', 'h'],
+      additionalProperties: false,
+      properties: Object.fromEntries(['x', 'y', 'w', 'h'].map((k) => [k, { type: 'number', minimum: 0, maximum: 1 }])),
+    },
   },
   allOf: [
     requires('image', ['src']),

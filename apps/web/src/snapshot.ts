@@ -26,6 +26,7 @@ function styleOf(e: Record<string, unknown>) {
     ...(typeof e.shadow === 'boolean' && { shadow: e.shadow }),
     ...(isNum(e.opacity) && { opacity: Math.min(1, Math.max(MIN_OPACITY, e.opacity)) }),
     ...(oneOf(DECOS, e.deco) && { deco: e.deco }),
+    ...(e.locked === true && { locked: true }),
   }
 }
 

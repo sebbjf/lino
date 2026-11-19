@@ -5,8 +5,8 @@ import { useBoard, type Layer } from './store.ts'
 // Each command is one undo step; a burst of nudges or rotations of the same elements (a held key) is one.
 
 const board = () => useBoard.getState()
-/** The ids a command may act on: none on a read-only board. */
-const editable = (ids: string[]) => (board().readOnly ? [] : ids)
+/** The ids a command may act on: none on a read-only board, and never a locked element. */
+const editable = (ids: string[]) => (board().readOnly ? [] : ids.filter((id) => !board().elements.find((e) => e.id === id)?.locked))
 
 /** What a command aimed at `focusedId` acts on: the selection if that element is in it (or nothing is focused), else just that element. */
 export function targetOf(focusedId?: string) {
@@ -30,6 +30,14 @@ export function rotateStep(ids: string[], dir: 1 | -1) {
     const deg = Math.round((e.rotation + dir * 15) / 15) * 15
     board().update(e.id, { rotation: ((((deg + 180) % 360) + 360) % 360) - 180 })
   }
+}
+
+/** Locks the elements, or unlocks them if they are all locked already: one undo step. */
+export function toggleLock(ids: string[]) {
+  if (board().readOnly) return
+  const els = board().elements.filter((e) => ids.includes(e.id))
+  const locked = !els.every((e) => e.locked)
+  board().step(() => els.forEach((e) => board().update(e.id, { locked: locked || undefined })))
 }
 
 export function remove(ids: string[]) {

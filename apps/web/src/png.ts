@@ -1,3 +1,4 @@
+import type { Crop } from './crop.ts'
 import { boundsOf } from './geometry.ts'
 import { resolveImage } from './images.ts'
 import { useBoard, type BoardElement } from './store.ts'
@@ -37,9 +38,10 @@ async function loadImage(source: string) {
 type Source = HTMLImageElement | HTMLCanvasElement
 const dims = (img: Source) => (img instanceof HTMLImageElement ? [img.naturalWidth, img.naturalHeight] : [img.width, img.height])
 
-/** Draws img to fill the rect like CSS object-fit: cover. */
-function cover(ctx: CanvasRenderingContext2D, img: Source, x: number, y: number, w: number, h: number) {
+/** Draws img to fill the rect like CSS object-fit: cover, or just the `crop` part of it stretched to the rect. */
+function cover(ctx: CanvasRenderingContext2D, img: Source, x: number, y: number, w: number, h: number, crop?: Crop) {
   const [iw, ih] = dims(img)
+  if (crop) return ctx.drawImage(img, crop.x * iw, crop.y * ih, crop.w * iw, crop.h * ih, x, y, w, h)
   const s = Math.max(w / iw, h / ih)
   const sw = w / s
   const sh = h / s
@@ -152,7 +154,12 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
     ctx.textBaseline = 'top'
     const img = images.get(el.id)
 
-    if (el.type === 'image' && img) cover(ctx, filtered(img, el), 0, 0, w, h)
+    if (el.type === 'image' && img) {
+      // flips mirror the cropped picture about the box centre, like the CSS transform on screen
+      ctx.translate(el.flipX ? w : 0, el.flipY ? h : 0)
+      ctx.scale(el.flipX ? -1 : 1, el.flipY ? -1 : 1)
+      cover(ctx, filtered(img, el), 0, 0, w, h, el.crop)
+    }
 
     if (el.type === 'note') {
       const [size, lineH] = NOTE_TEXT[el.size ?? 'md']
