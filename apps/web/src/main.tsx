@@ -6,9 +6,11 @@ import { Button } from './components/ui/button.tsx'
 import { addLink, isImageUrl, sharedUrl } from './link.ts'
 import { loadShared, sharedId } from './share.ts'
 import { loadBoard, startAutosave, sweepStoredImages } from './storage.ts'
+import { startTheme } from './settings.ts'
 import { useBoard } from './store.ts'
 import './index.css'
 
+startTheme()
 const shared = sharedId()
 if (shared) {
   // a shared board never touches the local one

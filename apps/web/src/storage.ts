@@ -1,6 +1,7 @@
 import { run as idb } from './db.ts'
 import { backfillColors } from './image.ts'
 import { externalize, IMAGE_ID, sweepImages } from './images.ts'
+import { useSettings } from './settings.ts'
 import { captureSnapshot, onLeaveBoard, openSnapshot, parseSnapshot, type Snapshot } from './snapshot.ts'
 import { useBoard, type BoardMeta, type ExportPrefs, type View } from './store.ts'
 
@@ -68,7 +69,11 @@ export async function switchBoard(id: string) {
 
 onLeaveBoard(save)
 
-export const createBoard = () => openSnapshot(EMPTY, 'new')
+/** A new board starts with the pattern and messy mode chosen in Settings. */
+export const createBoard = () => {
+  const { newPattern, newMessy } = useSettings.getState()
+  return openSnapshot({ ...EMPTY, board: { ...(newPattern !== 'dots' && { pattern: newPattern }), ...(newMessy && { messy: true }) } }, 'new')
+}
 
 /** Saves a snapshot as a new local board and makes it the current one. Used from the read-only view. */
 export async function saveAsLocalBoard(snap: Snapshot, name: string) {

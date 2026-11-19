@@ -7,6 +7,7 @@ import { coverCrop, cropBox, cropStyle, type Crop } from './crop.ts'
 import { drag, touches } from './drag.ts'
 import { harmonies } from './colors.ts'
 import { movingSet } from './frames.ts'
+import { useSettings } from './settings.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
 import { useImageSrc } from './images.ts'
@@ -211,7 +212,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         if (pinched) return
         let mx = dx / zoom
         let my = dy / zoom
-        if (ev.altKey) setGuides([])
+        if (ev.altKey || !useSettings.getState().snap) setGuides([])
         else {
           const s = snapMove({ ...own, x: own.x + mx, y: own.y + my }, others, SNAP_PX / zoom)
           mx += s.dx

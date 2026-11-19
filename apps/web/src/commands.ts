@@ -8,6 +8,7 @@ import { fitView, LAYOUTS, zoomAt, type Layout } from './geometry.ts'
 import { addImages, imageColors } from './image.ts'
 import { downloadPng } from './png.ts'
 import { rotateStep } from './selection.ts'
+import { useSettings } from './settings.ts'
 import { switchBoard } from './storage.ts'
 import { duplicate, frameSelection, group, remove, reorder, toggleLock, ungroup } from './selection.ts'
 import { hasUndo, useBoard } from './store.ts'
@@ -152,6 +153,7 @@ export const commands: Command[] = [
   { id: 'export', label: 'Export board', group: 'File', keywords: 'save download json', when: (s) => s.elements.length > 0, run: exportBoardFile },
   { id: 'import', label: 'Import board…', group: 'File', keywords: 'open json', edit: true, run: () => pickJson() },
   { id: 'png', label: 'Download PNG', group: 'File', keywords: 'image export', when: (s) => s.elements.length > 0, run: downloadPng },
+  { id: 'settings', label: 'Settings', group: 'File', keywords: 'preferences theme dark light', run: () => useSettings.setState({ open: true }) },
   { id: 'zoom-in', label: 'Zoom in', run: () => zoomTo(board().view.zoom * 1.25) },
   { id: 'zoom-out', label: 'Zoom out', run: () => zoomTo(board().view.zoom / 1.25) },
   { id: 'zoom-reset', label: 'Zoom to 100%', run: () => zoomTo(1) },

@@ -3,6 +3,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { BoardsMenu } from './BoardsMenu.tsx'
 import { CommandMenu } from './CommandMenu.tsx'
 import { Canvas } from './Canvas.tsx'
+import { SettingsMenu } from './SettingsMenu.tsx'
 import { PalettePanel } from './PalettePanel.tsx'
 import { normalizeHex } from './colors.ts'
 import { fitView } from './geometry.ts'
@@ -123,6 +124,7 @@ export function App() {
             Lino
           </a>
           {!readOnly && <BoardsMenu />}
+          <SettingsMenu />
         </div>
         {readOnly && (
           <p className="fixed left-1/2 top-16 flex sm:top-4 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border bg-card/90 px-4 py-1.5 text-sm shadow-soft backdrop-blur">
