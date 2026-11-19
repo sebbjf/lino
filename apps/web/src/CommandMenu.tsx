@@ -1,10 +1,11 @@
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { Fragment, useEffect, useState, type KeyboardEvent } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Kbd } from '@/components/ui/kbd'
-import { available, commands, search } from './commands.ts'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { available, commands, groupOf, iconOf, search } from './commands.ts'
 
-/** Ctrl/Cmd+K: type to find any board action, Enter runs it. Works from a text field too. */
+/** Ctrl/Cmd+K (or Ctrl/Cmd+/, as in Figma): type to find any board action, Enter runs it. Works from a text field too. */
 export function CommandMenu() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -12,7 +13,7 @@ export function CommandMenu() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent | globalThis.KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key.toLowerCase() === 'k' || e.key === '/')) {
         e.preventDefault()
         setOpen((o) => !o)
         setQuery('')
@@ -65,8 +66,11 @@ export function CommandMenu() {
         />
         <ul id="command-list" role="listbox" aria-label="Commands" className="max-h-72 overflow-y-auto">
           {results.map((c, i) => (
+            <Fragment key={c.id}>
+            {!query && groupOf(c) !== groupOf(results[i - 1] ?? c) || (!query && i === 0) ? (
+              <li role="presentation" className="px-3 pt-2 pb-1 text-xs font-medium text-muted-foreground">{groupOf(c)}</li>
+            ) : null}
             <li
-              key={c.id}
               id={`cmd-${c.id}`}
               role="option"
               aria-selected={i === active}
@@ -77,9 +81,13 @@ export function CommandMenu() {
               onMouseMove={() => setActive(i)}
               onClick={() => run(i)}
             >
-              {c.label}
+              <span className="flex items-center gap-3">
+                <HugeiconsIcon icon={iconOf(c)} strokeWidth={1.8} className="size-4 text-muted-foreground" />
+                {c.label}
+              </span>
               {c.shortcut && <Kbd>{c.shortcut}</Kbd>}
             </li>
+            </Fragment>
           ))}
           {!results.length && <li className="px-3 py-2 text-muted-foreground">No matching command</li>}
         </ul>

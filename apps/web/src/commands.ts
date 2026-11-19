@@ -1,3 +1,8 @@
+import {
+  AlignHorizontalCenterIcon, ArtboardToolIcon, ColorsIcon, Copy01Icon, Delete02Icon, FolderUploadIcon, FrameIcon, GroupItemsIcon, Heading01Icon, Image01Icon,
+  Layers01Icon, LayerBringForwardIcon, LayerSendBackwardIcon, MinusSignIcon, PaintBoardIcon, PlusSignIcon, RedoIcon, StickyNote01Icon, UndoIcon,
+} from '@hugeicons/core-free-icons'
+import type { IconSvgElement } from '@hugeicons/react'
 import { fitView, zoomAt } from './geometry.ts'
 import { addImages } from './image.ts'
 import { duplicate, frameSelection, group, remove, reorder, toggleLock, ungroup } from './selection.ts'
@@ -104,3 +109,13 @@ export function search(list: Command[], query: string) {
     .sort((x, y) => y.score - x.score)
     .map((x) => x.c)
 }
+
+/** Section a command is listed under, shown as a heading while the search is empty. */
+export const groupOf = (c: Command) => (/^(add|import)/.test(c.id) ? 'Add' : /^(align|distribute)/.test(c.id) ? 'Arrange' : /^(zoom|fit)/.test(c.id) ? 'View' : 'Edit')
+
+const ICONS: Record<string, IconSvgElement> = {
+  'add-note': StickyNote01Icon, 'add-heading': Heading01Icon, 'add-frame': FrameIcon, 'add-color': PaintBoardIcon, 'add-image': Image01Icon, 'import-folder': FolderUploadIcon,
+  undo: UndoIcon, redo: RedoIcon, duplicate: Copy01Icon, delete: Delete02Icon, forward: LayerBringForwardIcon, backward: LayerSendBackwardIcon,
+  'frame-selection': ArtboardToolIcon, group: GroupItemsIcon, ungroup: Layers01Icon, 'zoom-in': PlusSignIcon, 'zoom-out': MinusSignIcon, fit: ColorsIcon,
+}
+export const iconOf = (c: Command) => ICONS[c.id] ?? AlignHorizontalCenterIcon
