@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ColorMeta } from './colors.ts'
 import { alignOffsets, distributeOffsets, layoutPositions, type AlignMode, type Box, type Guide, type Layout } from './geometry.ts'
+import { ownStyleKeys, TYPED_KEYS } from './kinds/index.ts'
 import { MESSY_TILT, type BoardStyle, type ElementStyle, type ImageStyle, type NoteStyle } from './style.ts'
 
 type Base = Box & ElementStyle & { id: string }
@@ -12,10 +13,7 @@ export type BoardElement =
 
 /** How the palette is written out. `prefix` goes after `--` in CSS variables (Tailwind needs its own namespaces). */
 export type StylePatch = ElementStyle & NoteStyle & ImageStyle
-/** Style fields that belong to one element type only. */
-const OWN: Partial<Record<BoardElement['type'], (keyof StylePatch)[]>> = { note: ['bg', 'color', 'size', 'font', 'family', 'align', 'bold', 'italic'], image: ['filter', 'duo'] }
-const TYPED = Object.values(OWN).flat()
-const STYLE_KEYS: (keyof StylePatch)[] = ['corner', 'shadow', 'opacity', 'deco', ...TYPED]
+const STYLE_KEYS: (keyof StylePatch)[] = ['corner', 'shadow', 'opacity', 'deco', ...TYPED_KEYS]
 
 /** Ids added in messy mode, so their view plays the drop-in once. */
 export const justDropped = new Set<string>()
@@ -232,8 +230,8 @@ export const useBoard = create<State>()((set, get) => ({
       elements: s.elements.map((e) => {
         if (!ids.includes(e.id)) return e
         // type-specific fields (note color, image filter...) never land on other element types
-        const own = OWN[e.type] ?? []
-        const keep = Object.fromEntries(Object.entries(patch).filter(([k]) => !TYPED.includes(k as keyof StylePatch) || own.includes(k as keyof StylePatch)))
+        const own = ownStyleKeys(e.type)
+        const keep = Object.fromEntries(Object.entries(patch).filter(([k]) => !TYPED_KEYS.includes(k as keyof StylePatch) || own.includes(k as keyof StylePatch)))
         return { ...e, ...keep } as BoardElement
       }),
     })),

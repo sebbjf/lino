@@ -1,6 +1,9 @@
 import type { ColorMeta } from './colors.ts'
 import { fitView } from './geometry.ts'
-import { CORNERS, DECOS, FAMILY, IMAGE_FILTERS, MIN_OPACITY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES, PATTERNS, type BoardStyle } from './style.ts'
+import { CORNERS, DECOS, MIN_OPACITY, PATTERNS, type BoardStyle } from './style.ts'
+import { KINDS } from './kinds/index.ts'
+import { HEX, isNum, isStr, MAX_TEXT, oneOf } from './kinds/check.ts'
+import type { Kind } from './kinds/types.ts'
 import { externalize, IMAGE_ID, inline } from './images.ts'
 import { useBoard, type BoardElement, type View } from './store.ts'
 
@@ -8,28 +11,13 @@ import { useBoard, type BoardElement, type View } from './store.ts'
 // board files, shared boards and local saves. This is the only module that knows its shape.
 export type Snapshot = { elements: BoardElement[]; colorMeta: Record<string, ColorMeta>; board: BoardStyle }
 
-export const MAX_TEXT = 10_000
-const HEX = /^#[0-9a-f]{3,8}$/i
+export { MAX_TEXT }
 const DATA_IMAGE = /^data:image\/(png|jpeg|webp|gif);base64,/
-
-const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
-const isStr = (v: unknown, max = MAX_TEXT): v is string => typeof v === 'string' && v.length <= max
-const strList = (v: unknown, ok: (s: string) => boolean = () => true) =>
-  Array.isArray(v) ? v.filter((s): s is string => isStr(s, 200) && ok(s)).slice(0, 20) : []
-const isHttp = (v: unknown): v is string => {
-  try {
-    return isStr(v, 2048) && /^https?:$/.test(new URL(v).protocol)
-  } catch {
-    return false
-  }
-}
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 /** Same limits as the share API (`elementSchema` in apps/api/src/routes.ts; pinned by a test on each side). */
 const MAX_POS = 1e6
 const MAX_SIDE = 10_000
-
-const oneOf = <T extends string>(list: readonly T[], v: unknown): v is T => list.includes(v as T)
 
 /** Known style fields only; anything else is dropped. */
 function styleOf(e: Record<string, unknown>) {
@@ -38,27 +26,6 @@ function styleOf(e: Record<string, unknown>) {
     ...(typeof e.shadow === 'boolean' && { shadow: e.shadow }),
     ...(isNum(e.opacity) && { opacity: Math.min(1, Math.max(MIN_OPACITY, e.opacity)) }),
     ...(oneOf(DECOS, e.deco) && { deco: e.deco }),
-  }
-}
-
-function noteStyleOf(e: Record<string, unknown>) {
-  return {
-    ...(isStr(e.bg, 9) && HEX.test(e.bg) && { bg: e.bg }),
-    ...(isStr(e.color, 9) && HEX.test(e.color) && { color: e.color }),
-    ...(oneOf(NOTE_SIZES, e.size) && { size: e.size }),
-    ...(oneOf(NOTE_ALIGNS, e.align) && { align: e.align }),
-    ...(typeof e.bold === 'boolean' && { bold: e.bold }),
-    ...(typeof e.italic === 'boolean' && { italic: e.italic }),
-    ...(oneOf(NOTE_FONTS, e.font) && { font: e.font }),
-    ...(isStr(e.family, 60) && FAMILY.test(e.family) && { family: e.family }),
-  }
-}
-
-function imageStyleOf(e: Record<string, unknown>) {
-  const duo = Array.isArray(e.duo) && e.duo.length === 2 && e.duo.every((h) => isStr(h, 9) && HEX.test(h)) ? (e.duo as [string, string]) : null
-  return {
-    ...(oneOf(IMAGE_FILTERS, e.filter) && { filter: e.filter }),
-    ...(duo && { duo }),
   }
 }
 
@@ -91,34 +58,8 @@ function toElement(raw: unknown, local: boolean): BoardElement | null {
     rotation: isNum(e.rotation) ? e.rotation % 360 : 0,
     ...styleOf(e),
   }
-  switch (e.type) {
-    case 'image':
-      return isPicture(e.src) ? { ...box, type: 'image', src: e.src, colors: strList(e.colors, (s) => HEX.test(s)), ...imageStyleOf(e) } : null
-    case 'note':
-      // longer text is cut, not dropped: the share API refuses it and a whole note is worth more than its tail
-      return typeof e.text === 'string' ? { ...box, type: 'note', text: e.text.slice(0, MAX_TEXT), ...noteStyleOf(e) } : null
-    case 'color':
-      return isStr(e.hex, 9) && HEX.test(e.hex) ? { ...box, type: 'color', hex: e.hex } : null
-    case 'link': {
-      if (!isHttp(e.url)) return null
-      const ok = e.status === 'ok'
-      return {
-        ...box,
-        type: 'link',
-        url: e.url,
-        title: isStr(e.title, 500) ? e.title : null,
-        image: isPicture(e.image) ? e.image : null,
-        fonts: strList(e.fonts),
-        colors: strList(e.colors, (s) => HEX.test(s)),
-        // a link still loading when it was saved will never finish: the one place that rule lives
-        status: ok ? 'ok' : 'error',
-        missing: strList(e.missing),
-        ...(ok ? {} : { error: e.status === 'loading' ? 'Reading was interrupted.' : isStr(e.error, 300) ? e.error : 'Not read.' }),
-      }
-    }
-    default:
-      return null
-  }
+  const kind = KINDS[e.type as BoardElement['type']] as Kind<BoardElement['type']> | undefined
+  return kind?.parse(e, box, { isPicture }) ?? null
 }
 
 /** Parses a board file. Unusable elements are dropped and counted. */
