@@ -1,6 +1,6 @@
 # Element kinds as a module
 
-Status: ready-for-agent
+Status: done
 
 Origin: architecture review, candidate 4 ([overview](../architecture-review/spec.md)). Not grilled yet: the decisions below are proposals. Payoff is conditional on planning a fifth kind (types have not changed in recent history).
 

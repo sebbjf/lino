@@ -1,6 +1,6 @@
 # Quick capture
 
-Status: ready-for-agent
+Status: done
 
 Capture friction decides whether people stay.
 
