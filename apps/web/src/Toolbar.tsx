@@ -25,6 +25,7 @@ import {
   PipetteIcon,
   PlusSignIcon,
   RedoIcon,
+  Search01Icon,
   StickyNote01Icon,
   SwatchIcon,
   UndoIcon,
@@ -168,7 +169,7 @@ function LinkTool() {
 // hidden on a phone: the bar wraps there, and a divider at the end of a row reads as a stray mark
 const Divider = () => <Separator orientation="vertical" className="mx-1 h-5 self-center max-sm:hidden" />
 
-export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean; onTogglePalette: () => void }) {
+export function Toolbar({ paletteOpen, onTogglePalette, onOpenCommands }: { paletteOpen: boolean; onTogglePalette: () => void; onOpenCommands: () => void }) {
   const selectedIds = useBoard((s) => s.selectedIds)
   const selectedId = selectedIds.length === 1 ? selectedIds[0] : null
   const zoom = useBoard((s) => s.view.zoom)
@@ -294,6 +295,7 @@ export function Toolbar({ paletteOpen, onTogglePalette }: { paletteOpen: boolean
       <Divider />
       {!readOnly && <ArrangeMenu />}
       {!readOnly && <StyleMenu />}
+      <Tool label="Commands" icon={Search01Icon} shortcut="Ctrl+K" onClick={onOpenCommands} />
       <Tool label="Palette" icon={SwatchIcon} pressed={paletteOpen} onClick={onTogglePalette} />
       <FileMenu />
       {!readOnly && <ShareButton />}

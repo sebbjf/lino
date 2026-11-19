@@ -22,6 +22,7 @@ export function App() {
   const notice = useBoard((s) => s.notice)
   const readOnly = useBoard((s) => s.readOnly)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [commandsOpen, setCommandsOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   // on a custom background the empty-state text follows its contrast color, like the dots
   const ink = useBoard((s) => (s.board.bg && textOn(s.board.bg)) || undefined)
@@ -172,9 +173,9 @@ export function App() {
         <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-32 z-[60] flex justify-center">
           {notice && <p className="max-w-md rounded-2xl bg-foreground px-4 py-2 text-center text-sm text-background shadow-lg">{notice}</p>}
         </div>
-        <CommandMenu />
+        <CommandMenu open={commandsOpen} setOpen={setCommandsOpen} />
         {paletteOpen && <PalettePanel onClose={() => setPaletteOpen(false)} />}
-        <Toolbar paletteOpen={paletteOpen} onTogglePalette={() => setPaletteOpen((o) => !o)} />
+        <Toolbar onOpenCommands={() => setCommandsOpen(true)} paletteOpen={paletteOpen} onTogglePalette={() => setPaletteOpen((o) => !o)} />
       </main>
     </TooltipProvider>
   )
