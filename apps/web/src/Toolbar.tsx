@@ -1,5 +1,25 @@
 import {
+  AddSquareIcon,
+  AlignEndHorizontalIcon,
+  AlignEndVerticalIcon,
+  AlignHorizontalCenterIcon,
+  AlignHorizontalSpaceBetweenIcon,
+  AlignStartHorizontalIcon,
+  AlignStartVerticalIcon,
+  AlignVerticalCenterIcon,
+  AlignVerticalSpaceBetweenIcon,
+  ArtboardToolIcon,
+  ColorsIcon,
+  Copy01Icon,
+  Delete02Icon,
+  FolderUploadIcon,
+  FrameIcon,
+  GroupItemsIcon,
+  Heading01Icon,
   Image01Icon,
+  LayerBringForwardIcon,
+  LayerSendBackwardIcon,
+  Layers01Icon,
   Link01Icon,
   MinusSignIcon,
   PaintBoardIcon,
@@ -21,7 +41,8 @@ import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { normalizeHex } from './colors.ts'
 import { fitView, zoomAt } from './geometry.ts'
-import { addImages } from './image.ts'
+import { addImages, imageColors } from './image.ts'
+import { duplicate, frameSelection, group, remove, reorder, ungroup } from './selection.ts'
 import { addLink, asUrl } from './link.ts'
 import { FileMenu } from './FileMenu.tsx'
 import { ShareButton } from './ShareButton.tsx'
@@ -149,6 +170,95 @@ function LinkTool() {
 // hidden on a phone: the bar wraps there, and a divider at the end of a row reads as a stray mark
 const Divider = () => <Separator orientation="vertical" className="mx-1 h-5 self-center max-sm:hidden" />
 
+/** Less common things to add: a heading, a frame, a whole folder of images. */
+function AddMenu({ onFolder }: { onFolder: () => void }) {
+  const [open, setOpen] = useState(false)
+  const run = (fn: () => void) => () => {
+    setOpen(false)
+    fn()
+  }
+  const items: [string, IconSvgElement, () => void][] = [
+    ['Heading', Heading01Icon, () => useBoard.getState().add({ type: 'note', text: '', w: 480, h: 84, heading: true, bold: true })],
+    ['Frame', FrameIcon, () => useBoard.getState().add({ type: 'frame', title: '', w: 480, h: 320 })],
+    ['Import folder', FolderUploadIcon, onFolder],
+  ]
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <Tooltip>
+        <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="More to add" />} />}>
+          <HugeiconsIcon icon={AddSquareIcon} strokeWidth={1.8} />
+        </TooltipTrigger>
+        <TooltipContent>More to add</TooltipContent>
+      </Tooltip>
+      <PopoverContent side="top" sideOffset={12} className="w-52 gap-1 p-2">
+        {items.map(([label, icon, fn]) => (
+          <Button key={label} variant="ghost" className="justify-start gap-3 rounded-xl px-3" onClick={run(fn)}>
+            <HugeiconsIcon icon={icon} strokeWidth={1.8} />
+            {label}
+          </Button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+/** What you can do with the selection; floats over the main bar and only exists while something is selected. */
+function SelectionBar() {
+  const selectedIds = useBoard((s) => s.selectedIds)
+  const grouped = useBoard((s) => s.elements.some((e) => e.groupId && selectedIds.includes(e.id)))
+  const image = useBoard((s) => (selectedIds.length === 1 ? s.elements.find((e) => e.id === selectedIds[0]) : undefined)?.type === 'image')
+  const { align, distribute } = useBoard.getState()
+  const n = selectedIds.length
+  const one = n === 1 ? selectedIds[0] : null
+  if (!n) return null
+
+  const swatchesFromImage = () => {
+    const { elements, swatchRow, notify } = useBoard.getState()
+    const el = elements.find((e) => e.id === one)
+    if (el?.type !== 'image') return
+    imageColors(el.src).then(
+      (hexes) => swatchRow(el.id, hexes),
+      () => notify('Could not read the colors of that image.'),
+    )
+  }
+
+  return (
+    <div
+      role="toolbar"
+      aria-label="Selection tools"
+      onKeyDown={moveFocus}
+      className="flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-[1.75rem] border bg-card/90 p-1.5 shadow-soft backdrop-blur"
+    >
+      <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" onClick={() => duplicate(selectedIds)} />
+      {one && <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" onClick={() => reorder(one, 'forward')} />}
+      {one && <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" onClick={() => reorder(one, 'backward')} />}
+      <Tool label="Frame selection" icon={ArtboardToolIcon} shortcut="Ctrl+Alt+F" onClick={() => frameSelection(selectedIds)} />
+      {n > 1 && <Tool label="Group" icon={GroupItemsIcon} shortcut="Ctrl+G" onClick={() => group(selectedIds)} />}
+      {grouped && <Tool label="Ungroup" icon={Layers01Icon} shortcut="Ctrl+Shift+G" onClick={() => ungroup(selectedIds)} />}
+      {image && <Tool label="Swatches from image" icon={ColorsIcon} onClick={swatchesFromImage} />}
+      {n > 1 && (
+        <>
+          <Divider />
+          <Tool label="Align left" icon={AlignStartVerticalIcon} onClick={() => align(selectedIds, 'left')} />
+          <Tool label="Align centers horizontally" icon={AlignHorizontalCenterIcon} onClick={() => align(selectedIds, 'hcenter')} />
+          <Tool label="Align right" icon={AlignEndVerticalIcon} onClick={() => align(selectedIds, 'right')} />
+          <Tool label="Align top" icon={AlignStartHorizontalIcon} onClick={() => align(selectedIds, 'top')} />
+          <Tool label="Align middles vertically" icon={AlignVerticalCenterIcon} onClick={() => align(selectedIds, 'vcenter')} />
+          <Tool label="Align bottom" icon={AlignEndHorizontalIcon} onClick={() => align(selectedIds, 'bottom')} />
+          {n > 2 && (
+            <>
+              <Tool label="Distribute horizontally" icon={AlignHorizontalSpaceBetweenIcon} onClick={() => distribute(selectedIds, 'x')} />
+              <Tool label="Distribute vertically" icon={AlignVerticalSpaceBetweenIcon} onClick={() => distribute(selectedIds, 'y')} />
+            </>
+          )}
+        </>
+      )}
+      <Divider />
+      <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" onClick={() => remove(selectedIds)} />
+    </div>
+  )
+}
+
 export function Toolbar({ paletteOpen, onTogglePalette, onOpenCommands }: { paletteOpen: boolean; onTogglePalette: () => void; onOpenCommands: () => void }) {
   const zoom = useBoard((s) => s.view.zoom)
   const canUndo = useBoard(hasUndo)
@@ -156,6 +266,7 @@ export function Toolbar({ paletteOpen, onTogglePalette, onOpenCommands }: { pale
   const readOnly = useBoard((s) => s.readOnly)
   const { add, undo, redo } = useBoard.getState()
   const fileInput = useRef<HTMLInputElement>(null)
+  const folderInput = useRef<HTMLInputElement>(null)
 
   const zoomTo = (z: number) => {
     const { view, setView } = useBoard.getState()
@@ -168,6 +279,8 @@ export function Toolbar({ paletteOpen, onTogglePalette, onOpenCommands }: { pale
   }
 
   return (
+    <div className="fixed bottom-6 left-1/2 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col items-center gap-2">
+    {!readOnly && <SelectionBar />}
     <div
       id="board-tools"
       tabIndex={-1}
@@ -175,7 +288,7 @@ export function Toolbar({ paletteOpen, onTogglePalette, onOpenCommands }: { pale
       aria-label="Board tools"
       onKeyDown={moveFocus}
       // wraps onto more rows when the window is narrow, instead of scrolling sideways with no scrollbar: every tool stays in reach
-      className="fixed bottom-6 left-1/2 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-0.5 rounded-[1.75rem] border bg-card/90 p-1.5 shadow-soft backdrop-blur outline-none"
+      className="flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-[1.75rem] border bg-card/90 p-1.5 shadow-soft backdrop-blur outline-none"
     >
       {!readOnly && (
         <>
@@ -184,6 +297,19 @@ export function Toolbar({ paletteOpen, onTogglePalette, onOpenCommands }: { pale
           <Tool label="Add note" icon={StickyNote01Icon} onClick={() => add({ type: 'note', text: '', w: 220, h: 140 })} />
           <Tool label="Add color" icon={PaintBoardIcon} onClick={() => add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 })} />
           {EyeDropper && <Tool label="Pick a color from the screen" icon={PipetteIcon} onClick={pickColor} />}
+          <AddMenu onFolder={() => folderInput.current?.click()} />
+          <input
+            ref={folderInput}
+            type="file"
+            // @ts-expect-error webkitdirectory is not in React's input typings
+            webkitdirectory=""
+            multiple
+            hidden
+            onChange={(e) => {
+              addImages([...(e.target.files ?? [])].filter((f) => f.type.startsWith('image/')))
+              e.target.value = ''
+            }}
+          />
           <input
             ref={fileInput}
             type="file"
@@ -217,6 +343,7 @@ export function Toolbar({ paletteOpen, onTogglePalette, onOpenCommands }: { pale
       <Tool label="Palette" icon={SwatchIcon} pressed={paletteOpen} onClick={onTogglePalette} />
       <FileMenu />
       {!readOnly && <ShareButton />}
+    </div>
     </div>
   )
 }
