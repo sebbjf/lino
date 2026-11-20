@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent, type PointerEvent } from 'react'
+import { ContextMenu, type MenuAt } from './ContextMenu.tsx'
 import { drag, touches } from './drag.ts'
 import { ElementView } from './ElementView.tsx'
 import { boundsOf, zoomAt } from './geometry.ts'
@@ -18,6 +19,8 @@ export function Canvas() {
   const guides = useBoard((s) => s.guides)
   const board = useBoard((s) => s.board)
   const ref = useRef<HTMLDivElement>(null)
+  const [menu, setMenu] = useState<MenuAt | null>(null)
+  const closeMenu = useCallback(() => setMenu(null), [])
 
   // wheel pans, Ctrl/Cmd + wheel (and trackpad pinch) zooms; needs a non-passive listener
   useEffect(() => {
@@ -110,6 +113,17 @@ export function Canvas() {
     }
   }, [])
 
+  // right click: the selection's actions on an element, what to add on the empty board. Text fields keep the browser's own menu (copy, paste).
+  const onContextMenu = (e: MouseEvent) => {
+    if (readOnly || (e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return
+    e.preventDefault()
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-id]')?.dataset.id
+    const { select, selectedIds } = useBoard.getState()
+    if (id && !selectedIds.includes(id)) select(id)
+    else if (!id) select(null)
+    setMenu({ x: e.clientX, y: e.clientY, board: { x: (e.clientX - view.x) / view.zoom, y: (e.clientY - view.y) / view.zoom }, onElement: !!id })
+  }
+
   const onDrop = (e: DragEvent) => {
     e.preventDefault()
     if (useBoard.getState().readOnly) return
@@ -147,6 +161,7 @@ export function Canvas() {
       }}
       onPointerDownCapture={onTouchDownCapture}
       onPointerDown={onPointerDown}
+      onContextMenu={onContextMenu}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
     >
@@ -183,6 +198,7 @@ export function Canvas() {
           />
         ))}
       </div>
+      {menu && <ContextMenu at={menu} onClose={closeMenu} />}
     </div>
   )
 }

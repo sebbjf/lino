@@ -339,6 +339,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     <div
       ref={root}
       role="group"
+      data-id={el.id}
       tabIndex={0}
       aria-label={el.locked ? `${label(el)}, locked` : label(el)}
       aria-roledescription="board element"

@@ -1,6 +1,6 @@
 import {
   AlignHorizontalCenterIcon, ArtboardToolIcon, ColorsIcon, Copy01Icon, Delete02Icon, FolderUploadIcon, FrameIcon, GroupItemsIcon, Heading01Icon, Image01Icon,
-  Layers01Icon, LayerBringForwardIcon, LayerSendBackwardIcon, MinusSignIcon, PaintBoardIcon, PlusSignIcon, RedoIcon, StickyNote01Icon, UndoIcon,
+  Layers01Icon, LayerBringForwardIcon, LockIcon, Maximize01Icon, LayerSendBackwardIcon, MinusSignIcon, PaintBoardIcon, PlusSignIcon, RedoIcon, StickyNote01Icon, UndoIcon,
 } from '@hugeicons/core-free-icons'
 import type { IconSvgElement } from '@hugeicons/react'
 import { exportBoardFile, importBoardFile } from './boardFile.ts'
@@ -30,7 +30,8 @@ export type Command = {
   edit?: boolean
   /** hidden unless this holds for the current board */
   when?: (s: State) => boolean
-  run: () => void
+  /** `at` is a board point (where the context menu opened); without it things land mid-screen */
+  run: (at?: { x: number; y: number }) => void
 }
 
 const board = () => useBoard.getState()
@@ -71,10 +72,10 @@ const ALIGN = {
 } as const
 
 export const commands: Command[] = [
-  { id: 'add-note', label: 'Add note', keywords: 'sticky text create new', edit: true, run: () => board().add({ type: 'note', text: '', w: 220, h: 140 }) },
-  { id: 'add-heading', label: 'Add heading', keywords: 'title text create new', edit: true, run: () => board().add({ type: 'note', text: '', w: 480, h: 84, heading: true, bold: true }) },
-  { id: 'add-frame', label: 'Add frame', keywords: 'artboard section create new', edit: true, run: () => board().add({ type: 'frame', title: '', w: 480, h: 320 }) },
-  { id: 'add-color', label: 'Add color', keywords: 'swatch create new', edit: true, run: () => board().add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 }) },
+  { id: 'add-note', label: 'Add note', keywords: 'sticky text create new', edit: true, run: (at) => board().add({ type: 'note', text: '', w: 220, h: 140 }, at) },
+  { id: 'add-heading', label: 'Add heading', keywords: 'title text create new', edit: true, run: (at) => board().add({ type: 'note', text: '', w: 480, h: 84, heading: true, bold: true }, at) },
+  { id: 'add-frame', label: 'Add frame', keywords: 'artboard section create new', edit: true, run: (at) => board().add({ type: 'frame', title: '', w: 480, h: 320 }, at) },
+  { id: 'add-color', label: 'Add color', keywords: 'swatch create new', edit: true, run: (at) => board().add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 }, at) },
   { id: 'add-image', label: 'Add image', keywords: 'upload picture photo create new', edit: true, run: () => pickFiles(false) },
   { id: 'import-folder', label: 'Import folder', keywords: 'images directory upload', edit: true, run: () => pickFiles(true) },
   { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', edit: true, when: hasUndo, run: () => board().undo() },
@@ -189,7 +190,7 @@ export const groupOf = (c: Command) => c.group ?? (/^(add|import)/.test(c.id) ? 
 const ICONS: Record<string, IconSvgElement> = {
   'add-note': StickyNote01Icon, 'add-heading': Heading01Icon, 'add-frame': FrameIcon, 'add-color': PaintBoardIcon, 'add-image': Image01Icon, 'import-folder': FolderUploadIcon,
   undo: UndoIcon, redo: RedoIcon, duplicate: Copy01Icon, delete: Delete02Icon, forward: LayerBringForwardIcon, backward: LayerSendBackwardIcon,
-  'frame-selection': ArtboardToolIcon, swatches: ColorsIcon, group: GroupItemsIcon, ungroup: Layers01Icon, 'zoom-in': PlusSignIcon, 'zoom-out': MinusSignIcon, fit: ColorsIcon,
+  'frame-selection': ArtboardToolIcon, swatches: ColorsIcon, group: GroupItemsIcon, ungroup: Layers01Icon, lock: LockIcon, 'select-all': Maximize01Icon, 'zoom-in': PlusSignIcon, 'zoom-out': MinusSignIcon, fit: ColorsIcon,
 }
 export const iconOf = (c: Command) => ICONS[c.id] ?? AlignHorizontalCenterIcon
 
