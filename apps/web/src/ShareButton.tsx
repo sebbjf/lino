@@ -4,10 +4,10 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
-import { shareBoard } from './share.ts'
+import { shareBoard, TooBig } from './share.ts'
 import { useBoard } from './store.ts'
 
-type State = { step: 'idle' | 'busy' } | { step: 'done'; url: string; expiresAt: string } | { step: 'error'; error: string }
+type State = { step: 'idle' | 'busy' } | { step: 'confirm'; mb: string } | { step: 'done'; url: string; expiresAt: string } | { step: 'error'; error: string }
 
 /** Uploads only when the user confirms: the copy leaves the browser. */
 export function ShareButton() {
@@ -18,13 +18,14 @@ export function ShareButton() {
   const shared = useRef<unknown>(null)
   const field = useRef<HTMLInputElement>(null)
 
-  const create = async () => {
+  const create = async (shrink = false) => {
     setState({ step: 'busy' })
     shared.current = useBoard.getState().elements
     try {
-      setState({ step: 'done', ...(await shareBoard()) })
+      setState({ step: 'done', ...(await shareBoard(shrink)) })
     } catch (e) {
-      setState({ step: 'error', error: (e as Error).message })
+      // too big: say how much, and let the user decide before any image is touched
+      setState(e instanceof TooBig ? { step: 'confirm', mb: (e.bytes / 1024 / 1024).toFixed(1) } : { step: 'error', error: (e as Error).message })
     }
   }
 
@@ -57,8 +58,20 @@ export function ShareButton() {
             <Input ref={field} readOnly value={state.url} aria-label="Share link" onFocus={(e) => e.currentTarget.select()} />
             <Button onClick={() => copy(state.url)}>{copied ? 'Copied' : 'Copy'}</Button>
           </div>
+        ) : state.step === 'confirm' ? (
+          <>
+            <p className="text-sm">
+              This board is {state.mb} MB and the limit is 4 MB. Share a copy with smaller images? Your board stays as it is.
+            </p>
+            <div className="flex gap-2">
+              <Button onClick={() => create(true)}>Shrink and share</Button>
+              <Button variant="ghost" onClick={() => setState({ step: 'idle' })}>
+                Cancel
+              </Button>
+            </div>
+          </>
         ) : (
-          <Button onClick={create} disabled={state.step === 'busy'}>
+          <Button onClick={() => create()} disabled={state.step === 'busy'}>
             {state.step === 'busy' ? 'Creating link…' : 'Create link'}
           </Button>
         )}

@@ -1,4 +1,4 @@
-import { capturePortable, openSnapshot, parseSnapshot } from './snapshot.ts'
+import { capturePortable, openSnapshot, parseSnapshot, type Snapshot } from './snapshot.ts'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'
 /** Same as MAX_BOARD_BYTES in apps/api/src/routes.ts. */
@@ -14,12 +14,65 @@ async function call(path: string, init?: RequestInit) {
   return data
 }
 
-/** Uploads a fixed copy of the board and returns its read-only link. */
-export async function shareBoard(): Promise<{ url: string; expiresAt: string }> {
-  const body = JSON.stringify(await capturePortable()) // the recipient's parse settles any link still loading
+/** The board does not fit as it is; shrinking its images may fix that, but only the user decides. */
+export class TooBig extends Error {
+  constructor(readonly bytes: number) {
+    super('This board is too large to share.')
+  }
+}
+
+/** Progressively smaller copies of the pictures: longest side in px and WebP quality. */
+const LEVELS = [
+  { side: 1200, quality: 0.75 },
+  { side: 900, quality: 0.65 },
+  { side: 640, quality: 0.55 },
+]
+const size = (snap: Snapshot) => new Blob([JSON.stringify(snap)]).size
+
+/** A smaller copy of one data URL (never upscaled); the original if shrinking would not make it smaller. */
+async function shrinkPicture(src: string, { side, quality }: (typeof LEVELS)[number]) {
+  const bmp = await createImageBitmap(await (await fetch(src)).blob())
+  const scale = Math.min(1, side / Math.max(bmp.width, bmp.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bmp.width * scale)
+  canvas.height = Math.round(bmp.height * scale)
+  canvas.getContext('2d')!.drawImage(bmp, 0, 0, canvas.width, canvas.height)
+  bmp.close()
+  const out = canvas.toDataURL('image/webp', quality)
+  return out.length < src.length ? out : src
+}
+
+/** The first level whose copy fits in `limit` bytes, or null. The board on screen is never touched. */
+export async function fitSnapshot(snap: Snapshot, limit: number, shrink: (src: string, level: (typeof LEVELS)[number]) => Promise<string> = shrinkPicture) {
+  const isData = (s: unknown): s is string => typeof s === 'string' && s.startsWith('data:image/')
+  for (const level of LEVELS) {
+    const elements = await Promise.all(
+      snap.elements.map(async (e) => {
+        if (e.type === 'image' && isData(e.src)) return { ...e, src: await shrink(e.src, level).catch(() => e.src) }
+        if (e.type === 'link' && isData(e.image)) return { ...e, image: await shrink(e.image, level).catch(() => e.image) }
+        return e
+      }),
+    )
+    const copy = { ...snap, elements }
+    if (size(copy) <= limit) return copy
+  }
+  return null
+}
+
+/**
+ * Uploads a fixed copy of the board and returns its read-only link. Too big: throws TooBig, and only with
+ * `shrink: true` (the user agreed) are the uploaded copy's images made smaller.
+ */
+export async function shareBoard(shrink = false): Promise<{ url: string; expiresAt: string }> {
+  let snap: Snapshot = await capturePortable() // the recipient's parse settles any link still loading
   // the host refuses bigger requests before the API sees them, so say why here
-  if (new Blob([body]).size > MAX_SHARE_BYTES) throw new Error('This board is too large to share (limit 4 MB). Remove or shrink some images.')
-  const { id, expiresAt } = await call('/boards', { method: 'POST', headers: { 'content-type': 'application/json' }, body })
+  if (size(snap) > MAX_SHARE_BYTES) {
+    if (!shrink) throw new TooBig(size(snap))
+    const fit = await fitSnapshot(snap, MAX_SHARE_BYTES)
+    if (!fit) throw new Error('This board is too large to share even with smaller images (limit 4 MB). Remove some images.')
+    snap = fit
+  }
+  const { id, expiresAt } = await call('/boards', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(snap) })
   return { url: `${location.origin}/board/?s=${id}`, expiresAt }
 }
 
