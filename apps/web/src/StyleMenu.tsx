@@ -159,7 +159,7 @@ function Toggle({ label, on, onClick, children }: { label: string; on: boolean; 
   )
 }
 
-function ElementPanel({ ids }: { ids: string[] }) {
+function ElementPanel({ ids, wide }: { ids: string[]; wide: boolean }) {
   const elements = useBoard((s) => s.elements)
   const copied = useBoard((s) => s.copiedStyle)
   const { copyStyle, pasteStyle } = useBoard.getState()
@@ -188,7 +188,8 @@ function ElementPanel({ ids }: { ids: string[] }) {
   const fonts = boardFonts(elements).filter((f) => FAMILY.test(f))
 
   return (
-    <div className="flex flex-col gap-3 sm:block sm:columns-2 sm:gap-x-6 lg:columns-3 sm:[&>*]:mb-3 sm:[&>*]:break-inside-avoid">
+    // columns only in the wide panel; a mixed selection has the narrow one, and columns there would squeeze the controls together
+    <div className={`flex flex-col gap-3 ${wide ? 'sm:block sm:columns-2 sm:gap-x-6 lg:columns-3 sm:[&>*]:mb-3 sm:[&>*]:break-inside-avoid' : ''}`}>
       <div className="flex gap-1">
         <Button variant="outline" size="sm" className="flex-1" aria-keyshortcuts="Control+Alt+C" title="Ctrl+Alt+C" onClick={() => copyStyle(cur.id)}>
           Copy style
@@ -368,7 +369,7 @@ function BoardPanel() {
 /** If the open panel covers the selection, pans the view so the selection sits in the largest free area beside it. */
 function revealSelection() {
   const panel = [...document.querySelectorAll<HTMLElement>('[data-slot=popover-content]')].find((p) => p.textContent?.startsWith('Style'))
-  const { selectedIds, elements, view, setView } = useBoard.getState()
+  const { selectedIds, elements, view } = useBoard.getState()
   const sel = elements.filter((e) => selectedIds.includes(e.id))
   if (!panel || !sel.length) return
   const P = panel.getBoundingClientRect()
@@ -385,7 +386,24 @@ function revealSelection() {
   ].filter((a) => a.w > 0 && a.h > 0)
   const best = areas.sort((a, c) => c.w * c.h - a.w * a.h)[0]
   if (!best) return
-  setView({ ...view, x: view.x + best.x + best.w / 2 - (S.x + S.w / 2), y: view.y + best.y + best.h / 2 - (S.y + S.h / 2) })
+  glideTo({ x: view.x + best.x + best.w / 2 - (S.x + S.w / 2), y: view.y + best.y + best.h / 2 - (S.y + S.h / 2) })
+}
+
+/** Moves the view to `to` with an ease-out instead of a jump. Any other change to the view (a pan, a zoom) cancels it. */
+function glideTo(to: { x: number; y: number }, ms = 320) {
+  const { view: from, setView } = useBoard.getState()
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return setView({ ...from, ...to })
+  const t0 = performance.now()
+  let last = from
+  const frame = (now: number) => {
+    if (useBoard.getState().view !== last) return // the user moved the view meanwhile
+    const t = Math.min(1, (now - t0) / ms)
+    const e = 1 - (1 - t) ** 3
+    last = { ...from, x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e }
+    setView(last)
+    if (t < 1) requestAnimationFrame(frame)
+  }
+  requestAnimationFrame(frame)
 }
 
 /** Style of the selected elements, or of the board when nothing is selected. */
@@ -415,7 +433,7 @@ export function StyleMenu() {
       </Tooltip>
       <PopoverContent side="top" sideOffset={12} className={`w-72 gap-3 p-4 max-h-(--available-height) overflow-y-auto ${wide ? 'sm:w-[40rem] lg:w-[58rem] max-w-[calc(100vw-2rem)]' : ''}`}>
         <p className="text-lg font-semibold tracking-tight">{ids.length ? 'Style' : 'Board'}</p>
-        {ids.length ? <ElementPanel ids={ids} /> : <BoardPanel />}
+        {ids.length ? <ElementPanel ids={ids} wide={wide} /> : <BoardPanel />}
       </PopoverContent>
     </Popover>
   )
