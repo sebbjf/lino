@@ -30,7 +30,7 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | PNG export (canvas drawing of every element type) | [apps/web/src/png.ts](apps/web/src/png.ts) |
 | Share button, read-only link, loading a shared board | [ShareButton.tsx](apps/web/src/ShareButton.tsx), [share.ts](apps/web/src/share.ts) |
 | Adding links (URL detection, call to API) | [apps/web/src/link.ts](apps/web/src/link.ts) |
-| Link card look | [apps/web/src/LinkCard.tsx](apps/web/src/LinkCard.tsx) |
+| Link card look | [apps/web/src/kinds/LinkBody.tsx](apps/web/src/kinds/LinkBody.tsx); shared look values (note colours, padding, tape, pin) in [kinds/look.ts](apps/web/src/kinds/look.ts), also read by png.ts |
 | Color picker fields | [apps/web/src/ColorFields.tsx](apps/web/src/ColorFields.tsx) |
 | Landing page | [apps/web/src/landing.tsx](apps/web/src/landing.tsx) |
 | Theme tokens, fonts, global CSS | [apps/web/src/index.css](apps/web/src/index.css) |
@@ -53,8 +53,8 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | `src/Canvas.tsx` | The infinite canvas. Wheel pan, Ctrl+wheel zoom, background drag, file/link drop. Renders every `ElementView`. |
 | `src/frames.ts` | Pure logic: `frameContents` (geometric membership), `frameAround`, `expandGroups`, `layoutInFrame`. |
 | `src/selection.ts` | Selection commands shared by keyboard and toolbar: `targetOf`, `nudge`, `rotateStep`, `remove`, `duplicate`, `reorder`. One read-only check; one undo step each (a burst of nudges or rotations is one). |
-| `src/ElementView.tsx` | One element on the board: selection, drag, resize/rotate handles, keyboard actions, note editing, color popover. |
-| `src/LinkCard.tsx` | Content of a link element: cover, title, domain, fonts and colors. |
+| `src/ElementView.tsx` | One element on the board: position, selection, drag, resize/rotate handles, keyboard actions; picks the body of its kind. |
+| `src/kinds/*Body.tsx`, `useCrop.ts`, `ElementDeco.tsx`, `look.ts` | What each kind shows (frame, image, note, color, link), crop mode, tape/pin/lock badge, and the look values png.ts shares. |
 | `src/ColorFields.tsx` | Hex input + native color input used in the color popover. |
 | `src/Toolbar.tsx` | Floating bottom toolbar: add image/note/color, undo/redo, selected-element actions (duplicate, layers, delete), zoom, palette toggle. |
 | `src/PalettePanel.tsx` | Side panel with the board palette and fonts; copy as CSS or Tailwind. |
@@ -104,7 +104,6 @@ Two pages: `index.html` → `src/landing.tsx` (landing at `/`), `board/index.htm
 | --- | --- |
 | `README.md` | Overview, how to run, deploy steps, shortcuts. |
 | `docs/adr/` | Architecture decisions (0001: Vercel + Neon deploy). |
-| `PRD.md` | Product spec and v1 scope. |
 | `CLAUDE.md`, `docs/agents/` | Instructions for coding agents (issue tracker, labels, domain docs). |
 | `.scratch/<feature>/` | Local markdown issues. |
 | `.claude/launch.json` | Dev server configs (`web`, `api`). |

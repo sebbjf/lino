@@ -4,7 +4,7 @@ Date: 2026-11-15 · Status: accepted
 
 ## Context
 
-The PRD proposed the API in Docker on Render with managed Postgres, and the web on Vercel or Netlify. The goal for v1 is a demo that is free, easy to deploy and always available.
+The original plan proposed the API in Docker on Render with managed Postgres, and the web on Vercel or Netlify. The goal for v1 is a demo that is free, easy to deploy and always available.
 
 Render's free web services sleep after about 15 minutes without traffic, and the first request afterwards takes 30 to 60 seconds. Render's free Postgres expires after about 30 days. Neither fits "always available".
 

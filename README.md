@@ -7,7 +7,7 @@
 Drop images, links, notes and colors on a board. Lino pulls a palette and fonts out of them and exports CSS variables or a Tailwind v4 `@theme`.
 No account: the board lives in your browser.
 
-[**Try it live**](https://lino-nine.vercel.app) · [Product spec](PRD.md) · [Code map](MAP.md) · [API health](https://lino-api-seven.vercel.app/health)
+[**Try it live**](https://lino-nine.vercel.app) · [Code map](MAP.md) · [API health](https://lino-api-seven.vercel.app/health)
 
 <img src="docs/images/board.jpg" alt="A Lino board: eighteen photos arranged in the Mosaic layout" width="760" />
 
@@ -113,7 +113,7 @@ Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) for the full g
 
 1. Pick something from the [Roadmap](#roadmap), or open an issue to discuss an idea first.
 2. Read [MAP.md](MAP.md): it answers "I want to change X, which file?" and is the fastest way to get oriented. Keep it updated if you add, move or rename files.
-3. Skim [PRD.md](PRD.md) for what Lino is (and isn't) trying to do, and the [ADRs](docs/adr) for decisions already made.
+3. Skim the [ADRs](docs/adr) for decisions already made.
 4. Before opening a PR, make sure these pass:
 
    ```bash
@@ -137,8 +137,7 @@ lino/
 │   ├── web/      # landing + board (React, Vite)
 │   └── api/      # link reader + shared boards (Fastify)
 ├── docs/adr/     # architecture decision records
-├── MAP.md        # where things live in the code
-└── PRD.md        # product spec
+└── MAP.md        # where things live in the code
 ```
 
 ### Design decisions
@@ -150,7 +149,7 @@ lino/
 - **Fonts come only from a page's CSS.** Identifying typefaces from images is a hard problem and was left out. The UI says the font list may be incomplete.
 - **Shared images live inside the board's Postgres row** (data URLs in `jsonb`), not in object storage. One store, no upload flow; the 4 MB cap per board keeps it reasonable.
 - **Deployed on Vercel + Neon, not Render.** Render's free tier sleeps and its free Postgres expires. See [ADR 0001](docs/adr/0001-deploy-on-vercel-and-neon.md).
-- **PDF export was cut** in favor of PNG, as the PRD planned if time ran short.
+- **PDF export was cut** in favor of PNG.
 
 ## Board shortcuts
 

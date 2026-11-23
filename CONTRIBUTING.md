@@ -6,7 +6,7 @@ Thanks for wanting to help. This is a small project, so the process is light.
 
 - Open an issue first for anything bigger than a small fix, so we can agree on the approach.
 - Good first picks are in the [Roadmap](README.md#roadmap).
-- Read [MAP.md](MAP.md) ("I want to change X, which file?"), [PRD.md](PRD.md) (what Lino is and isn't) and the [ADRs](docs/adr) (decisions already made).
+- Read [MAP.md](MAP.md) ("I want to change X, which file?") and the [ADRs](docs/adr) (decisions already made).
 
 ## Setup
 
