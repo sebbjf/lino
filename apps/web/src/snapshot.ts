@@ -64,23 +64,10 @@ function toElement(raw: unknown, local: boolean): BoardElement | null {
   return kind?.parse(e, box, { isPicture }) ?? null
 }
 
-/** Parses a board file. Unusable elements are dropped and counted. */
-export function parseBoardFile(text: string) {
-  try {
-    return parseBoard(JSON.parse(text))
-  } catch {
-    throw new Error('That file is not a Lino board.')
-  }
-}
-
-/** Rebuilds a board from untrusted data: a file's JSON or a shared-board snapshot from the API. */
-export function parseBoard(raw: unknown) {
-  const data = raw as { elements?: unknown; colorMeta?: unknown; board?: unknown } | null
-  if (!data || !Array.isArray(data.elements)) throw new Error('That is not a Lino board.')
-  const elements = data.elements.map((e) => toElement(e, false)).filter((e) => e !== null)
+function colorMetaOf(raw: unknown): Record<string, ColorMeta> {
   const colorMeta: Record<string, ColorMeta> = {}
-  if (data.colorMeta && typeof data.colorMeta === 'object')
-    for (const [hex, m] of Object.entries(data.colorMeta as Record<string, Record<string, unknown> | null>)) {
+  if (raw && typeof raw === 'object')
+    for (const [hex, m] of Object.entries(raw as Record<string, Record<string, unknown> | null>)) {
       if (!HEX.test(hex) || !m || typeof m !== 'object') continue
       colorMeta[hex.toLowerCase()] = {
         ...(isStr(m.name, 60) && { name: m.name }),
@@ -89,7 +76,7 @@ export function parseBoard(raw: unknown) {
         ...(isNum(m.order) && { order: m.order }),
       }
     }
-  return { elements, colorMeta, board: boardStyleOf(data.board), skipped: data.elements.length - elements.length }
+  return colorMeta
 }
 
 /** Rebuilds a snapshot from untrusted data (a file, the share API, or this browser's own storage). Unusable elements are dropped and counted. */
@@ -97,18 +84,7 @@ export function parseSnapshot(raw: unknown, local = false): Snapshot & { skipped
   const data = raw as { elements?: unknown; colorMeta?: unknown; board?: unknown } | null
   if (!data || !Array.isArray(data.elements)) throw new Error('That is not a Lino board.')
   const elements = data.elements.map((e) => toElement(e, local)).filter((e) => e !== null)
-  const colorMeta: Record<string, ColorMeta> = {}
-  if (data.colorMeta && typeof data.colorMeta === 'object')
-    for (const [hex, m] of Object.entries(data.colorMeta as Record<string, Record<string, unknown> | null>)) {
-      if (!HEX.test(hex) || !m || typeof m !== 'object') continue
-      colorMeta[hex.toLowerCase()] = {
-        ...(isStr(m.name, 60) && { name: m.name }),
-        ...(typeof m.pinned === 'boolean' && { pinned: m.pinned }),
-        ...(typeof m.hidden === 'boolean' && { hidden: m.hidden }),
-        ...(isNum(m.order) && { order: m.order }),
-      }
-    }
-  return { elements, colorMeta, board: boardStyleOf(data.board), skipped: data.elements.length - elements.length }
+  return { elements, colorMeta: colorMetaOf(data.colorMeta), board: boardStyleOf(data.board), skipped: data.elements.length - elements.length }
 }
 
 /** Parses the text of a board file. */

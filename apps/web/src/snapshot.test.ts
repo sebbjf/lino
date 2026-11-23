@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest'
-import { captureSnapshot, openSnapshot, parseSnapshot as parseBoard, parseSnapshotText as parseBoardFile } from './snapshot.ts'
+import { captureSnapshot, openSnapshot, parseSnapshot, parseSnapshotText } from './snapshot.ts'
 import { useBoard } from './store.ts'
 
 vi.stubGlobal('innerWidth', 1000)
@@ -7,7 +7,7 @@ vi.stubGlobal('innerHeight', 800)
 
 const box = { x: 0, y: 0, w: 10, h: 10, rotation: 0 }
 
-test('parseBoardFile keeps valid elements, drops unsafe ones and unknown fields', () => {
+test('parseSnapshotText keeps valid elements, drops unsafe ones and unknown fields', () => {
   const file = JSON.stringify({
     app: 'lino',
     version: 1,
@@ -21,7 +21,7 @@ test('parseBoardFile keeps valid elements, drops unsafe ones and unknown fields'
     ],
     colorMeta: { '#ABC': { name: 'sky', pinned: true, evil: 1 }, notahex: { name: 'x' } },
   })
-  const { elements, colorMeta, skipped } = parseBoardFile(file)
+  const { elements, colorMeta, skipped } = parseSnapshotText(file)
   expect(elements.map((e) => e.type)).toEqual(['note', 'color', 'link'])
   expect(skipped).toBe(3)
   expect(elements[0]).not.toHaveProperty('extra')
@@ -30,25 +30,25 @@ test('parseBoardFile keeps valid elements, drops unsafe ones and unknown fields'
   expect(colorMeta).toEqual({ '#abc': { name: 'sky', pinned: true } })
 })
 
-test('parseBoardFile rejects files that are not boards', () => {
-  expect(() => parseBoardFile('not json')).toThrow('not a Lino board')
-  expect(() => parseBoardFile('{"foo":1}')).toThrow('not a Lino board')
-  expect(() => parseBoardFile('null')).toThrow('not a Lino board')
+test('parseSnapshotText rejects files that are not boards', () => {
+  expect(() => parseSnapshotText('not json')).toThrow('not a Lino board')
+  expect(() => parseSnapshotText('{"foo":1}')).toThrow('not a Lino board')
+  expect(() => parseSnapshotText('null')).toThrow('not a Lino board')
 })
 
-test('parseBoardFile keeps valid note text styles and drops bad ones', () => {
+test('parseSnapshotText keeps valid note text styles and drops bad ones', () => {
   const file = JSON.stringify({
     elements: [
       { ...box, type: 'note', text: 'a', color: '#112233', align: 'center', bold: true, italic: true, size: 'xl' },
       { ...box, type: 'note', text: 'b', color: 'red', align: 'justify', bold: 'yes', italic: 1 },
     ],
   })
-  const { elements } = parseBoardFile(file)
+  const { elements } = parseSnapshotText(file)
   expect(elements[0]).toMatchObject({ color: '#112233', align: 'center', bold: true, italic: true, size: 'xl' })
   for (const k of ['color', 'align', 'bold', 'italic']) expect(elements[1]).not.toHaveProperty(k)
 })
 
-test('parseBoardFile keeps valid style fields and the board style, drops bad ones', () => {
+test('parseSnapshotText keeps valid style fields and the board style, drops bad ones', () => {
   const file = JSON.stringify({
     elements: [
       { ...box, type: 'note', text: 'a', bg: '#fff3b0', size: 'lg', font: 'serif', family: 'Space Grotesk', corner: 'round', shadow: false, opacity: 0.05 },
@@ -57,18 +57,18 @@ test('parseBoardFile keeps valid style fields and the board style, drops bad one
     ],
     board: { bg: '#1e3a5f', pattern: 'grid', messy: true, extra: 1 },
   })
-  const { elements, board } = parseBoardFile(file)
+  const { elements, board } = parseSnapshotText(file)
   expect(elements[0]).toMatchObject({ bg: '#fff3b0', size: 'lg', font: 'serif', family: 'Space Grotesk', corner: 'round', shadow: false, opacity: 0.2 })
   for (const k of ['bg', 'size', 'corner', 'shadow', 'family']) expect(elements[1]).not.toHaveProperty(k)
   expect(elements[2]).not.toHaveProperty('bg')
   expect(board).toEqual({ bg: '#1e3a5f', pattern: 'grid', messy: true })
   expect(elements[2]).toMatchObject({ deco: 'pin' })
-  expect(parseBoardFile(JSON.stringify({ elements: [] })).board).toEqual({})
+  expect(parseSnapshotText(JSON.stringify({ elements: [] })).board).toEqual({})
 })
 
-test('parseBoardFile keeps image filters only when valid', () => {
+test('parseSnapshotText keeps image filters only when valid', () => {
   const src = 'data:image/png;base64,AA=='
-  const { elements } = parseBoardFile(
+  const { elements } = parseSnapshotText(
     JSON.stringify({
       elements: [
         { ...box, type: 'image', src, filter: 'duotone', duo: ['#102030', '#f0e0d0'] },
@@ -82,9 +82,9 @@ test('parseBoardFile keeps image filters only when valid', () => {
   expect(elements[1]).not.toHaveProperty('duo')
 })
 
-test('parseBoard (shared snapshots too) drops unparseable links and keeps boxes within limits', () => {
+test('parseSnapshot (shared snapshots too) drops unparseable links and keeps boxes within limits', () => {
   const link = { type: 'link', title: null, image: null, fonts: [], colors: [], status: 'ok', missing: [] }
-  const { elements, colorMeta } = parseBoard({
+  const { elements, colorMeta } = parseSnapshot({
     elements: [
       { ...box, ...link, url: 'https://' },
       { ...box, type: 'color', hex: '#abc', x: 1e308, y: -1e308, w: 1e9 },
@@ -97,7 +97,7 @@ test('parseBoard (shared snapshots too) drops unparseable links and keeps boxes 
 })
 
 test('limits match the share API (pinned in apps/api/src/routes.test.ts)', () => {
-  const { elements } = parseBoard({
+  const { elements } = parseSnapshot({
     elements: [{ ...box, type: 'note', text: 'x'.repeat(10_001), x: -1e9, y: 1e9, w: 0.5, h: 1e9 }],
   })
   expect(elements[0]).toMatchObject({ x: -1e6, y: 1e6, w: 1, h: 10_000 })
@@ -105,7 +105,7 @@ test('limits match the share API (pinned in apps/api/src/routes.test.ts)', () =>
 })
 
 test('a link still loading comes back as an interrupted error', () => {
-  const { elements } = parseBoard({
+  const { elements } = parseSnapshot({
     elements: [{ ...box, type: 'link', url: 'https://example.com/', title: null, image: null, fonts: [], colors: [], status: 'loading', missing: [] }],
   })
   expect(elements[0]).toMatchObject({ status: 'error', error: 'Reading was interrupted.' })
@@ -121,7 +121,7 @@ const expected = { types: ['note', 'color'], colorMeta: { '#abc': { pinned: true
 
 test('open replace: round-trips as one undo step', async () => {
   reset()
-  await openSnapshot(parseBoard(JSON.parse(JSON.stringify(sample))), 'replace')
+  await openSnapshot(parseSnapshot(JSON.parse(JSON.stringify(sample))), 'replace')
   expect(same()).toEqual(expected)
   expect(useBoard.getState().past).toHaveLength(1)
 })
@@ -129,7 +129,7 @@ test('open replace: round-trips as one undo step', async () => {
 test('open new: round-trips as another board with a clean history', async () => {
   reset()
   useBoard.setState({ selectedIds: ['x'], past: [{} as never] })
-  await openSnapshot(parseBoard(sample), 'new')
+  await openSnapshot(parseSnapshot(sample), 'new')
   const s = useBoard.getState()
   expect(same()).toEqual(expected)
   expect(s.boards).toHaveLength(2)
@@ -140,7 +140,7 @@ test('open new: round-trips as another board with a clean history', async () => 
 test('open readonly: round-trips with a clean history and keeps the board id', async () => {
   reset()
   useBoard.setState({ past: [{} as never] })
-  await openSnapshot(parseBoard(sample), 'readonly')
+  await openSnapshot(parseSnapshot(sample), 'readonly')
   const s = useBoard.getState()
   expect(same()).toEqual(expected)
   expect([s.readOnly, s.boardId, s.past]).toEqual([true, 'a', []])
@@ -155,12 +155,12 @@ test('lock, flip and crop survive a round trip; a bad crop is clamped or dropped
       { ...box, type: 'note', text: 'n', locked: true },
     ],
   })
-  const { elements } = parseBoardFile(file)
+  const { elements } = parseSnapshotText(file)
   expect(elements[0]).toMatchObject({ locked: true, flipX: true, crop: { x: 0.5, y: 0, w: 0.5, h: 0.5 } })
   expect(elements[0]).not.toHaveProperty('flipY')
   for (const k of ['locked', 'crop']) expect(elements[1]).not.toHaveProperty(k)
   expect(elements[2]).toMatchObject({ locked: true })
-  const again = parseBoardFile(JSON.stringify({ elements }))
+  const again = parseSnapshotText(JSON.stringify({ elements }))
   expect(again.elements.map(({ id, ...e }) => e)).toEqual(elements.map(({ id, ...e }) => e))
 })
 
@@ -173,11 +173,11 @@ test('frames, groupId and headings survive a round trip, bad values are dropped'
       { ...box, type: 'note', text: 'n', heading: 'yes', groupId: 7 },
     ],
   })
-  const { elements, skipped } = parseBoardFile(file)
+  const { elements, skipped } = parseSnapshotText(file)
   expect(skipped).toBe(1)
   expect(elements[0]).toMatchObject({ type: 'frame', title: 'Moods', groupId: 'g1' })
   expect(elements[1]).toMatchObject({ heading: true, groupId: 'g1' })
   for (const k of ['heading', 'groupId']) expect(elements[2]).not.toHaveProperty(k)
-  const again = parseBoardFile(JSON.stringify({ elements }))
+  const again = parseSnapshotText(JSON.stringify({ elements }))
   expect(again.elements.map(({ id, ...e }) => e)).toEqual(elements.map(({ id, ...e }) => e))
 })
