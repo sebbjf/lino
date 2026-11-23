@@ -6,7 +6,7 @@ export type Box = Omit<Of<'color'>, 'type' | 'hex'>
 /** `isPicture`: whether a string may be an element's picture (data URL, or an image id on a local save). */
 export type ParseCtx = { isPicture: (v: unknown) => v is string }
 
-/** Everything that varies per element type on the data side. Renderers (ElementView, png.ts) stay outside. */
+/** Everything that varies per element type on the data side. Renderers stay outside: the bodies (kinds/*Body.tsx) and png.ts, which share their look values through look.ts. */
 export type Kind<T extends BoardElement['type']> = {
   label: string
   /** Style fields only this kind has (the rest are shared by all). */

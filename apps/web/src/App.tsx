@@ -6,17 +6,15 @@ import { Canvas } from './Canvas.tsx'
 import { SettingsMenu } from './SettingsMenu.tsx'
 import { PalettePanel } from './PalettePanel.tsx'
 import { normalizeHex } from './colors.ts'
-import { fitView } from './geometry.ts'
+import { arrowDelta, runCommand, SIZE } from './commands.ts'
 import { addImages } from './image.ts'
 import { addLink, asUrl } from './link.ts'
 import { captureSnapshot } from './snapshot.ts'
-import { duplicate, frameSelection, group, nudge, remove, rotateStep, ungroup } from './selection.ts'
+import { nudge } from './selection.ts'
 import { saveAsLocalBoard } from './storage.ts'
 import { useBoard } from './store.ts'
 import { textOn } from './style.ts'
 import { Toolbar } from './Toolbar.tsx'
-
-const ARROWS: Record<string, [number, number] | undefined> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
 
 export function App() {
   const empty = useBoard((s) => s.elements.length === 0)
@@ -38,9 +36,9 @@ export function App() {
       const url = text && asUrl(text)
       const hex = text && /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(text) ? normalizeHex(text) : null
       if (files.length) addImages(files)
-      else if (hex) useBoard.getState().add({ type: 'color', hex, w: 140, h: 140 })
+      else if (hex) useBoard.getState().add({ type: 'color', hex, ...SIZE.color })
       else if (url) addLink(url)
-      else if (text) useBoard.getState().add({ type: 'note', text, w: 240, h: 160 })
+      else if (text) useBoard.getState().add({ type: 'note', text, ...SIZE.pastedText })
       else return
       e.preventDefault()
     }
@@ -56,35 +54,29 @@ export function App() {
       // after Ctrl+A or a selection box nothing has focus; Delete, Escape and the arrows still act on the selection
       if (t === document.body && !e.ctrlKey && !e.metaKey) {
         const { selectedIds, select } = useBoard.getState()
-        const arrow = ARROWS[e.key]
-        if (e.key === '1') {
-          const { elements: all, setView } = useBoard.getState()
-          if (all.length) setView(fitView(all, innerWidth, innerHeight))
-          return
-        }
-        if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length) remove(selectedIds)
+        const arrow = arrowDelta(e.key, e.shiftKey ? 10 : 1)
+        if (e.key === '1') runCommand('fit')
+        else if (e.key === 'Delete' || e.key === 'Backspace') runCommand('delete')
         else if (e.key === 'Escape') select(null)
         else if (arrow && !e.altKey && selectedIds.length) {
-          const step = e.shiftKey ? 10 : 1
-          nudge(selectedIds, arrow[0] * step, arrow[1] * step)
+          nudge(selectedIds, ...arrow)
           e.preventDefault()
         } else if (e.key.toLowerCase() === 'r' && !e.altKey && selectedIds.length) {
-          rotateStep(selectedIds, e.shiftKey ? -1 : 1)
+          runCommand(e.shiftKey ? 'rotate-ccw' : 'rotate-cw')
           e.preventDefault()
         }
         return
       }
       if (!(e.ctrlKey || e.metaKey)) return
       const key = e.key.toLowerCase()
-      const { undo, redo, readOnly, elements, selectMany, selectedIds } = useBoard.getState()
-      if (key === 'a' && !readOnly) selectMany(elements.map((el) => el.id))
+      if (key === 'a') runCommand('select-all')
       // a focused element duplicates by itself (ElementView); this covers a selection with no focus
-      else if (key === 'd' && t === document.body && selectedIds.length) duplicate(selectedIds)
+      else if (key === 'd' && t === document.body) runCommand('duplicate')
       // a focused element handles these itself (ElementView)
-      else if (key === 'g' && t === document.body) (e.shiftKey ? ungroup : group)(selectedIds)
-      else if (e.altKey && e.code === 'KeyF' && t === document.body) frameSelection(selectedIds)
-      else if (key === 'z' && !e.shiftKey) undo()
-      else if ((key === 'z' && e.shiftKey) || key === 'y') redo()
+      else if (key === 'g' && t === document.body) runCommand(e.shiftKey ? 'ungroup' : 'group')
+      else if (e.altKey && e.code === 'KeyF' && t === document.body) runCommand('frame-selection')
+      else if (key === 'z' && !e.shiftKey) runCommand('undo')
+      else if ((key === 'z' && e.shiftKey) || key === 'y') runCommand('redo')
       else return
       e.preventDefault()
     }

@@ -15,7 +15,8 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { fitView, LAYOUTS, type Layout } from './geometry.ts'
+import { command, selectedKind } from './commands.ts'
+import { LAYOUTS, type Layout } from './geometry.ts'
 import { useBoard } from './store.ts'
 
 const INFO: Record<Layout, { label: string; hint: string; icon: IconSvgElement }> = {
@@ -37,17 +38,14 @@ export function ArrangeMenu() {
   const count = useBoard((s) => s.elements.length)
   const [open, setOpen] = useState(false)
   // one frame selected: its contents are arranged inside it
-  const inFrame = useBoard((s) => s.selectedIds.length === 1 && s.elements.find((e) => e.id === s.selectedIds[0])?.type === 'frame')
+  const inFrame = useBoard((s) => selectedKind(s) === 'frame')
   const whole = selectedIds.length < 2 && !inFrame
   const target = inFrame ? 'frame contents' : whole ? 'board' : `${selectedIds.length} selected`
   // disabled, not hidden: the toolbar keeps its shape
   const disabled = !inFrame && ((whole && count < 2) || selectedIds.length === 1)
 
   const run = (mode: Layout) => {
-    const { arrange, elements, setView } = useBoard.getState()
-    arrange(whole ? elements.map((e) => e.id) : selectedIds, mode)
-    // a whole-board layout can land off screen, so frame it
-    if (whole) setView(fitView(useBoard.getState().elements, innerWidth, innerHeight))
+    command(`layout-${mode}`).run()
     setOpen(false)
   }
 

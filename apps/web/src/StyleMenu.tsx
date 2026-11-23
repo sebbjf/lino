@@ -7,9 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { boardFonts, buildPalette } from './colors.ts'
 import { cropBox, FULL } from './crop.ts'
-import { boundsOf } from './geometry.ts'
 import { toggleLock } from './selection.ts'
 import { useBoard, type StylePatch } from './store.ts'
+import { PANEL_LAYOUT_MS, revealSelection } from './viewport.ts'
 import { CORNERS, DECOS, FAMILY, GOOGLE_FONTS, MIN_OPACITY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES, PATTERNS, STICKY_COLORS, loadFamily, loadFontPreviews, DEFAULT_DUO, IMAGE_FILTERS, type Pattern } from './style.ts'
 
 const NAMES: Record<string, string> = {
@@ -366,46 +366,6 @@ function BoardPanel() {
   )
 }
 
-/** If the open panel covers the selection, pans the view so the selection sits in the largest free area beside it. */
-function revealSelection() {
-  const panel = [...document.querySelectorAll<HTMLElement>('[data-slot=popover-content]')].find((p) => p.textContent?.startsWith('Style'))
-  const { selectedIds, elements, view } = useBoard.getState()
-  const sel = elements.filter((e) => selectedIds.includes(e.id))
-  if (!panel || !sel.length) return
-  const P = panel.getBoundingClientRect()
-  const b = boundsOf(sel)
-  const S = { x: b.x * view.zoom + view.x, y: b.y * view.zoom + view.y, w: b.w * view.zoom, h: b.h * view.zoom }
-  const m = 16
-  if (S.x + S.w < P.left - m || S.x > P.right + m || S.y + S.h < P.top - m || S.y > P.bottom + m) return
-  // free areas: above the panel and either side of it (keeping clear of the top-left logo row)
-  const top = 64
-  const areas = [
-    { x: 0, y: top, w: innerWidth, h: P.top - top - m },
-    { x: 0, y: top, w: P.left - m, h: innerHeight - top },
-    { x: P.right + m, y: top, w: innerWidth - P.right - m, h: innerHeight - top },
-  ].filter((a) => a.w > 0 && a.h > 0)
-  const best = areas.sort((a, c) => c.w * c.h - a.w * a.h)[0]
-  if (!best) return
-  glideTo({ x: view.x + best.x + best.w / 2 - (S.x + S.w / 2), y: view.y + best.y + best.h / 2 - (S.y + S.h / 2) })
-}
-
-/** Moves the view to `to` with an ease-out instead of a jump. Any other change to the view (a pan, a zoom) cancels it. */
-function glideTo(to: { x: number; y: number }, ms = 320) {
-  const { view: from, setView } = useBoard.getState()
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return setView({ ...from, ...to })
-  const t0 = performance.now()
-  let last = from
-  const frame = (now: number) => {
-    if (useBoard.getState().view !== last) return // the user moved the view meanwhile
-    const t = Math.min(1, (now - t0) / ms)
-    const e = 1 - (1 - t) ** 3
-    last = { ...from, x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e }
-    setView(last)
-    if (t < 1) requestAnimationFrame(frame)
-  }
-  requestAnimationFrame(frame)
-}
-
 /** Style of the selected elements, or of the board when nothing is selected. */
 export function StyleMenu() {
   const ids = useBoard((s) => s.selectedIds)
@@ -422,7 +382,7 @@ export function StyleMenu() {
       onOpenChange={(o) => {
         setOpen(o)
         // once the panel is laid out, move the selection out from under it
-        if (o) setTimeout(revealSelection, 150)
+        if (o) setTimeout(revealSelection, PANEL_LAYOUT_MS)
       }}
     >
       <Tooltip>
@@ -431,7 +391,7 @@ export function StyleMenu() {
         </TooltipTrigger>
         <TooltipContent>Style the {target}</TooltipContent>
       </Tooltip>
-      <PopoverContent side="top" sideOffset={12} className={`w-72 gap-3 p-4 max-h-(--available-height) overflow-y-auto ${wide ? 'sm:w-[40rem] lg:w-[58rem] max-w-[calc(100vw-2rem)]' : ''}`}>
+      <PopoverContent data-panel="style" side="top" sideOffset={12} className={`w-72 gap-3 p-4 max-h-(--available-height) overflow-y-auto ${wide ? 'sm:w-[40rem] lg:w-[58rem] max-w-[calc(100vw-2rem)]' : ''}`}>
         <p className="text-lg font-semibold tracking-tight">{ids.length ? 'Style' : 'Board'}</p>
         {ids.length ? <ElementPanel ids={ids} wide={wide} /> : <BoardPanel />}
       </PopoverContent>

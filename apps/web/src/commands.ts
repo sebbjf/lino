@@ -1,10 +1,11 @@
 import {
-  AlignHorizontalCenterIcon, ArtboardToolIcon, ColorsIcon, Copy01Icon, Delete02Icon, FolderUploadIcon, FrameIcon, GroupItemsIcon, Heading01Icon, Image01Icon,
+  AlignEndHorizontalIcon, AlignEndVerticalIcon, AlignHorizontalCenterIcon, AlignHorizontalSpaceBetweenIcon, AlignStartHorizontalIcon, AlignStartVerticalIcon, AlignVerticalCenterIcon,
+  AlignVerticalSpaceBetweenIcon, ArtboardToolIcon, ColorsIcon, Copy01Icon, Delete02Icon, FolderUploadIcon, FrameIcon, GroupItemsIcon, Heading01Icon, Image01Icon,
   Layers01Icon, LayerBringForwardIcon, LockIcon, Maximize01Icon, LayerSendBackwardIcon, MinusSignIcon, PaintBoardIcon, PlusSignIcon, RedoIcon, StickyNote01Icon, UndoIcon,
 } from '@hugeicons/core-free-icons'
 import type { IconSvgElement } from '@hugeicons/react'
 import { exportBoardFile, importBoardFile } from './boardFile.ts'
-import { fitView, LAYOUTS, zoomAt, type Layout } from './geometry.ts'
+import { LAYOUTS, type Layout } from './geometry.ts'
 import { addImages, imageColors } from './image.ts'
 import { downloadPng } from './png.ts'
 import { rotateStep } from './selection.ts'
@@ -12,6 +13,7 @@ import { useSettings } from './settings.ts'
 import { switchBoard } from './storage.ts'
 import { duplicate, frameSelection, group, remove, reorder, toggleLock, ungroup } from './selection.ts'
 import { hasUndo, useBoard } from './store.ts'
+import { centerOn, fitAll, zoomTo } from './viewport.ts'
 
 // Everything the command menu (Ctrl/Cmd+K) can do. Each entry reuses the same functions as the toolbar and the keys.
 
@@ -34,10 +36,30 @@ export type Command = {
   run: (at?: { x: number; y: number }) => void
 }
 
+/** Default sizes of what gets added, shared by the toolbar, the menus and paste. */
+export const SIZE = {
+  note: { w: 220, h: 140 },
+  heading: { w: 480, h: 84 },
+  frame: { w: 480, h: 320 },
+  color: { w: 140, h: 140 },
+  pastedText: { w: 240, h: 160 },
+}
+export const DEFAULT_SWATCH = '#d6c7b4'
+
+const ARROWS: Record<string, [number, number] | undefined> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }
+/** [dx, dy] for an arrow key moved by `step`, or undefined for any other key. Shared by nudging and Alt+arrow resizing. */
+export const arrowDelta = (key: string, step: number): [number, number] | undefined => {
+  const d = ARROWS[key]
+  return d && [d[0] * step, d[1] * step]
+}
+
 const board = () => useBoard.getState()
 const sel = (n: number) => (s: State) => s.selectedIds.length >= n
 const ids = () => board().selectedIds
-const isFrame = (s: State) => s.selectedIds.length === 1 && s.elements.find((e) => e.id === s.selectedIds[0])?.type === 'frame'
+/** The element type when exactly one element is selected. */
+export const selectedKind = (s: State) => (s.selectedIds.length === 1 ? s.elements.find((e) => e.id === s.selectedIds[0])?.type : undefined)
+const isFrame = (s: State) => selectedKind(s) === 'frame'
+const isImage = (s: State) => selectedKind(s) === 'image'
 
 function pickJson() {
   const input = document.createElement('input')
@@ -57,11 +79,6 @@ function pickFiles(directory: boolean) {
   input.click()
 }
 
-function zoomTo(z: number) {
-  const { view, setView } = board()
-  setView(zoomAt(view, innerWidth / 2, innerHeight / 2, z))
-}
-
 const ALIGN = {
   left: 'Align left',
   hcenter: 'Align centers horizontally',
@@ -72,10 +89,10 @@ const ALIGN = {
 } as const
 
 export const commands: Command[] = [
-  { id: 'add-note', label: 'Add note', keywords: 'sticky text create new', edit: true, run: (at) => board().add({ type: 'note', text: '', w: 220, h: 140 }, at) },
-  { id: 'add-heading', label: 'Add heading', keywords: 'title text create new', edit: true, run: (at) => board().add({ type: 'note', text: '', w: 480, h: 84, heading: true, bold: true }, at) },
-  { id: 'add-frame', label: 'Add frame', keywords: 'artboard section create new', edit: true, run: (at) => board().add({ type: 'frame', title: '', w: 480, h: 320 }, at) },
-  { id: 'add-color', label: 'Add color', keywords: 'swatch create new', edit: true, run: (at) => board().add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 }, at) },
+  { id: 'add-note', label: 'Add note', keywords: 'sticky text create new', edit: true, run: (at) => board().add({ type: 'note', text: '', ...SIZE.note }, at) },
+  { id: 'add-heading', label: 'Add heading', keywords: 'title text create new', edit: true, run: (at) => board().add({ type: 'note', text: '', ...SIZE.heading, heading: true, bold: true }, at) },
+  { id: 'add-frame', label: 'Add frame', keywords: 'artboard section create new', edit: true, run: (at) => board().add({ type: 'frame', title: '', ...SIZE.frame }, at) },
+  { id: 'add-color', label: 'Add color', keywords: 'swatch create new', edit: true, run: (at) => board().add({ type: 'color', hex: DEFAULT_SWATCH, ...SIZE.color }, at) },
   { id: 'add-image', label: 'Add image', keywords: 'upload picture photo create new', edit: true, run: () => pickFiles(false) },
   { id: 'import-folder', label: 'Import folder', keywords: 'images directory upload', edit: true, run: () => pickFiles(true) },
   { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', edit: true, when: hasUndo, run: () => board().undo() },
@@ -93,7 +110,7 @@ export const commands: Command[] = [
     label: 'Swatches from image',
     keywords: 'colors palette extract',
     edit: true,
-    when: (s) => s.selectedIds.length === 1 && s.elements.find((e) => e.id === s.selectedIds[0])?.type === 'image',
+    when: isImage,
     run: () => {
       const el = board().elements.find((e) => e.id === ids()[0])
       if (el?.type !== 'image') return
@@ -130,7 +147,7 @@ export const commands: Command[] = [
     id: `flip-${key}`,
     label: key === 'flipX' ? 'Flip image horizontally' : 'Flip image vertically',
     edit: true,
-    when: (s: State) => s.selectedIds.length === 1 && s.elements.find((e) => e.id === s.selectedIds[0])?.type === 'image',
+    when: isImage,
     run: () => {
       const el = board().elements.find((e) => e.id === ids()[0])
       if (el?.type === 'image') board().step(() => board().update(el.id, { [key]: el[key] ? undefined : true }))
@@ -144,11 +161,11 @@ export const commands: Command[] = [
     edit: true,
     when: (s: State) => (s.selectedIds.length < 2 ? s.elements.length >= 2 || isFrame(s) : true),
     run: () => {
-      const { arrange, elements, setView, selectedIds } = board()
+      const { arrange, elements, selectedIds } = board()
       // like the Arrange menu: the selection (2+), a frame's contents, or the whole board when nothing is selected
       const whole = selectedIds.length < 2 && !isFrame(board())
       arrange(whole ? elements.map((e) => e.id) : selectedIds, mode)
-      if (whole) setView(fitView(board().elements, innerWidth, innerHeight))
+      if (whole) fitAll()
     },
   })),
   { id: 'export', label: 'Export board', group: 'File', keywords: 'save download json', when: (s) => s.elements.length > 0, run: exportBoardFile },
@@ -158,13 +175,22 @@ export const commands: Command[] = [
   { id: 'zoom-in', label: 'Zoom in', run: () => zoomTo(board().view.zoom * 1.25) },
   { id: 'zoom-out', label: 'Zoom out', run: () => zoomTo(board().view.zoom / 1.25) },
   { id: 'zoom-reset', label: 'Zoom to 100%', run: () => zoomTo(1) },
-  { id: 'fit', label: 'Fit board in view', shortcut: '1', keywords: 'zoom all', when: (s) => s.elements.length > 0, run: () => board().setView(fitView(board().elements, innerWidth, innerHeight)) },
+  { id: 'fit', label: 'Fit board in view', shortcut: '1', keywords: 'zoom all', when: (s) => s.elements.length > 0, run: fitAll },
 ]
 
+/** Whether a command makes sense on the board as it is now. */
+export const enabled = (c: Command, s: State) => !(c.edit && s.readOnly) && (c.when?.(s) ?? true)
+
 /** The commands that make sense on the board as it is now. */
-export function available(list: Command[]) {
-  const s = board()
-  return list.filter((c) => !(c.edit && s.readOnly) && (c.when?.(s) ?? true))
+export const available = (list: Command[]) => list.filter((c) => enabled(c, board()))
+
+/** One registered command by id; the toolbar and the keys use this instead of redeclaring label, shortcut and action. */
+export const command = (id: string) => commands.find((c) => c.id === id)!
+
+/** Runs a command by id if it applies right now (what a key does). */
+export function runCommand(id: string) {
+  const c = command(id)
+  if (enabled(c, board())) c.run()
 }
 
 /** Every query word must start a word of the label or keywords; commands whose label matches rank first. */
@@ -191,6 +217,8 @@ const ICONS: Record<string, IconSvgElement> = {
   'add-note': StickyNote01Icon, 'add-heading': Heading01Icon, 'add-frame': FrameIcon, 'add-color': PaintBoardIcon, 'add-image': Image01Icon, 'import-folder': FolderUploadIcon,
   undo: UndoIcon, redo: RedoIcon, duplicate: Copy01Icon, delete: Delete02Icon, forward: LayerBringForwardIcon, backward: LayerSendBackwardIcon,
   'frame-selection': ArtboardToolIcon, swatches: ColorsIcon, group: GroupItemsIcon, ungroup: Layers01Icon, lock: LockIcon, 'select-all': Maximize01Icon, 'zoom-in': PlusSignIcon, 'zoom-out': MinusSignIcon, fit: ColorsIcon,
+  'align-left': AlignStartVerticalIcon, 'align-hcenter': AlignHorizontalCenterIcon, 'align-right': AlignEndVerticalIcon, 'align-top': AlignStartHorizontalIcon,
+  'align-vcenter': AlignVerticalCenterIcon, 'align-bottom': AlignEndHorizontalIcon, 'distribute-x': AlignHorizontalSpaceBetweenIcon, 'distribute-y': AlignVerticalSpaceBetweenIcon,
 }
 export const iconOf = (c: Command) => ICONS[c.id] ?? AlignHorizontalCenterIcon
 
@@ -213,9 +241,8 @@ export function dynamicCommands(): Command[] {
         label: `Go to ${snippet(text)}`,
         group: 'Go to',
         run: () => {
-          const { view, setView, select } = board()
-          select(e.id)
-          setView({ ...view, x: innerWidth / 2 - (e.x + e.w / 2) * view.zoom, y: innerHeight / 2 - (e.y + e.h / 2) * view.zoom })
+          board().select(e.id)
+          centerOn(e)
         },
       },
     ]

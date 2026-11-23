@@ -1,38 +1,7 @@
-import {
-  AddSquareIcon,
-  AlignEndHorizontalIcon,
-  AlignEndVerticalIcon,
-  AlignHorizontalCenterIcon,
-  AlignHorizontalSpaceBetweenIcon,
-  AlignStartHorizontalIcon,
-  AlignStartVerticalIcon,
-  AlignVerticalCenterIcon,
-  AlignVerticalSpaceBetweenIcon,
-  ArtboardToolIcon,
-  ColorsIcon,
-  Copy01Icon,
-  Delete02Icon,
-  FolderUploadIcon,
-  FrameIcon,
-  GroupItemsIcon,
-  Heading01Icon,
-  Image01Icon,
-  LayerBringForwardIcon,
-  LayerSendBackwardIcon,
-  Layers01Icon,
-  Link01Icon,
-  MinusSignIcon,
-  PaintBoardIcon,
-  PipetteIcon,
-  PlusSignIcon,
-  RedoIcon,
-  Search01Icon,
-  StickyNote01Icon,
-  SwatchIcon,
-  UndoIcon,
-} from '@hugeicons/core-free-icons'
+import { AddSquareIcon, Link01Icon, PipetteIcon, Search01Icon, SwatchIcon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
-import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Kbd } from '@/components/ui/kbd'
@@ -40,9 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { normalizeHex } from './colors.ts'
-import { fitView, zoomAt } from './geometry.ts'
-import { addImages, imageColors } from './image.ts'
-import { duplicate, frameSelection, group, remove, reorder, ungroup } from './selection.ts'
+import { fitAll, zoomTo } from './viewport.ts'
+import { command, commands, enabled, iconOf } from './commands.ts'
 import { addLink, asUrl } from './link.ts'
 import { FileMenu } from './FileMenu.tsx'
 import { ShareButton } from './ShareButton.tsx'
@@ -171,17 +139,9 @@ function LinkTool() {
 const Divider = () => <Separator orientation="vertical" className="mx-1 h-5 self-center max-sm:hidden" />
 
 /** Less common things to add: a heading, a frame, a whole folder of images. */
-function AddMenu({ onFolder }: { onFolder: () => void }) {
+function AddMenu() {
   const [open, setOpen] = useState(false)
-  const run = (fn: () => void) => () => {
-    setOpen(false)
-    fn()
-  }
-  const items: [string, IconSvgElement, () => void][] = [
-    ['Heading', Heading01Icon, () => useBoard.getState().add({ type: 'note', text: '', w: 480, h: 84, heading: true, bold: true })],
-    ['Frame', FrameIcon, () => useBoard.getState().add({ type: 'frame', title: '', w: 480, h: 320 })],
-    ['Import folder', FolderUploadIcon, onFolder],
-  ]
+  const items: [string, string][] = [['Heading', 'add-heading'], ['Frame', 'add-frame'], ['Import folder', 'import-folder']]
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Tooltip>
@@ -191,9 +151,17 @@ function AddMenu({ onFolder }: { onFolder: () => void }) {
         <TooltipContent>More to add</TooltipContent>
       </Tooltip>
       <PopoverContent side="top" sideOffset={12} className="w-52 gap-1 p-2">
-        {items.map(([label, icon, fn]) => (
-          <Button key={label} variant="ghost" className="justify-start gap-3 rounded-xl px-3" onClick={run(fn)}>
-            <HugeiconsIcon icon={icon} strokeWidth={1.8} />
+        {items.map(([label, id]) => (
+          <Button
+            key={id}
+            variant="ghost"
+            className="justify-start gap-3 rounded-xl px-3"
+            onClick={() => {
+              setOpen(false)
+              command(id).run()
+            }}
+          >
+            <HugeiconsIcon icon={iconOf(command(id))} strokeWidth={1.8} />
             {label}
           </Button>
         ))}
@@ -202,25 +170,24 @@ function AddMenu({ onFolder }: { onFolder: () => void }) {
   )
 }
 
+// the selection bar's buttons, in sections separated by dividers; each shows while its command applies
+const SELECTION_SECTIONS = [
+  ['duplicate', 'forward', 'backward', 'frame-selection', 'group', 'ungroup', 'swatches'],
+  commands.filter((c) => /^(align|distribute)-/.test(c.id)).map((c) => c.id),
+  ['delete'],
+]
+
+/** A button for a registered command: label, icon and shortcut come from commands.ts. */
+function CommandTool({ id, disabled }: { id: string; disabled?: boolean }) {
+  const c = command(id)
+  return <Tool label={c.label} icon={iconOf(c)} shortcut={c.shortcut} disabled={disabled} onClick={() => c.run()} />
+}
+
 /** What you can do with the selection; floats over the main bar and only exists while something is selected. */
 function SelectionBar() {
-  const selectedIds = useBoard((s) => s.selectedIds)
-  const grouped = useBoard((s) => s.elements.some((e) => e.groupId && selectedIds.includes(e.id)))
-  const image = useBoard((s) => (selectedIds.length === 1 ? s.elements.find((e) => e.id === selectedIds[0]) : undefined)?.type === 'image')
-  const { align, distribute } = useBoard.getState()
-  const n = selectedIds.length
-  const one = n === 1 ? selectedIds[0] : null
+  const n = useBoard((s) => s.selectedIds.length)
+  const shown = useBoard(useShallow((s) => SELECTION_SECTIONS.flat().filter((id) => enabled(command(id), s))))
   if (!n) return null
-
-  const swatchesFromImage = () => {
-    const { elements, swatchRow, notify } = useBoard.getState()
-    const el = elements.find((e) => e.id === one)
-    if (el?.type !== 'image') return
-    imageColors(el.src).then(
-      (hexes) => swatchRow(el.id, hexes),
-      () => notify('Could not read the colors of that image.'),
-    )
-  }
 
   return (
     <div
@@ -229,32 +196,16 @@ function SelectionBar() {
       onKeyDown={moveFocus}
       className="flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-[1.75rem] border bg-card/90 p-1.5 shadow-soft backdrop-blur"
     >
-      <Tool label="Duplicate" icon={Copy01Icon} shortcut="Ctrl+D" onClick={() => duplicate(selectedIds)} />
-      {one && <Tool label="Bring forward" icon={LayerBringForwardIcon} shortcut="]" onClick={() => reorder(one, 'forward')} />}
-      {one && <Tool label="Send backward" icon={LayerSendBackwardIcon} shortcut="[" onClick={() => reorder(one, 'backward')} />}
-      <Tool label="Frame selection" icon={ArtboardToolIcon} shortcut="Ctrl+Alt+F" onClick={() => frameSelection(selectedIds)} />
-      {n > 1 && <Tool label="Group" icon={GroupItemsIcon} shortcut="Ctrl+G" onClick={() => group(selectedIds)} />}
-      {grouped && <Tool label="Ungroup" icon={Layers01Icon} shortcut="Ctrl+Shift+G" onClick={() => ungroup(selectedIds)} />}
-      {image && <Tool label="Swatches from image" icon={ColorsIcon} onClick={swatchesFromImage} />}
-      {n > 1 && (
-        <>
-          <Divider />
-          <Tool label="Align left" icon={AlignStartVerticalIcon} onClick={() => align(selectedIds, 'left')} />
-          <Tool label="Align centers horizontally" icon={AlignHorizontalCenterIcon} onClick={() => align(selectedIds, 'hcenter')} />
-          <Tool label="Align right" icon={AlignEndVerticalIcon} onClick={() => align(selectedIds, 'right')} />
-          <Tool label="Align top" icon={AlignStartHorizontalIcon} onClick={() => align(selectedIds, 'top')} />
-          <Tool label="Align middles vertically" icon={AlignVerticalCenterIcon} onClick={() => align(selectedIds, 'vcenter')} />
-          <Tool label="Align bottom" icon={AlignEndHorizontalIcon} onClick={() => align(selectedIds, 'bottom')} />
-          {n > 2 && (
-            <>
-              <Tool label="Distribute horizontally" icon={AlignHorizontalSpaceBetweenIcon} onClick={() => distribute(selectedIds, 'x')} />
-              <Tool label="Distribute vertically" icon={AlignVerticalSpaceBetweenIcon} onClick={() => distribute(selectedIds, 'y')} />
-            </>
-          )}
-        </>
-      )}
-      <Divider />
-      <Tool label="Delete" icon={Delete02Icon} shortcut="Delete" onClick={() => remove(selectedIds)} />
+      {SELECTION_SECTIONS.map((ids) => ids.filter((id) => shown.includes(id)))
+        .filter((ids) => ids.length)
+        .map((ids, i) => (
+          <div key={ids[0]} className="contents">
+            {i > 0 && <Divider />}
+            {ids.map((id) => (
+              <CommandTool key={id} id={id} />
+            ))}
+          </div>
+        ))}
     </div>
   )
 }
@@ -264,19 +215,6 @@ export function Toolbar({ paletteOpen, onTogglePalette, onOpenCommands }: { pale
   const canUndo = useBoard(hasUndo)
   const canRedo = useBoard((s) => s.future.length > 0)
   const readOnly = useBoard((s) => s.readOnly)
-  const { add, undo, redo } = useBoard.getState()
-  const fileInput = useRef<HTMLInputElement>(null)
-  const folderInput = useRef<HTMLInputElement>(null)
-
-  const zoomTo = (z: number) => {
-    const { view, setView } = useBoard.getState()
-    setView(zoomAt(view, window.innerWidth / 2, window.innerHeight / 2, z))
-  }
-
-  const fitAll = () => {
-    const { elements, setView } = useBoard.getState()
-    if (elements.length) setView(fitView(elements, innerWidth, innerHeight))
-  }
 
   return (
     <div className="fixed bottom-6 left-1/2 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col items-center gap-2">
@@ -292,49 +230,26 @@ export function Toolbar({ paletteOpen, onTogglePalette, onOpenCommands }: { pale
     >
       {!readOnly && (
         <>
-          <Tool label="Add image" icon={Image01Icon} onClick={() => fileInput.current?.click()} />
+          <CommandTool id="add-image" />
           <LinkTool />
-          <Tool label="Add note" icon={StickyNote01Icon} onClick={() => add({ type: 'note', text: '', w: 220, h: 140 })} />
-          <Tool label="Add color" icon={PaintBoardIcon} onClick={() => add({ type: 'color', hex: '#d6c7b4', w: 140, h: 140 })} />
+          <CommandTool id="add-note" />
+          <CommandTool id="add-color" />
           {EyeDropper && <Tool label="Pick a color from the screen" icon={PipetteIcon} onClick={pickColor} />}
-          <AddMenu onFolder={() => folderInput.current?.click()} />
-          <input
-            ref={folderInput}
-            type="file"
-            // @ts-expect-error webkitdirectory is not in React's input typings
-            webkitdirectory=""
-            multiple
-            hidden
-            onChange={(e) => {
-              addImages([...(e.target.files ?? [])].filter((f) => f.type.startsWith('image/')))
-              e.target.value = ''
-            }}
-          />
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*"
-            multiple
-            hidden
-            onChange={(e) => {
-              addImages([...(e.target.files ?? [])])
-              e.target.value = ''
-            }}
-          />
+          <AddMenu />
 
           <Divider />
-          <Tool label="Undo" icon={UndoIcon} shortcut="Ctrl+Z" disabled={!canUndo} onClick={undo} />
-          <Tool label="Redo" icon={RedoIcon} shortcut="Ctrl+Shift+Z" disabled={!canRedo} onClick={redo} />
+          <CommandTool id="undo" disabled={!canUndo} />
+          <CommandTool id="redo" disabled={!canRedo} />
 
           <Divider />
         </>
       )}
 
-      <Tool label="Zoom out" icon={MinusSignIcon} onClick={() => zoomTo(zoom / 1.25)} />
+      <CommandTool id="zoom-out" />
       <Button variant="ghost" size="sm" aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%, double click to fit the board`} className="tabular-nums" onClick={() => zoomTo(1)} onDoubleClick={fitAll}>
         {Math.round(zoom * 100)}%
       </Button>
-      <Tool label="Zoom in" icon={PlusSignIcon} onClick={() => zoomTo(zoom * 1.25)} />
+      <CommandTool id="zoom-in" />
 
       <Divider />
       {!readOnly && <ArrangeMenu />}

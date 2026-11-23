@@ -2,6 +2,7 @@ import type { Crop } from './crop.ts'
 import { boundsOf } from './geometry.ts'
 import { resolveImage } from './images.ts'
 import { useBoard, type BoardElement } from './store.ts'
+import { CARD_PAD, LINK_DOT, LINK_DOT_CENTER_FROM_BOTTOM, LINK_DOT_GAP, LINK_TEXT_MAX_H, PIN, TAPE, isBare, noteInk } from './kinds/look.ts'
 import { FAMILY, RADIUS, noteText, filterPixels, loadFamily, textOn, type BoardStyle, type Deco, type ImageStyle } from './style.ts'
 
 const PAD = 48
@@ -81,13 +82,13 @@ function drawDeco(ctx: CanvasRenderingContext2D, deco: Deco | undefined, w: numb
   ctx.shadowOffsetY = 1
   if (deco === 'tape') {
     ctx.translate(w / 2, 0)
-    ctx.rotate((-3 * Math.PI) / 180)
-    ctx.fillStyle = 'rgb(250 244 225 / 0.75)'
-    ctx.fillRect(-40, -12, 80, 24)
+    ctx.rotate((TAPE.tiltDeg * Math.PI) / 180)
+    ctx.fillStyle = TAPE.color
+    ctx.fillRect(-TAPE.w / 2, -TAPE.h / 2, TAPE.w, TAPE.h)
   } else {
-    ctx.fillStyle = '#c2412d'
+    ctx.fillStyle = PIN.color
     ctx.beginPath()
-    ctx.arc(w / 2, 16, 8, 0, Math.PI * 2)
+    ctx.arc(w / 2, PIN.top + PIN.size / 2, PIN.size / 2, 0, Math.PI * 2)
     ctx.fill()
   }
   ctx.restore()
@@ -137,7 +138,7 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
     ctx.globalAlpha = el.opacity ?? 1
     const radius = Math.min(RADIUS[el.corner ?? 'soft'], w / 2, h / 2)
     const noteBg = el.type === 'note' ? el.bg : undefined
-    const bare = el.type === 'note' && el.heading && !el.bg
+    const bare = isBare(el)
 
     if (el.type === 'frame') {
       ctx.fillStyle = ink
@@ -184,10 +185,10 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
 
     if (el.type === 'note') {
       const [size, lineH] = noteText(el)
-      ctx.fillStyle = el.color ?? ((el.bg && textOn(el.bg)) || (bare ? ink : theme.fg))
+      ctx.fillStyle = noteInk(el, ink) ?? theme.fg
       const base = el.font === 'serif' ? serif : sans
       ctx.font = `${el.italic ? 'italic ' : ''}${el.bold ? '700 ' : ''}${size}px ${el.family && FAMILY.test(el.family) ? `"${el.family}", ${base}` : base}`
-      lines(ctx, el.text, 16, 16 + (lineH - size) / 2, w - 32, lineH, Math.floor((h - 32) / lineH), el.align)
+      lines(ctx, el.text, CARD_PAD, CARD_PAD + (lineH - size) / 2, w - CARD_PAD * 2, lineH, Math.floor((h - CARD_PAD * 2) / lineH), el.align)
     }
 
     if (el.type === 'color') {
@@ -202,19 +203,19 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
     }
 
     if (el.type === 'link') {
-      const textH = Math.min(h, 110)
+      const textH = Math.min(h, LINK_TEXT_MAX_H)
       if (img) cover(ctx, img, 0, 0, w, h - textH)
-      const top = img ? h - textH + 16 : 16
+      const top = img ? h - textH + CARD_PAD : CARD_PAD
       ctx.fillStyle = theme.muted
       ctx.font = `12px ${sans}`
       ctx.fillText(new URL(el.url).hostname.replace(/^www\./, ''), 16, top)
       ctx.fillStyle = theme.fg
       ctx.font = `18px ${serif}`
-      lines(ctx, el.title ?? el.url, 16, top + 22, w - 32, 24, 2)
+      lines(ctx, el.title ?? el.url, CARD_PAD, top + 22, w - CARD_PAD * 2, 24, 2)
       el.colors.forEach((hex, i) => {
         ctx.fillStyle = hex
         ctx.beginPath()
-        ctx.arc(24 + i * 22, h - 20, 8, 0, Math.PI * 2)
+        ctx.arc(CARD_PAD + LINK_DOT / 2 + i * (LINK_DOT + LINK_DOT_GAP), h - LINK_DOT_CENTER_FROM_BOTTOM, LINK_DOT / 2, 0, Math.PI * 2)
         ctx.fill()
       })
     }

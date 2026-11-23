@@ -1,22 +1,35 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ColorFields } from './ColorFields.tsx'
-import { LinkCard } from './LinkCard.tsx'
-import { CropOverlay } from './CropOverlay.tsx'
-import { coverCrop, cropBox, cropStyle, type Crop } from './crop.ts'
+import { arrowDelta } from './commands.ts'
 import { drag, touches } from './drag.ts'
-import { harmonies } from './colors.ts'
 import { movingSet } from './frames.ts'
 import { useSettings } from './settings.ts'
+import { panIntoView } from './viewport.ts'
 import { angleTo, boundsOf, resize, rotateVec, snapMove } from './geometry.ts'
 import type { Guide } from './geometry.ts'
-import { useImageSrc } from './images.ts'
+import { ColorBody } from './kinds/ColorBody.tsx'
+import { ElementDeco } from './kinds/ElementDeco.tsx'
+import { FrameBody } from './kinds/FrameBody.tsx'
+import { ImageBody } from './kinds/ImageBody.tsx'
+import { LinkBody } from './kinds/LinkBody.tsx'
+import { NoteBody } from './kinds/NoteBody.tsx'
+import { useCrop } from './kinds/useCrop.ts'
 import { duplicate, frameSelection, group, nudge, remove, reorder, rotateStep, targetOf, ungroup } from './selection.ts'
 import { justDropped, useBoard, type BoardElement } from './store.ts'
-import { DEFAULT_DUO, loadFamily, noteFontStack, noteText as noteSizes, rgb, surface, textOn } from './style.ts'
+import { surface, textOn } from './style.ts'
 
 /** Snap distance in screen pixels. */
 const SNAP_PX = 6
+/** Resize/rotate handle diameter in screen px: bigger for fingers. */
+const HANDLE_PX = 12
+const HANDLE_PX_COARSE = 32
+/** How far above the top edge the rotate handle sits, in screen px. */
+const ROTATE_OFFSET_PX = 28
+/** Border width of the handles, and thickness of the selection ring, in screen px. */
+const HANDLE_BORDER_PX = 1.5
+const SELECT_RING_PX = 2
+/** Arrow-key distance in board px, with and without Shift. */
+const NUDGE = 1
+const NUDGE_BIG = 10
 
 const LABELS = { image: 'Image', note: 'Note', color: 'Color', link: 'Link', frame: 'Frame' }
 
@@ -28,70 +41,13 @@ function label(el: BoardElement) {
   return LABELS[el.type]
 }
 
-/** Hue-rotated companions of a swatch; clicking one adds it as a new swatch beside this one. */
-function Harmonies({ el }: { el: Extract<BoardElement, { type: 'color' }> }) {
-  const add = (hex: string, i: number) =>
-    useBoard.getState().add({ type: 'color', hex, w: el.w, h: el.h }, { x: el.x + el.w * 1.5 + 16 + i * (el.w + 16), y: el.y + el.h / 2 })
-  return (
-    <div className="mt-3 flex flex-col gap-2 border-t pt-3">
-      <p className="text-xs font-medium text-muted-foreground">Harmonies: click to add</p>
-      {harmonies(el.hex).map((g) => (
-        <div key={g.name} className="flex items-center justify-between gap-2">
-          <span className="text-xs">{g.name}</span>
-          <span className="flex gap-1">
-            {g.colors.map((hex, i) => (
-              <button
-                key={hex + i}
-                type="button"
-                aria-label={`Add ${g.name.toLowerCase()} color ${hex}`}
-                title={hex}
-                className="size-6 rounded-full border"
-                style={{ background: hex }}
-                onClick={() => add(hex, i)}
-              />
-            ))}
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/** SVG duotone: grey by luma, then map black to shadows and white to highlights (same math as filterPixels). */
-function DuotoneFilter({ id, duo }: { id: string; duo: [string, string] }) {
-  const [a, b] = duo.map((h) => rgb(h) ?? [0, 0, 0])
-  const table = (c: number) => `${a[c] / 255} ${b[c] / 255}`
-  return (
-    <svg aria-hidden width="0" height="0" className="absolute">
-      <filter id={`duo-${id}`} colorInterpolationFilters="sRGB">
-        <feColorMatrix type="saturate" values="0" />
-        <feComponentTransfer>
-          <feFuncR type="table" tableValues={table(0)} />
-          <feFuncG type="table" tableValues={table(1)} />
-          <feFuncB type="table" tableValues={table(2)} />
-        </feComponentTransfer>
-      </filter>
-    </svg>
-  )
-}
-
 /** `solo`: the only selected element, which gets handles and keyboard focus. */
 type Props = { el: BoardElement; selected: boolean; solo: boolean; zoom: number }
 
-/** Tabbing to an element off screen moves the view to it; the canvas never scrolls by itself. */
-function panIntoView(el: BoardElement) {
-  const { view, setView } = useBoard.getState()
-  const left = view.x + el.x * view.zoom
-  const top = view.y + el.y * view.zoom
-  const inside = left >= 0 && top >= 0 && left + el.w * view.zoom <= innerWidth && top + el.h * view.zoom <= innerHeight
-  if (inside) return
-  setView({ ...view, x: innerWidth / 2 - (el.x + el.w / 2) * view.zoom, y: innerHeight / 2 - (el.y + el.h / 2) * view.zoom })
-}
-
+/** One element on the board: position, selection, drag, resize/rotate, keys and focus. What it shows is its kind's body (kinds/*Body.tsx). */
 export const ElementView = memo(function ElementView({ el, selected, solo, zoom }: Props) {
-  const { update, moveMany, select, checkpoint, step, setCropId } = useBoard.getState()
+  const { update, moveMany, select, checkpoint, setCropId } = useBoard.getState()
   const readOnly = useBoard((s) => s.readOnly)
-  const picture = useImageSrc(el.type === 'image' ? el.src : null)
   // the selection outline follows the board background's contrast color, so it shows on dark boards too
   const outline = useBoard((s) => (s.board.bg && textOn(s.board.bg)) || 'var(--color-primary)')
   // the ink of the board (frames and headings draw in it, not on a card)
@@ -100,67 +56,15 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   const [editing, setEditing] = useState(() => selected && ((el.type === 'note' && !el.text) || (el.type === 'frame' && !el.title)))
   const [pickerOpen, setPickerOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
-  const imgRef = useRef<HTMLImageElement>(null)
-  // crop mode: `from` is the crop the box shows now, `draft` the one being dragged out
-  const cropId = useBoard((s) => s.cropId)
-  const [session, setSession] = useState<{ from: Crop; draft: Crop } | null>(null)
-  const cropping = !!session && cropId === el.id
-  const noteText = useRef<HTMLParagraphElement>(null)
-
-  // keep keyboard focus on the selected element (e.g. after duplicate or add)
+  const crop = useCrop(el, root)
+  const { cropping } = crop
   // plays once, for an element just added in messy mode
   const [drop] = useState(() => justDropped.delete(el.id))
-  const family = el.type === 'note' ? el.family : undefined
-  useEffect(() => {
-    if (family) loadFamily(family)
-  }, [family])
 
-  // a note grows to fit its text (it never shrinks by itself): no inner scrolling, nothing cut off
-  useEffect(() => {
-    const p = noteText.current
-    if (!p || readOnly) return
-    const grow = () => {
-      const need = p.offsetHeight + 32
-      const cur = useBoard.getState().elements.find((o) => o.id === el.id)
-      if (cur && need > cur.h + 0.5) update(el.id, { h: need })
-    }
-    grow()
-    const ro = new ResizeObserver(grow)
-    ro.observe(p)
-    return () => ro.disconnect()
-  }, [el.id, el.w, readOnly, update])
-
+  // keep keyboard focus on the selected element (e.g. after duplicate or add)
   useEffect(() => {
     if ((solo || cropping) && !editing && !root.current!.contains(document.activeElement)) root.current!.focus({ preventScroll: true })
   }, [solo, editing, cropping])
-
-  useEffect(() => {
-    if (cropId !== el.id || el.type !== 'image') return setSession(null)
-    const i = imgRef.current
-    if (!i?.naturalWidth) return setCropId(null)
-    const from = el.crop ?? coverCrop(el.w, el.h, i.naturalWidth, i.naturalHeight)
-    setSession({ from, draft: from })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cropId])
-
-  /** Confirms or cancels crop mode; a confirmed change is one undo step. */
-  const finishCrop = (ok: boolean) => {
-    if (ok && session && el.type === 'image' && (['x', 'y', 'w', 'h'] as const).some((k) => session.draft[k] !== session.from[k]))
-      step(() => update(el.id, { ...cropBox(el, session.from, session.draft, { x: el.flipX, y: el.flipY }), crop: session.draft }))
-    setCropId(null)
-  }
-  const finishRef = useRef(finishCrop)
-  useEffect(() => {
-    finishRef.current = finishCrop
-  })
-  // a press outside the element confirms
-  useEffect(() => {
-    if (!cropping) return
-    const out = (e: globalThis.PointerEvent) => !root.current?.contains(e.target as Node) && finishRef.current(true)
-    document.addEventListener('pointerdown', out, true)
-    return () => document.removeEventListener('pointerdown', out, true)
-  }, [cropping])
-
 
   const open = () => {
     if ((readOnly || el.locked) && el.type !== 'link') return
@@ -246,10 +150,10 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget || (readOnly && e.key !== 'Enter' && e.key !== 'Escape')) return
     const mod = e.metaKey || e.ctrlKey
-    const step = e.shiftKey ? 10 : 1
+    const step = e.shiftKey ? NUDGE_BIG : NUDGE
     if (cropping) {
       if (e.key !== 'Enter' && e.key !== 'Escape') return
-      finishCrop(e.key === 'Enter')
+      crop.finish(e.key === 'Enter')
       e.stopPropagation()
       e.preventDefault()
       return
@@ -258,7 +162,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     if (e.altKey && e.key.startsWith('Arrow')) {
       if (el.locked) return
       checkpoint()
-      const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key]
+      const d = arrowDelta(e.key, step)
       if (!d) return
       const world = rotateVec(d[0], d[1], el.rotation)
       update(el.id, resize(el, world.x, world.y, el.type === 'image'))
@@ -294,8 +198,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       case 'ArrowRight':
       case 'ArrowUp':
       case 'ArrowDown': {
-        const [dx, dy] = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key]
-        nudge(targetOf(el.id), dx, dy)
+        nudge(targetOf(el.id), ...arrowDelta(e.key, step)!)
         break
       }
       case 'r':
@@ -333,7 +236,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   }
 
   // bigger grab targets for fingers
-  const handle = (matchMedia('(pointer: coarse)').matches ? 32 : 12) / zoom
+  const handle = (matchMedia('(pointer: coarse)').matches ? HANDLE_PX_COARSE : HANDLE_PX) / zoom
 
   return (
     <div
@@ -351,7 +254,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         width: el.w,
         height: el.h,
         transform: `translate(${el.x}px, ${el.y}px) rotate(${el.rotation}deg)`,
-        boxShadow: selected ? `0 0 0 ${2 / zoom}px ${outline}` : undefined,
+        boxShadow: selected ? `0 0 0 ${SELECT_RING_PX / zoom}px ${outline}` : undefined,
         cursor: readOnly || el.locked ? undefined : editing ? 'auto' : 'var(--cursor-move)',
       }}
       onPointerDown={onPointerDown}
@@ -364,158 +267,13 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         panIntoView(el)
       }}
     >
-      {el.type === 'frame' && (
-        <>
-          <div
-            aria-hidden
-            className="absolute inset-0 border"
-            style={{ ...surface(el), boxShadow: 'none', background: `color-mix(in srgb, ${ink} 6%, transparent)`, borderColor: `color-mix(in srgb, ${ink} 25%, transparent)` }}
-          />
-          {(['left-0 top-0 w-full', 'bottom-0 left-0 w-full', 'left-0 top-0 h-full', 'right-0 top-0 h-full'] as const).map((side, i) => (
-            <div key={side} aria-hidden className={`pointer-events-auto absolute ${side}`} style={{ [i < 2 ? 'height' : 'width']: 10 / zoom }} />
-          ))}
-          <div className="pointer-events-auto absolute bottom-full left-0 mb-1 origin-bottom-left" style={{ transform: `scale(${1 / zoom})`, color: ink }}>
-            {editing ? (
-              <input
-                autoFocus
-                aria-label="Frame title"
-                className="w-56 rounded bg-card/90 px-1 text-sm font-medium text-card-foreground outline-none"
-                value={el.title}
-                maxLength={100}
-                placeholder="Frame title"
-                onChange={(e) => update(el.id, { title: e.target.value })}
-                onBlur={() => setEditing(false)}
-                onKeyDown={(e) => (e.key === 'Escape' || e.key === 'Enter') && e.currentTarget.blur()}
-                onPointerDown={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <span className="block max-w-56 truncate px-1 text-sm font-medium">{el.title || <span className="opacity-60">Untitled frame</span>}</span>
-            )}
-          </div>
-        </>
-      )}
+      {el.type === 'frame' && <FrameBody el={el} zoom={zoom} ink={ink} editing={editing} setEditing={setEditing} />}
+      {el.type === 'image' && <ImageBody el={el} zoom={zoom} crop={crop} />}
+      {el.type === 'note' && <NoteBody el={el} ink={ink} editing={editing} setEditing={setEditing} />}
+      {el.type === 'color' && <ColorBody el={el} root={root} pickerOpen={pickerOpen} setPickerOpen={setPickerOpen} />}
+      {el.type === 'link' && <LinkBody el={el} />}
 
-      {el.type === 'image' && (
-        <>
-          {el.filter === 'duotone' && <DuotoneFilter id={el.id} duo={el.duo ?? DEFAULT_DUO} />}
-          {cropping && session ? (
-            <CropOverlay src={picture} box={el} from={session.from} draft={session.draft} zoom={zoom} flipX={el.flipX} flipY={el.flipY} onChange={(draft) => setSession({ ...session, draft })} />
-          ) : (
-            <div
-              className="relative size-full overflow-hidden rounded-2xl shadow-soft"
-              style={{ ...surface(el), transform: el.flipX || el.flipY ? `scale(${el.flipX ? -1 : 1}, ${el.flipY ? -1 : 1})` : undefined }}
-            >
-              <img
-                ref={imgRef}
-                src={picture}
-                alt=""
-                decoding="async"
-                loading="lazy"
-                draggable={false}
-                className="pointer-events-none size-full object-cover"
-                style={{ ...(el.crop && cropStyle(el.crop)), filter: el.filter === 'mono' ? 'grayscale(1)' : el.filter === 'duotone' ? `url(#duo-${el.id})` : undefined }}
-              />
-            </div>
-          )}
-        </>
-      )}
-
-      {el.type === 'note' && (
-        <div
-          className={`size-full overflow-hidden rounded-2xl p-4 ${el.heading && !el.bg ? '' : 'bg-card text-card-foreground shadow-soft'}`}
-          style={{
-            ...surface(el),
-            fontFamily: noteFontStack(el),
-            fontSize: noteSizes(el)[0],
-            lineHeight: `${noteSizes(el)[1]}px`,
-            textAlign: el.align,
-            fontWeight: el.bold ? 700 : undefined,
-            fontStyle: el.italic ? 'italic' : undefined,
-            ...(el.heading && !el.bg && { color: ink }),
-            ...(el.bg && { background: el.bg, color: textOn(el.bg) ?? undefined }),
-            ...(el.color && { color: el.color }),
-          }}
-        >
-          {/* the text sizes the note: a hidden copy of it (and the textarea laid over it) tell how tall it must be */}
-          <div className="grid">
-            <p ref={noteText} className={`[grid-area:1/1] whitespace-pre-wrap break-words ${editing ? 'invisible' : ''}`}>
-              {el.text ? `${el.text}​` : editing ? '​' : <span className="opacity-75">Empty note</span>}
-            </p>
-            {editing && (
-              <textarea
-                autoFocus
-                aria-label="Note text"
-                className="[grid-area:1/1] size-full resize-none select-text overflow-hidden bg-transparent outline-none [font:inherit] [text-align:inherit]"
-                value={el.text}
-                placeholder="Write something…"
-                onChange={(e) => update(el.id, { text: e.target.value })}
-                onBlur={() => setEditing(false)}
-                onKeyDown={(e) => e.key === 'Escape' && e.currentTarget.blur()}
-                onPointerDown={(e) => e.stopPropagation()}
-              />
-            )}
-          </div>
-        </div>
-      )}
-
-      {el.type === 'color' && (
-        <div className="relative size-full rounded-2xl shadow-soft" style={{ ...surface(el), background: el.hex }}>
-          <Popover
-            open={pickerOpen && !readOnly}
-            onOpenChange={(open) => {
-              if (open) checkpoint()
-              setPickerOpen(open)
-            }}
-          >
-            <PopoverTrigger
-              aria-label={`Edit color ${el.hex}`}
-              className="absolute bottom-2 left-2 cursor-pointer rounded-full bg-card/90 px-2 py-0.5 font-mono text-xs text-card-foreground pointer-coarse:px-3 pointer-coarse:py-1.5"
-              tabIndex={-1}
-              onPointerDown={(e) => {
-                // keep focus (and keyboard shortcuts) on the element itself; Enter opens the picker for keyboard users
-                e.stopPropagation()
-                e.preventDefault()
-                select(el.id)
-                root.current!.focus({ preventScroll: true })
-              }}
-            >
-              {el.hex}
-            </PopoverTrigger>
-            <PopoverContent side="right" align="start" className="w-60" finalFocus={root}>
-              <ColorFields hex={el.hex} onChange={(hex) => update(el.id, { hex })} />
-              <Harmonies el={el} />
-            </PopoverContent>
-          </Popover>
-        </div>
-      )}
-
-      {el.type === 'link' && <LinkCard el={el} />}
-
-      {el.deco === 'tape' && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 -top-3 h-6 w-20 -translate-x-1/2 -rotate-3 bg-[rgb(250_244_225/0.75)] shadow-[0_1px_2px_rgb(0_0_0/0.12)]"
-        />
-      )}
-      {el.deco === 'pin' && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-2 size-4 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#f08a76,#c2412d_60%)] shadow-[0_2px_3px_rgb(0_0_0/0.3)]"
-        />
-      )}
-
-      {el.locked && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute right-1.5 top-1.5 grid size-5 origin-top-right place-items-center rounded-full bg-card/90 text-card-foreground shadow-soft"
-          style={{ transform: `scale(${1 / zoom})` }}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="4" y="11" width="16" height="10" rx="2" />
-            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-          </svg>
-        </span>
-      )}
+      <ElementDeco el={el} zoom={zoom} />
 
       {solo && !editing && !readOnly && !el.locked && !cropping && (
         <>
@@ -523,14 +281,14 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
             <div
               aria-hidden
               className="absolute left-1/2 rounded-full border-ring bg-card"
-              style={{ width: handle, height: handle, top: -28 / zoom, marginLeft: -handle / 2, borderWidth: 1.5 / zoom, cursor: 'grab' }}
+              style={{ width: handle, height: handle, top: -ROTATE_OFFSET_PX / zoom, marginLeft: -handle / 2, borderWidth: HANDLE_BORDER_PX / zoom, cursor: 'grab' }}
               onPointerDown={onRotate}
             />
           )}
           <div
             aria-hidden
             className="pointer-events-auto absolute rounded-full border-ring bg-card"
-            style={{ width: handle, height: handle, right: -handle / 2, bottom: -handle / 2, borderWidth: 1.5 / zoom, cursor: 'nwse-resize' }}
+            style={{ width: handle, height: handle, right: -handle / 2, bottom: -handle / 2, borderWidth: HANDLE_BORDER_PX / zoom, cursor: 'nwse-resize' }}
             onPointerDown={onResize}
           />
         </>

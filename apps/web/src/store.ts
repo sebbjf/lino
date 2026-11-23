@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import type { ColorMeta } from './colors.ts'
 import type { Crop } from './crop.ts'
-import { expandGroups, frameContents, layoutInFrame } from './frames.ts'
-import { alignOffsets, distributeOffsets, layoutPositions, type AlignMode, type Box, type Guide, type Layout } from './geometry.ts'
+import { expandGroups, frameContents } from './frames.ts'
+import { alignOffsets, distributeOffsets, type AlignMode, type Box, type Guide, type Layout } from './geometry.ts'
+import { arranged, copiesOf, STEP_OFFSET, swatchRowUnder } from './layout.ts'
 import { ownStyleKeys, TYPED_KEYS } from './kinds/index.ts'
 import { MESSY_TILT, type BoardStyle, type ElementStyle, type ImageStyle, type NoteStyle } from './style.ts'
 
@@ -139,13 +140,16 @@ function pushHistory(s: State, key?: string) {
   return last && same(last, s) ? { future: [] as HistoryEntry[] } : { past: [...s.past, entryOf(s)].slice(-HISTORY_LIMIT), future: [] as HistoryEntry[] }
 }
 
+/** The elements among `ids` (all when omitted) that are not locked: the only ones a command may move, restyle, edit or delete. */
+export const unlocked = <T extends { id: string; locked?: boolean }>(els: T[], ids?: string[]) => els.filter((e) => !e.locked && (!ids || ids.includes(e.id)))
+
 function keepSelection(elements: BoardElement[], ids: string[]) {
   return ids.filter((id) => elements.some((e) => e.id === id))
 }
 
 /** Applies per-element offsets as one undo step. */
 function shift(s: State, ids: string[], offsets: (els: BoardElement[]) => { dx: number; dy: number }[]) {
-  const els = s.elements.filter((e) => ids.includes(e.id) && !e.locked)
+  const els = unlocked(s.elements, ids)
   if (els.length < 2) return s
   const by = new Map(offsets(els).map((o, i) => [els[i].id, o]))
   return {
@@ -215,7 +219,7 @@ export const useBoard = create<State>()((set, get) => ({
     let x = c.x - el.w / 2
     let y = c.y - el.h / 2
     // added from the toolbar twice in a row: step aside so the new one does not hide the last
-    if (!at) while (get().elements.some((e) => e.x === x && e.y === y)) (x += 24), (y += 24)
+    if (!at) while (get().elements.some((e) => e.x === x && e.y === y)) (x += STEP_OFFSET), (y += STEP_OFFSET)
     const full = { ...el, id, x, y, rotation } as BoardElement
     set((s) => ({ ...pushHistory(s), elements: [...s.elements, full], selectedIds: [id] }))
     return id
@@ -225,9 +229,7 @@ export const useBoard = create<State>()((set, get) => ({
     set((s) => {
       const el = s.elements.find((e) => e.id === under)
       if (!el || !hexes.length) return s
-      const gap = 8
-      const side = (el.w - gap * (hexes.length - 1)) / hexes.length
-      const row = hexes.map((hex, i): BoardElement => ({ id: crypto.randomUUID(), type: 'color', hex, x: el.x + i * (side + gap), y: el.y + el.h + gap, w: side, h: side, rotation: 0 }))
+      const row = swatchRowUnder(el, hexes)
       return { ...pushHistory(s), elements: [...s.elements, ...row], selectedIds: row.map((e) => e.id) }
     }),
 
@@ -235,15 +237,18 @@ export const useBoard = create<State>()((set, get) => ({
     set((s) => ({ elements: s.elements.map((e) => (e.id === id ? ({ ...e, ...patch } as BoardElement) : e)) })),
 
   restyle: (ids, patch) =>
-    set((s) => ({
-      elements: s.elements.map((e) => {
-        if (!ids.includes(e.id) || e.locked) return e
-        // type-specific fields (note color, image filter...) never land on other element types
-        const own = ownStyleKeys(e.type)
-        const keep = Object.fromEntries(Object.entries(patch).filter(([k]) => !TYPED_KEYS.includes(k as keyof StylePatch) || own.includes(k as keyof StylePatch)))
-        return { ...e, ...keep } as BoardElement
-      }),
-    })),
+    set((s) => {
+      const editable = new Set(unlocked(s.elements, ids).map((e) => e.id))
+      return {
+        elements: s.elements.map((e) => {
+          if (!editable.has(e.id)) return e
+          // type-specific fields (note color, image filter...) never land on other element types
+          const own = ownStyleKeys(e.type)
+          const keep = Object.fromEntries(Object.entries(patch).filter(([k]) => !TYPED_KEYS.includes(k as keyof StylePatch) || own.includes(k as keyof StylePatch)))
+          return { ...e, ...keep } as BoardElement
+        }),
+      }
+    }),
 
   copyStyle: (id) => {
     const el = get().elements.find((e) => e.id === id) as (BoardElement & StylePatch) | undefined
@@ -267,15 +272,7 @@ export const useBoard = create<State>()((set, get) => ({
     })),
 
   duplicate: (ids) => {
-    // a copied group becomes a group of its own, not new members of the original
-    const groups = new Map<string, string>()
-    const copies = get()
-      .elements.filter((e) => ids.includes(e.id))
-      .map((src) => {
-        const copy = { ...src, id: crypto.randomUUID(), x: src.x + 24, y: src.y + 24 }
-        if (src.groupId) copy.groupId = groups.get(src.groupId) ?? groups.set(src.groupId, crypto.randomUUID()).get(src.groupId)
-        return copy
-      })
+    const copies = copiesOf(get().elements.filter((e) => ids.includes(e.id)))
     if (!copies.length) return
     set((s) => ({ ...pushHistory(s), elements: [...s.elements, ...copies], selectedIds: copies.map((c) => c.id) }))
   },
@@ -289,22 +286,11 @@ export const useBoard = create<State>()((set, get) => ({
   arrange: (ids, mode) =>
     set((s) => {
       // one frame alone: arrange what is inside it, within it (the frame grows if the result needs room)
-      const only = ids.length === 1 ? s.elements.find((e) => e.id === ids[0]) : undefined
-      const frame = only?.type === 'frame' && !only.locked ? only : undefined
-      const els = frame ? frameContents(frame, s.elements.filter((e) => !e.locked)) : s.elements.filter((e) => ids.includes(e.id) && !e.locked)
+      const only = ids.length === 1 ? unlocked(s.elements, ids)[0] : undefined
+      const frame = only?.type === 'frame' ? only : undefined
+      const els = frame ? frameContents(frame, unlocked(s.elements)) : unlocked(s.elements, ids)
       if (els.length < 2) return s
-      let placed = layoutPositions(els, mode)
-      let size: { w: number; h: number } | undefined
-      if (frame) ({ placed, size } = layoutInFrame(frame, els, mode))
-      const pos = new Map(placed.map((p, i) => [els[i].id, p]))
-      let elements = s.elements.map((e) => (pos.has(e.id) ? { ...e, ...pos.get(e.id)! } : e.id === frame?.id ? { ...e, ...size } : e))
-      if (mode === 'fan') {
-        // stack the hand left to right, each card over the previous one, in the layers these elements already had
-        const hand = elements.filter((e) => pos.has(e.id)).sort((a, b) => a.x + a.w / 2 - (b.x + b.w / 2))
-        let k = 0
-        elements = elements.map((e) => (pos.has(e.id) ? hand[k++] : e))
-      }
-      return { ...pushHistory(s), elements }
+      return { ...pushHistory(s), elements: arranged(s.elements, els, mode, frame) }
     }),
 
   reorder: (id, to) =>

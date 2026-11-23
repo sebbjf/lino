@@ -1,13 +1,14 @@
 import { frameAround, movingSet } from './frames.ts'
-import { useBoard, type Layer } from './store.ts'
+import { unlocked, useBoard, type Layer } from './store.ts'
 
-// Commands on the selection, shared by the keyboard and the toolbar. The read-only check lives here, once:
-// the store actions stay ungated because opening a shared board, undo and drags use them too.
+// Commands on the selection, shared by the keyboard and the toolbar. Which elements a command may touch is decided here, once:
+// read-only (commands only: the store stays ungated because opening a shared board, undo and drags use it) and locked (`unlocked`
+// in store.ts, which the store's restyle, align, distribute and arrange also apply, since other code calls them directly).
 // Each command is one undo step; a burst of nudges or rotations of the same elements (a held key) is one.
 
 const board = () => useBoard.getState()
 /** The ids a command may act on: none on a read-only board, and never a locked element. */
-const editable = (ids: string[]) => (board().readOnly ? [] : ids.filter((id) => !board().elements.find((e) => e.id === id)?.locked))
+const editable = (ids: string[]) => (board().readOnly ? [] : ids.filter((id) => unlocked(board().elements, [id]).length))
 
 /** What a command aimed at `focusedId` acts on: the selection if that element is in it (or nothing is focused), else just that element. */
 export function targetOf(focusedId?: string) {

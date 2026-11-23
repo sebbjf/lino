@@ -13,7 +13,33 @@ type Saved = Partial<Snapshot> & { elements: unknown[]; view?: View; exportPrefs
 const EMPTY: Snapshot = { elements: [], colorMeta: {}, board: {} }
 const DEFAULT_VIEW: View = { x: 0, y: 0, zoom: 1 }
 const run = <T,>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>) => idb('boards', mode, fn)
-const readIndex = async () => (await run<Index | undefined>('readonly', (s) => s.get(INDEX))) ?? undefined
+const read = <T,>(key: string) => run<T | undefined>('readonly', (s) => s.get(key))
+
+// What is saved, and when. Keys in the 'boards' store: INDEX (names + current board), `<id>` (snapshot + export prefs), `<id>:view` (pan and zoom).
+// - on every board change, debounced (and when the tab is hidden): `save` writes all three; a pan or zoom alone writes only the view
+// - when switching away from a board, or creating one: `save` first
+// - on opening a board: its images move to the image store once, and the record is rewritten without inline pictures
+
+// ---- Reading ----
+
+const readIndex = () => read<Index>(INDEX)
+
+/**
+ * A board record with its view. The view lives in its own record so panning does not rewrite every image; boards saved before
+ * that carry it inside the board record, and it is copied to its own record the first time they are read.
+ */
+async function readBoard(id: string) {
+  const saved = await read<Saved>(id)
+  let view = await read<View>(`${id}:view`)
+  if (!view && saved?.view) {
+    view = saved.view
+    await run('readwrite', (s) => s.put(view, `${id}:view`)).catch(() => {})
+  }
+  return { saved, view }
+}
+
+/** A phone opens a board made on a desktop zoomed to fit, instead of cropped to its top-left. */
+const fitsOnPhone = (view: View, count: number) => innerWidth < 700 && count > 0 && view.x === 0 && view.y === 0 && view.zoom === 1
 
 /** Puts a saved board on screen through the snapshot parse (a clean slate for undo and selection). */
 async function show(id: string, saved: Saved | undefined, savedView?: View) {
@@ -24,19 +50,22 @@ async function show(id: string, saved: Saved | undefined, savedView?: View) {
     snap = moved
     await run('readwrite', (s) => s.put({ ...saved, elements: snap.elements }, id)).catch(() => {})
   }
-  const view = savedView ?? saved?.view ?? DEFAULT_VIEW
-  // a phone opens a board made on a desktop zoomed to fit, instead of cropped to its top-left
-  const untouched = view.x === 0 && view.y === 0 && view.zoom === 1
-  await openSnapshot(snap, 'new', { id, view: innerWidth < 700 && snap.elements.length && untouched ? undefined : view })
+  const view = savedView ?? DEFAULT_VIEW
+  await openSnapshot(snap, 'new', { id, view: fitsOnPhone(view, snap.elements.length) ? undefined : view })
   if (saved?.exportPrefs) useBoard.setState({ exportPrefs: saved.exportPrefs })
   void backfillColors()
 }
 
-// The view has its own small record, so panning does not rewrite every image. Older boards still carry it inside the board record.
-const readView = (id: string) => run<View | undefined>('readonly', (s) => s.get(`${id}:view`))
+// ---- Saving ----
+
 const saveView = () => {
   const { view, boardId } = useBoard.getState()
   return run('readwrite', (s) => s.put(view, `${boardId}:view`)).catch(() => useBoard.getState().notify('Could not save the board in this browser.'))
+}
+
+async function showStored(id: string) {
+  const { saved, view } = await readBoard(id)
+  return show(id, saved, view)
 }
 
 export async function loadBoard() {
@@ -44,10 +73,10 @@ export async function loadBoard() {
   if (index?.boards.length) {
     const current = index.boards.find((b) => b.id === index.current) ?? index.boards[0]
     useBoard.setState({ boards: index.boards })
-    await show(current.id, await run<Saved | undefined>('readonly', (s) => s.get(current.id)), await readView(current.id))
+    await showStored(current.id)
   } else {
     // first run, or a board saved before there were several
-    await show('local', await run<Saved | undefined>('readonly', (s) => s.get('local')), await readView('local'))
+    await showStored('local')
   }
 }
 
@@ -64,9 +93,10 @@ function save() {
 export async function switchBoard(id: string) {
   if (id === useBoard.getState().boardId) return
   await save()
-  await show(id, await run<Saved | undefined>('readonly', (s) => s.get(id)), await readView(id))
+  await showStored(id)
 }
 
+// A hook, not a direct call from snapshot.ts: that would make snapshot.ts and this module import each other.
 onLeaveBoard(save)
 
 /** A new board starts with the pattern and messy mode chosen in Settings. */
@@ -84,6 +114,7 @@ export async function saveAsLocalBoard(snap: Snapshot, name: string) {
   await run('readwrite', (s) => s.put({ current: id, boards: [...index.boards, { id, name }] } satisfies Index, INDEX))
 }
 
+/** Only changes the `boards` list in memory: the autosave subscription sees it change and `save` writes the index. */
 export function renameBoard(id: string, name: string) {
   const clean = name.trim().slice(0, 60)
   if (!clean) return
@@ -102,8 +133,10 @@ export async function deleteBoard(id: string) {
     return await show(fresh.id, undefined)
   }
   useBoard.setState({ boards: rest })
-  if (id === boardId) await show(rest[0].id, await run<Saved | undefined>('readonly', (s) => s.get(rest[0].id)), await readView(rest[0].id))
+  if (id === boardId) await showStored(rest[0].id)
 }
+
+// ---- Image sweep ----
 
 /**
  * Deletes stored images that no saved board uses. Once per start, after the first board is open: undo history
@@ -126,6 +159,8 @@ async function sweepNow() {
   scan(useBoard.getState().elements) // the open board, in case its record could not be rewritten
   await sweepImages(used)
 }
+
+// ---- Autosave ----
 
 /** Debounced save on every board change, plus an immediate save when the tab is hidden. */
 export function startAutosave() {
