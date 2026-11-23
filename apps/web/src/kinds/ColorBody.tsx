@@ -1,9 +1,9 @@
 import type { RefObject } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ColorFields } from '../ColorFields.tsx'
-import { harmonies } from '../colors.ts'
-import { useBoard, type BoardElement } from '../store.ts'
-import { surface } from '../style.ts'
+import { ColorFields } from '../components/ColorFields.tsx'
+import { harmonies } from '../palette/colors.ts'
+import { useBoard, type BoardElement } from '../board/store.ts'
+import { surface } from '../board/style.ts'
 
 type Color = Extract<BoardElement, { type: 'color' }>
 

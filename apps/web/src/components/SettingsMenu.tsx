@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { setSetting, useSettings, type Settings } from './settings.ts'
+import { setSetting, useSettings, type Settings } from '../board/settings.ts'
 
 function Choice<K extends keyof Settings>({ label, name, options }: { label: string; name: K; options: [Settings[K], string][] }) {
   const value = useSettings((s) => s[name])

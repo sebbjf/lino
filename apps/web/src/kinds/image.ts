@@ -1,5 +1,5 @@
-import { clampCrop } from '../crop.ts'
-import { IMAGE_FILTERS } from '../style.ts'
+import { clampCrop } from '../board/crop.ts'
+import { IMAGE_FILTERS } from '../board/style.ts'
 import { hexList, isHexStr, isNum, oneOf } from './check.ts'
 import type { Kind } from './types.ts'
 

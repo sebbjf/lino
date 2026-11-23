@@ -4,12 +4,12 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
-import { download } from './boardFile.ts'
-import { toAse } from './ase.ts'
-import { contrastPairs } from './contrast.ts'
-import { boardFonts, buildPalette, shuffledOrder } from './colors.ts'
-import { exportTheme, slug, type ExportFormat } from './export.ts'
-import { useBoard } from './store.ts'
+import { download } from '../data/boardFile.ts'
+import { toAse } from '../palette/ase.ts'
+import { contrastPairs } from '../palette/contrast.ts'
+import { boardFonts, buildPalette, shuffledOrder } from '../palette/colors.ts'
+import { exportTheme, slug, type ExportFormat } from '../palette/export.ts'
+import { useBoard } from '../board/store.ts'
 
 const LABEL: Record<ExportFormat, string> = { css: 'CSS', tailwind: 'Tailwind', tokens: 'Tokens' }
 

@@ -4,8 +4,8 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
-import { shareBoard, TooBig } from './share.ts'
-import { useBoard } from './store.ts'
+import { shareBoard, TooBig } from '../data/share.ts'
+import { useBoard } from '../board/store.ts'
 
 type State = { step: 'idle' | 'busy' } | { step: 'confirm'; mb: string } | { step: 'done'; url: string; expiresAt: string } | { step: 'error'; error: string }
 

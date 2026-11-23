@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { normalizeHex } from './colors.ts'
+import { normalizeHex } from '../palette/colors.ts'
 
 export type Corner = 'square' | 'soft' | 'round'
 export type NoteSize = 'sm' | 'md' | 'lg' | 'xl'

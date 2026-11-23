@@ -1,6 +1,6 @@
 // What an element looks like, in one place: the body components (CSS) and png.ts (canvas) both read these, so a card's look is tweaked here.
-import { textOn } from '../style.ts'
-import type { BoardElement } from '../store.ts'
+import { textOn } from '../board/style.ts'
+import type { BoardElement } from '../board/store.ts'
 
 type Note = Extract<BoardElement, { type: 'note' }>
 

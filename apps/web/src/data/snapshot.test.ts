@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest'
 import { captureSnapshot, openSnapshot, parseSnapshot, parseSnapshotText } from './snapshot.ts'
-import { useBoard } from './store.ts'
+import { useBoard } from '../board/store.ts'
 
 vi.stubGlobal('innerWidth', 1000)
 vi.stubGlobal('innerHeight', 800)

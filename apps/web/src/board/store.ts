@@ -1,10 +1,10 @@
 import { create } from 'zustand'
-import type { ColorMeta } from './colors.ts'
+import type { ColorMeta } from '../palette/colors.ts'
 import type { Crop } from './crop.ts'
 import { expandGroups, frameContents } from './frames.ts'
 import { alignOffsets, distributeOffsets, type AlignMode, type Box, type Guide, type Layout } from './geometry.ts'
 import { arranged, copiesOf, STEP_OFFSET, swatchRowUnder } from './layout.ts'
-import { ownStyleKeys, TYPED_KEYS } from './kinds/index.ts'
+import { ownStyleKeys, TYPED_KEYS } from '../kinds/index.ts'
 import { MESSY_TILT, type BoardStyle, type ElementStyle, type ImageStyle, type NoteStyle } from './style.ts'
 
 /** `locked`: can't be moved, resized, rotated, edited or deleted until unlocked. `groupId`: elements sharing one are selected together. */

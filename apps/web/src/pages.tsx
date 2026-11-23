@@ -1,6 +1,6 @@
 import { StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { bookmarklet } from './link.ts'
+import { bookmarklet } from './board/link.ts'
 import './index.css'
 
 // Small static pages (privacy, docs, 404). The page picks its content from <div id="root" data-page="…">.

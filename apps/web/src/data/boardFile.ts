@@ -1,5 +1,5 @@
 import { capturePortable, openSnapshot, parseSnapshotText } from './snapshot.ts'
-import { useBoard } from './store.ts'
+import { useBoard } from '../board/store.ts'
 
 const MAX_FILE = 50 * 1024 * 1024
 

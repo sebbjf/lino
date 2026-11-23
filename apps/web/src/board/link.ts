@@ -1,5 +1,5 @@
-import { readImage } from './image.ts'
-import { toId } from './images.ts'
+import { readImage } from '../data/image.ts'
+import { toId } from '../data/images.ts'
 import { useBoard, type LinkInfo } from './store.ts'
 
 const API = import.meta.env.VITE_API_URL ?? '/api'

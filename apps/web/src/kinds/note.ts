@@ -1,4 +1,4 @@
-import { FAMILY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES } from '../style.ts'
+import { FAMILY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES } from '../board/style.ts'
 import { isHexStr, isStr, MAX_TEXT, oneOf } from './check.ts'
 import type { Kind } from './types.ts'
 

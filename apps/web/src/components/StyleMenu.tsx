@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { boardFonts, buildPalette } from './colors.ts'
-import { cropBox, FULL } from './crop.ts'
-import { toggleLock } from './selection.ts'
-import { useBoard, type StylePatch } from './store.ts'
-import { PANEL_LAYOUT_MS, revealSelection } from './viewport.ts'
-import { CORNERS, DECOS, FAMILY, GOOGLE_FONTS, MIN_OPACITY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES, PATTERNS, STICKY_COLORS, loadFamily, loadFontPreviews, DEFAULT_DUO, IMAGE_FILTERS, type Pattern } from './style.ts'
+import { boardFonts, buildPalette } from '../palette/colors.ts'
+import { cropBox, FULL } from '../board/crop.ts'
+import { toggleLock } from '../board/selection.ts'
+import { useBoard, type StylePatch } from '../board/store.ts'
+import { PANEL_LAYOUT_MS, revealSelection } from '../board/viewport.ts'
+import { CORNERS, DECOS, FAMILY, GOOGLE_FONTS, MIN_OPACITY, NOTE_ALIGNS, NOTE_FONTS, NOTE_SIZES, PATTERNS, STICKY_COLORS, loadFamily, loadFontPreviews, DEFAULT_DUO, IMAGE_FILTERS, type Pattern } from '../board/style.ts'
 
 const NAMES: Record<string, string> = {
   square: 'Square',

@@ -1,7 +1,7 @@
 import { HugeiconsIcon } from '@hugeicons/react'
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Kbd } from '@/components/ui/kbd'
-import { available, commands, iconOf } from './commands.ts'
+import { available, commands, iconOf } from '../board/commands.ts'
 
 // Same commands as the command menu and the toolbars, picked by id: nothing is defined twice.
 const ON_ELEMENTS = ['duplicate', 'forward', 'backward', 'group', 'ungroup', 'lock', 'frame-selection', 'swatches', 'delete']

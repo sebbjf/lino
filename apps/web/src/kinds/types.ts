@@ -1,4 +1,4 @@
-import type { BoardElement, StylePatch } from '../store.ts'
+import type { BoardElement, StylePatch } from '../board/store.ts'
 
 type Of<T extends BoardElement['type']> = Extract<BoardElement, { type: T }>
 /** The part of a saved element every kind shares (id, box, common style); snapshot.ts builds it. */

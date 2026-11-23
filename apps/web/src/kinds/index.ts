@@ -1,4 +1,4 @@
-import type { BoardElement, StylePatch } from '../store.ts'
+import type { BoardElement, StylePatch } from '../board/store.ts'
 import { color } from './color.ts'
 import { frame } from './frame.ts'
 import { image } from './image.ts'

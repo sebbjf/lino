@@ -1,5 +1,5 @@
-import { useBoard, type BoardElement } from '../store.ts'
-import { surface } from '../style.ts'
+import { useBoard, type BoardElement } from '../board/store.ts'
+import { surface } from '../board/style.ts'
 
 /** Width of the frame's grabbable edge, in screen px. */
 const EDGE_PX = 10

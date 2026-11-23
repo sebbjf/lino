@@ -1,9 +1,9 @@
-import type { Crop } from './crop.ts'
-import { boundsOf } from './geometry.ts'
+import type { Crop } from '../board/crop.ts'
+import { boundsOf } from '../board/geometry.ts'
 import { resolveImage } from './images.ts'
-import { useBoard, type BoardElement } from './store.ts'
-import { CARD_PAD, LINK_DOT, LINK_DOT_CENTER_FROM_BOTTOM, LINK_DOT_GAP, LINK_TEXT_MAX_H, PIN, TAPE, isBare, noteInk } from './kinds/look.ts'
-import { FAMILY, RADIUS, noteText, filterPixels, loadFamily, textOn, type BoardStyle, type Deco, type ImageStyle } from './style.ts'
+import { useBoard, type BoardElement } from '../board/store.ts'
+import { CARD_PAD, LINK_DOT, LINK_DOT_CENTER_FROM_BOTTOM, LINK_DOT_GAP, LINK_TEXT_MAX_H, PIN, TAPE, isBare, noteInk } from '../kinds/look.ts'
+import { FAMILY, RADIUS, noteText, filterPixels, loadFamily, textOn, type BoardStyle, type Deco, type ImageStyle } from '../board/style.ts'
 
 const PAD = 48
 const MAX_SIDE = 8000 // browsers refuse much larger canvases

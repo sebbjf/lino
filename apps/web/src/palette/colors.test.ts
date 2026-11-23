@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { boardFonts, buildPalette, dominantColors, harmonies, normalizeHex, shuffledOrder } from './colors.ts'
-import type { BoardElement } from './store.ts'
+import type { BoardElement } from '../board/store.ts'
 
 test('normalizeHex', () => {
   expect(normalizeHex('#ABC')).toBe('#aabbcc')

@@ -4,9 +4,9 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { exportBoardFile, importBoardFile } from './boardFile.ts'
-import { downloadPng } from './png.ts'
-import { useBoard } from './store.ts'
+import { exportBoardFile, importBoardFile } from '../data/boardFile.ts'
+import { downloadPng } from '../data/png.ts'
+import { useBoard } from '../board/store.ts'
 
 function Item({ icon, label, hint, onClick, disabled }: { icon: IconSvgElement; label: string; hint: string; onClick: () => void; disabled?: boolean }) {
   return (

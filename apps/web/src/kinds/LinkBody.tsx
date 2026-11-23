@@ -1,8 +1,8 @@
 import { Alert02Icon, Link01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { useImageSrc } from '../images.ts'
-import type { BoardElement } from '../store.ts'
-import { surface } from '../style.ts'
+import { useImageSrc } from '../data/images.ts'
+import type { BoardElement } from '../board/store.ts'
+import { surface } from '../board/style.ts'
 import { CARD_PAD, LINK_DOT, LINK_DOT_GAP } from './look.ts'
 
 type Link = Extract<BoardElement, { type: 'link' }>

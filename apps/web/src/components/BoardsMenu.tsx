@@ -25,8 +25,8 @@ import {
   deleteBoard,
   renameBoard,
   switchBoard,
-} from "./storage.ts";
-import { useBoard } from "./store.ts";
+} from "../data/storage.ts";
+import { useBoard } from "../board/store.ts";
 
 /** Name of the board on screen; opens the list of boards to switch, rename, delete or add one. */
 export function BoardsMenu() {

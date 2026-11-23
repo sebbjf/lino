@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { bookmarklet, isImageUrl, sharedUrl } from './link.ts'
+import { bookmarklet, isImageUrl, sharedUrl } from '../board/link.ts'
 
 test('sharedUrl accepts only an http(s) URL in ?add=', () => {
   expect(sharedUrl('?add=' + encodeURIComponent('https://a.test/x?y=1'))).toBe('https://a.test/x?y=1')

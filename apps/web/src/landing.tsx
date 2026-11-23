@@ -15,7 +15,7 @@ import {
   useTransform,
   useVelocity,
 } from 'motion/react'
-import { boundsOf, layoutPositions, type Layout } from './geometry.ts'
+import { boundsOf, layoutPositions, type Layout } from './board/geometry.ts'
 import './index.css'
 
 // ---------------------------------------------------------------- palette

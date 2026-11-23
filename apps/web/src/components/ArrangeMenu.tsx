@@ -15,9 +15,9 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { command, selectedKind } from './commands.ts'
-import { LAYOUTS, type Layout } from './geometry.ts'
-import { useBoard } from './store.ts'
+import { command, selectedKind } from '../board/commands.ts'
+import { LAYOUTS, type Layout } from '../board/geometry.ts'
+import { useBoard } from '../board/store.ts'
 
 const INFO: Record<Layout, { label: string; hint: string; icon: IconSvgElement }> = {
   grid: { label: 'Grid', hint: 'Even rows and columns', icon: GridViewIcon },

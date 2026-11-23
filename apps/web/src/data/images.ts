@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { BoardElement } from './store.ts'
+import type { BoardElement } from '../board/store.ts'
 import type { Snapshot } from './snapshot.ts'
 
 // Images of a local board live apart from its record, as blobs keyed by the hash of their bytes (ADR 0002).

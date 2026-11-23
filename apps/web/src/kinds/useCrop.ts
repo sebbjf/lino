@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { coverCrop, cropBox, type Crop } from '../crop.ts'
-import { useBoard, type BoardElement } from '../store.ts'
+import { coverCrop, cropBox, type Crop } from '../board/crop.ts'
+import { useBoard, type BoardElement } from '../board/store.ts'
 
 /**
  * Crop mode of one element: `from` is the crop the box shows now, `draft` the one being dragged out.

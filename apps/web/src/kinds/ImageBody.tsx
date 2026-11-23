@@ -1,8 +1,8 @@
-import { CropOverlay } from '../CropOverlay.tsx'
-import { cropStyle } from '../crop.ts'
-import { useImageSrc } from '../images.ts'
-import type { BoardElement } from '../store.ts'
-import { DEFAULT_DUO, rgb, surface } from '../style.ts'
+import { CropOverlay } from '../components/CropOverlay.tsx'
+import { cropStyle } from '../board/crop.ts'
+import { useImageSrc } from '../data/images.ts'
+import type { BoardElement } from '../board/store.ts'
+import { DEFAULT_DUO, rgb, surface } from '../board/style.ts'
 import type { CropState } from './useCrop.ts'
 
 type Image = Extract<BoardElement, { type: 'image' }>

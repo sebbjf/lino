@@ -1,6 +1,6 @@
-import type { BoardElement } from './store.ts'
-import { normalizeHex } from './kinds/check.ts'
-import { colorsOf } from './kinds/index.ts'
+import type { BoardElement } from '../board/store.ts'
+import { normalizeHex } from '../kinds/check.ts'
+import { colorsOf } from '../kinds/index.ts'
 
 /** `order` comes from shuffling; colors without one keep board order after those that have one. */
 export type ColorMeta = { name?: string; pinned?: boolean; hidden?: boolean; order?: number }

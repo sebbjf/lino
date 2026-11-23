@@ -1,11 +1,11 @@
-import type { ColorMeta } from './colors.ts'
-import { fitView } from './geometry.ts'
-import { CORNERS, DECOS, MIN_OPACITY, PATTERNS, type BoardStyle } from './style.ts'
-import { KINDS } from './kinds/index.ts'
-import { HEX, isNum, isStr, MAX_TEXT, oneOf } from './kinds/check.ts'
-import type { Kind } from './kinds/types.ts'
+import type { ColorMeta } from '../palette/colors.ts'
+import { fitView } from '../board/geometry.ts'
+import { CORNERS, DECOS, MIN_OPACITY, PATTERNS, type BoardStyle } from '../board/style.ts'
+import { KINDS } from '../kinds/index.ts'
+import { HEX, isNum, isStr, MAX_TEXT, oneOf } from '../kinds/check.ts'
+import type { Kind } from '../kinds/types.ts'
 import { externalize, IMAGE_ID, inline } from './images.ts'
-import { useBoard, type BoardElement, type View } from './store.ts'
+import { useBoard, type BoardElement, type View } from '../board/store.ts'
 
 // The board snapshot: the portable content of a board (elements, palette edits, board style), shared by
 // board files, shared boards and local saves. This is the only module that knows its shape.

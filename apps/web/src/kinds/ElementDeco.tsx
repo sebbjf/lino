@@ -1,4 +1,4 @@
-import type { BoardElement } from '../store.ts'
+import type { BoardElement } from '../board/store.ts'
 import { PIN, TAPE } from './look.ts'
 
 /** Tape or pin over the top edge, and the lock badge; drawn the same way on every kind. */

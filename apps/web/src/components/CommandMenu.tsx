@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Kbd } from '@/components/ui/kbd'
 import { Search01Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { available, commands, dynamicCommands, groupOf, iconOf, search } from './commands.ts'
+import { available, commands, dynamicCommands, groupOf, iconOf, search } from '../board/commands.ts'
 
 /** Ctrl/Cmd+K (or Ctrl/Cmd+/, as in Figma): type to find any board action, Enter runs it. Works from a text field too. */
 export function CommandMenu({ open, setOpen }: { open: boolean; setOpen: (o: boolean | ((o: boolean) => boolean)) => void }) {

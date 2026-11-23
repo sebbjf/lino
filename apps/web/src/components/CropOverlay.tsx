@@ -1,7 +1,7 @@
 import type { PointerEvent } from 'react'
-import { cropStyle, dragCrop, type Crop } from './crop.ts'
-import { drag } from './drag.ts'
-import { rotateVec } from './geometry.ts'
+import { cropStyle, dragCrop, type Crop } from '../board/crop.ts'
+import { drag } from '../board/drag.ts'
+import { rotateVec } from '../board/geometry.ts'
 
 const EDGES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 

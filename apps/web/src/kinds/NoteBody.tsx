@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { useBoard, type BoardElement } from '../store.ts'
-import { loadFamily, noteFontStack, noteText as noteSizes, surface } from '../style.ts'
+import { useBoard, type BoardElement } from '../board/store.ts'
+import { loadFamily, noteFontStack, noteText as noteSizes, surface } from '../board/style.ts'
 import { CARD_PAD, isBare, noteInk } from './look.ts'
 
 type Props = { el: Extract<BoardElement, { type: 'note' }>; ink: string; editing: boolean; setEditing: (v: boolean) => void }

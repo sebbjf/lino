@@ -1,9 +1,9 @@
 import { run as idb } from './db.ts'
-import { backfillColors } from './image.ts'
+import { backfillColors } from '../data/image.ts'
 import { externalize, IMAGE_ID, sweepImages } from './images.ts'
-import { useSettings } from './settings.ts'
+import { useSettings } from '../board/settings.ts'
 import { captureSnapshot, onLeaveBoard, openSnapshot, parseSnapshot, type Snapshot } from './snapshot.ts'
-import { useBoard, type BoardMeta, type ExportPrefs, type View } from './store.ts'
+import { useBoard, type BoardMeta, type ExportPrefs, type View } from '../board/store.ts'
 
 // Many local boards: each is stored under its own id ('local' is the original single board), plus an index of names.
 const INDEX = 'index'

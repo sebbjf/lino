@@ -1,5 +1,5 @@
 import type { PaletteColor } from './colors.ts'
-import { luminance } from './style.ts'
+import { luminance } from '../board/style.ts'
 
 export type ContrastLevel = 'AAA' | 'AA' | 'AA-large'
 

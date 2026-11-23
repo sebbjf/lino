@@ -1,7 +1,7 @@
-import { dominantColors } from './colors.ts'
-import { boundsOf } from './geometry.ts'
+import { dominantColors } from '../palette/colors.ts'
+import { boundsOf } from '../board/geometry.ts'
 import { resolveImage, toId } from './images.ts'
-import { useBoard, viewportCenter, type HistoryEntry } from './store.ts'
+import { useBoard, viewportCenter, type HistoryEntry } from '../board/store.ts'
 
 const MAX_BYTES = 20 * 1024 * 1024
 const MAX_SIDE = 1600

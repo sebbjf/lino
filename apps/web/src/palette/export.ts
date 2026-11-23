@@ -1,6 +1,6 @@
 import type { PaletteColor } from './colors.ts'
-import type { ExportPrefs } from './store.ts'
-import { hexToOklch, toneScale } from './style.ts'
+import type { ExportPrefs } from '../board/store.ts'
+import { hexToOklch, toneScale } from '../board/style.ts'
 
 /** 'Brand Blue!' → 'brand-blue'; empty results fall back. */
 export function slug(name: string, fallback: string) {

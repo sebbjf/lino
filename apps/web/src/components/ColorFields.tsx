@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { normalizeHex } from './colors.ts'
+import { normalizeHex } from '../palette/colors.ts'
 
 /** Native colour picker plus a hex field; calls onChange only with valid, normalized hex values. */
 export function ColorFields({ hex, onChange }: { hex: string; onChange: (hex: string) => void }) {

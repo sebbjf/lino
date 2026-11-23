@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent, type PointerEvent } from 'react'
 import { ContextMenu, type MenuAt } from './ContextMenu.tsx'
-import { drag, touches } from './drag.ts'
+import { drag, touches } from '../board/drag.ts'
 import { ElementView } from './ElementView.tsx'
-import { boundsOf, zoomAt } from './geometry.ts'
-import { importBoardFile, isBoardFile } from './boardFile.ts'
-import { addImages } from './image.ts'
-import { addLink, asUrl } from './link.ts'
-import { useBoard } from './store.ts'
-import { textOn } from './style.ts'
+import { boundsOf, zoomAt } from '../board/geometry.ts'
+import { importBoardFile, isBoardFile } from '../data/boardFile.ts'
+import { addImages } from '../data/image.ts'
+import { addLink, asUrl } from '../board/link.ts'
+import { useBoard } from '../board/store.ts'
+import { textOn } from '../board/style.ts'
 
 export function Canvas() {
   const elements = useBoard((s) => s.elements)
