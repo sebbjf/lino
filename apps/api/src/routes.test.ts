@@ -27,13 +27,13 @@ test('CORS preflight when CORS_ORIGIN is set', async () => {
 })
 
 test('image elements may carry paletteOff as a boolean', async () => {
-  const { elementSchema } = await import('./routes.ts')
+  const { elementSchema } = await import('./elementSchema.ts')
   assert.equal(elementSchema.properties.paletteOff.type, 'boolean')
 })
 
 // Pinned with the web side (snapshot.test.ts, "limits match the share API"): change one, change both.
 test('shared element limits', async () => {
-  const { elementSchema } = await import('./routes.ts')
+  const { elementSchema } = await import('./elementSchema.ts')
   const p = elementSchema.properties
   assert.deepEqual([p.x.minimum, p.x.maximum, p.y.minimum, p.y.maximum], [-1e6, 1e6, -1e6, 1e6])
   assert.deepEqual([p.w.minimum, p.w.maximum, p.h.minimum, p.h.maximum], [1, 10_000, 1, 10_000])
@@ -41,7 +41,7 @@ test('shared element limits', async () => {
 })
 
 test('frames, groups and headings are allowed in a shared board', async () => {
-  const { elementSchema } = await import('./routes.ts')
+  const { elementSchema } = await import('./elementSchema.ts')
   assert.ok(elementSchema.properties.type.enum.includes('frame'))
   assert.equal(elementSchema.properties.groupId.type, 'string')
   assert.equal(elementSchema.properties.heading.type, 'boolean')
