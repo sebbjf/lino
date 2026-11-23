@@ -6,7 +6,7 @@ Measured on 2026-11-16 by reading the render and save paths and running `pnpm bu
 
 ## 1. Moving the view rewrites every image
 
-`startAutosave` (`apps/web/src/storage.ts`) watches `view` among its keys, and `save()` writes the whole board as one record. Every pan or zoom rewrites all base64 images to IndexedDB 300 ms later: tens of MB per gesture on a 30-image board.
+`startAutosave` (`apps/web/src/data/storage.ts`) watches `view` among its keys, and `save()` writes the whole board as one record. Every pan or zoom rewrites all base64 images to IndexedDB 300 ms later: tens of MB per gesture on a 30-image board.
 
 Fix: save the view in its own small record (for example `<boardId>:view`) and take it out of the board record's triggers. Compatible: when the new record is missing, read `view` from the old board record, so existing boards still open where they were.
 

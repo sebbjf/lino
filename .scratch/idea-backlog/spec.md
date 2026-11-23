@@ -20,7 +20,7 @@ More feature ideas, noted on 2026-11-16. None is implemented and none repeats th
 
 ## Using the image colors now stored on each image
 
-- **Sort by color**: one more Arrange layout that places images by hue (`layoutPositions` in `apps/web/src/geometry.ts`; `colors` on image elements). Images added before colors were stored need sampling first (`imageColors` in `image.ts`).
+- **Sort by color**: one more Arrange layout that places images by hue (`layoutPositions` in `apps/web/src/board/geometry.ts`; `colors` on image elements). Images added before colors were stored need sampling first (`imageColors` in `image.ts`).
 - **Find by color**: clicking a palette color highlights the images that contain it.
 - **Eyedropper inside the board**: click a pixel of an image to take its color. The current eyedropper depends on the EyeDropper API, which only exists in Chromium; Firefox and Safari have none.
 - **Drag a palette color** onto a note or the background to apply it.

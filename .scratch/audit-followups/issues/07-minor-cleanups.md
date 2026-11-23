@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 
-- [ ] **Board names repeat**: `createBoard` names `Board ${boards.length + 1}` and `importShared` always "Shared board" (`apps/web/src/storage.ts`).
+- [ ] **Board names repeat**: `createBoard` names `Board ${boards.length + 1}` and `importShared` always "Shared board" (`apps/web/src/data/storage.ts`).
 - [ ] **Delete vs. pending autosave** (`deleteBoard` still swallows errors): a scheduled autosave can rewrite a board just deleted, leaving an orphan record; `deleteBoard` also swallows delete errors (`storage.ts`).
 - [ ] **Read-only palette is editable**: rename, pin and remove work in the shared view (`PalettePanel.tsx`).
 - [ ] **`switchBoard`/`createBoard`** do not catch read errors (`storage.ts`).
