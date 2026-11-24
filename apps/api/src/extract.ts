@@ -117,6 +117,9 @@ export function findColors(css: string, limit = 6) {
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([hex]) => hex)
 }
 
+const toDataUrl = (r: { type: string; body: Buffer }) =>
+  /^image\//.test(r.type) ? `data:${r.type.split(';')[0]};base64,${r.body.toString('base64')}` : null
+
 /** Reads a page and returns what it could find; parts that fail are listed in `missing`, not thrown. */
 export async function readLink(raw: string, fetcher: Fetcher = safeFetch): Promise<LinkData> {
   const signal = AbortSignal.timeout(TIMEOUT_MS)
@@ -124,23 +127,20 @@ export async function readLink(raw: string, fetcher: Fetcher = safeFetch): Promi
   if (!/html/i.test(page.type)) throw new BlockedError('That link is not a web page.')
   const parsed = parseHtml(page.body.toString('utf8'), page.url)
 
-  const [sheets, image] = await Promise.all([
-    Promise.allSettled(
-      parsed.sheets.slice(0, MAX_SHEETS).map((u) => fetcher(u, { maxBytes: CSS_BYTES, accept: 'text/css', signal })),
-    ),
-    parsed.image
-      ? fetcher(parsed.image, { maxBytes: IMAGE_BYTES, accept: 'image/*', signal }).then(
-          (r) => (/^image\//.test(r.type) ? `data:${r.type.split(';')[0]};base64,${r.body.toString('base64')}` : null),
-          () => null,
-        )
-      : null,
-  ])
-  const css = [parsed.css, ...sheets.flatMap((s) => (s.status === 'fulfilled' ? [s.value.body.toString('utf8')] : []))].join('\n')
+  const fetchSheet = (url: URL) => fetcher(url, { maxBytes: CSS_BYTES, accept: 'text/css', signal })
+  const fetchImage = (url: URL) =>
+    fetcher(url, { maxBytes: IMAGE_BYTES, accept: 'image/*', signal }).then(toDataUrl, () => null)
 
-  const fonts = findFonts(css)
-  const theme = parsed.themeColor && findColors(parsed.themeColor + ';', 1)
-  const colors = [...new Set([...(theme || []), ...findColors(css)])].slice(0, 6)
-  const data = { url: page.url.href, title: parsed.title, image, fonts, colors }
+  const [sheets, image] = await Promise.all([
+    Promise.allSettled(parsed.sheets.slice(0, MAX_SHEETS).map(fetchSheet)),
+    parsed.image ? fetchImage(parsed.image) : null,
+  ])
+  const sheetCss = sheets.flatMap((s) => (s.status === 'fulfilled' ? [s.value.body.toString('utf8')] : []))
+  const css = [parsed.css, ...sheetCss].join('\n')
+
+  const themeColors = parsed.themeColor ? findColors(parsed.themeColor + ';', 1) : []
+  const colors = [...new Set([...themeColors, ...findColors(css)])].slice(0, 6)
+  const data = { url: page.url.href, title: parsed.title, image, fonts: findFonts(css), colors }
   const missing = (['title', 'image', 'fonts', 'colors'] as const).filter((k) => !data[k]?.length)
   return { ...data, missing }
 }
