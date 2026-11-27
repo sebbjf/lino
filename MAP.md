@@ -10,7 +10,7 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | Element types (`frame`, `image`, `note`, `color`, `link`): type in `BoardElement` (store.ts); per-kind validation, palette colours, own style keys, label: one module each in [apps/web/src/kinds/](apps/web/src/kinds/) registered in `kinds/index.ts` (a new kind is a compile error until registered) |
 | Commands on the selection (nudge, delete, duplicate, rotate, reorder), the read-only gate, "what a command acts on" (`targetOf`) | [apps/web/src/board/selection.ts](apps/web/src/board/selection.ts) |
 | Global shortcuts (undo/redo, and keys to selection commands without focus), paste handling | [apps/web/src/App.tsx](apps/web/src/App.tsx) |
-| Per-element shortcuts (key to selection command; Alt+arrows resize, Enter) | [apps/web/src/components/ElementView.tsx](apps/web/src/components/ElementView.tsx) |
+| Per-element shortcuts (key to selection command; Alt+arrows resize, Enter) | which key means what: `elementKey` in [apps/web/src/board/keys.ts](apps/web/src/board/keys.ts); carried out in [ElementView.tsx](apps/web/src/components/ElementView.tsx) |
 | Pan, zoom, wheel, drop files/links/board files | [apps/web/src/components/Canvas.tsx](apps/web/src/components/Canvas.tsx) |
 | Align / distribute math | `alignOffsets`, `distributeOffsets` in [geometry.ts](apps/web/src/board/geometry.ts) |
 | Multi-select: Shift+click, group drag | [ElementView.tsx](apps/web/src/components/ElementView.tsx); selection box in [Canvas.tsx](apps/web/src/components/Canvas.tsx); Ctrl+A, Delete/Esc without focus in [App.tsx](apps/web/src/App.tsx) |
@@ -65,6 +65,7 @@ Layout of `apps/web/src/` (tests sit next to the code they test):
 | `src/board/frames.ts` | Pure logic: `frameContents` (geometric membership), `frameAround`, `expandGroups`, `layoutInFrame`. |
 | `src/board/selection.ts` | Selection commands shared by keyboard and toolbar: `targetOf`, `nudge`, `rotateStep`, `remove`, `duplicate`, `reorder`. One read-only check; one undo step each (a burst of nudges or rotations is one). |
 | `src/components/ElementView.tsx` | One element on the board: position, selection, drag, resize/rotate handles, keyboard actions; picks the body of its kind. |
+| `src/board/keys.ts` | Pure: `elementKey` reads a key press on a focused element as one action (nudge, resize, rotate, reorder, group, ...). |
 | `src/kinds/*Body.tsx`, `useCrop.ts`, `ElementDeco.tsx`, `look.ts` | What each kind shows (frame, image, note, color, link), crop mode, tape/pin/lock badge, and the look values png.ts shares. |
 | `src/components/ColorFields.tsx` | Hex input + native color input used in the color popover. |
 | `src/components/Toolbar.tsx` | Floating bottom toolbar: add image/note/color, undo/redo, selected-element actions (duplicate, layers, delete), zoom, palette toggle. |
@@ -73,7 +74,7 @@ Layout of `apps/web/src/` (tests sit next to the code they test):
 | `src/data/storage.ts` | IndexedDB load/save, debounced autosave subscribed to the store. |
 | `src/palette/colors.ts` | `normalizeHex`, `buildPalette` (colors from swatches, links, images + user meta), `boardFonts`, `dominantColors`. |
 | `src/palette/export.ts` | `exportTheme('css' \| 'tailwind', colors, fonts)` and slug naming. |
-| `src/board/geometry.ts` | Box math: rotate, resize with aspect lock, rotation snap, zoom around a point, fit view to content, rotated bounds, `snapMove` (alignment snapping + guides), `alignOffsets`, `distributeOffsets`. |
+| `src/board/geometry.ts` | Box math: rotate, resize with aspect lock, rotation snap, zoom around a point, fit view to content, rotated bounds, `snapMove` (alignment snapping + guides), `alignOffsets`, `distributeOffsets`, `layoutPositions` (one function per layout mode). |
 | `src/board/drag.ts` | Pointer-drag helper used by move/resize/rotate. |
 | `src/data/image.ts` | Read an image file into a data URL and add it to the board. |
 | `src/data/images.ts` | Image blob store interface, content-hash ids, `externalize`/`inline`, `useImageSrc`, sweep. |

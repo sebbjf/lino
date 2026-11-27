@@ -1,6 +1,6 @@
 export type Box = { x: number; y: number; w: number; h: number; rotation: number }
 
-export const MIN_SIZE = 24
+const MIN_SIZE = 24
 
 export function rotateVec(x: number, y: number, deg: number) {
   const r = (deg * Math.PI) / 180
