@@ -94,30 +94,34 @@ function drawDeco(ctx: CanvasRenderingContext2D, deco: Deco | undefined, w: numb
   ctx.restore()
 }
 
-/** Renders the whole board (not just the viewport) to a PNG with the current theme. Selection and handles are left out. */
-export async function boardPng(elements: BoardElement[], scale = 2, board: BoardStyle = {}): Promise<Blob> {
-  const css = getComputedStyle(document.documentElement)
-  const v = (name: string) => css.getPropertyValue(name).trim()
-  const theme = { bg: v('--background'), card: v('--card'), fg: v('--card-foreground'), muted: v('--muted-foreground'), border: v('--border') }
-  const sans = v('--font-sans')
-  const serif = v('--font-heading')
-  // Google Fonts used by notes must be loaded before they are drawn on the canvas
+type Of<T extends BoardElement['type']> = Extract<BoardElement, { type: T }>
+
+/** Everything drawing needs besides the element: the canvas, the theme colours and fonts, and the board's ink. */
+type Paint = {
+  ctx: CanvasRenderingContext2D
+  theme: { card: string; fg: string; muted: string }
+  sans: string
+  serif: string
+  /** frames and headings are drawn in the board's ink, not on a card */
+  ink: string
+}
+
+const FRAME_FILL_ALPHA = 0.06
+const FRAME_STROKE_ALPHA = 0.25
+const CARD_SHADOW = { color: 'rgb(0 0 0 / 0.08)', blur: 24, offsetY: 6 }
+/** The hex label pill at the bottom left of a colour swatch. */
+const HEX_PILL = { left: 8, fromBottom: 30, h: 22, padX: 8 }
+
+/** Google Fonts used by notes must be loaded before they are drawn on the canvas. */
+async function loadNoteFonts(elements: BoardElement[]) {
   const families = [...new Set(elements.flatMap((e) => (e.type === 'note' && e.family && FAMILY.test(e.family) ? [e.family] : [])))]
   families.forEach(loadFamily)
   await Promise.all(families.map((f) => document.fonts.load(`16px "${f}"`).catch(() => [])))
   await document.fonts.ready
+}
 
-  const b = boundsOf(elements)
-  const k = Math.min(scale, MAX_SIDE / (b.w + PAD * 2), MAX_SIDE / (b.h + PAD * 2))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.ceil((b.w + PAD * 2) * k)
-  canvas.height = Math.ceil((b.h + PAD * 2) * k)
-  const ctx = canvas.getContext('2d')!
-  ctx.scale(k, k)
-  ctx.fillStyle = board.bg ?? theme.bg
-  ctx.fillRect(0, 0, b.w + PAD * 2, b.h + PAD * 2)
-  ctx.translate(PAD - b.x, PAD - b.y)
-
+/** The pictures of image and link cards by element id; ones that fail to load are left out. */
+async function loadPictures(elements: BoardElement[]) {
   const images = new Map<string, HTMLImageElement>()
   await Promise.all(
     elements.flatMap((el) => {
@@ -125,102 +129,142 @@ export async function boardPng(elements: BoardElement[], scale = 2, board: Board
       return src ? [loadImage(src).then((img) => void images.set(el.id, img), () => {})] : []
     }),
   )
+  return images
+}
 
-  // frames and headings are drawn in the board's ink, not on a card
-  const ink = (board.bg && textOn(board.bg)) || v('--foreground')
+function drawFrame({ ctx, sans, ink }: Paint, el: Of<'frame'>, radius: number) {
+  const opacity = el.opacity ?? 1
+  ctx.fillStyle = ink
+  ctx.strokeStyle = ink
+  ctx.beginPath()
+  ctx.roundRect(0, 0, el.w, el.h, radius)
+  ctx.globalAlpha *= FRAME_FILL_ALPHA
+  ctx.fill()
+  ctx.globalAlpha = opacity * FRAME_STROKE_ALPHA
+  ctx.stroke()
+  ctx.globalAlpha = opacity
+  ctx.font = `500 14px ${sans}`
+  ctx.textBaseline = 'bottom'
+  ctx.fillText(el.title, 4, -6)
+}
+
+/** The card itself with its soft shadow; bare headings have none. */
+function drawCardBack({ ctx, theme }: Paint, el: BoardElement, radius: number) {
+  if (isBare(el)) return
+  ctx.save()
+  if (el.shadow !== false) {
+    ctx.shadowColor = CARD_SHADOW.color
+    ctx.shadowBlur = CARD_SHADOW.blur
+    ctx.shadowOffsetY = CARD_SHADOW.offsetY
+  }
+  ctx.fillStyle = el.type === 'color' ? el.hex : ((el.type === 'note' ? el.bg : undefined) ?? theme.card)
+  ctx.beginPath()
+  ctx.roundRect(0, 0, el.w, el.h, radius)
+  ctx.fill()
+  ctx.restore()
+}
+
+function drawPicture({ ctx }: Paint, el: Of<'image'>, img: HTMLImageElement) {
+  // flips mirror the cropped picture about the box centre, like the CSS transform on screen
+  ctx.translate(el.flipX ? el.w : 0, el.flipY ? el.h : 0)
+  ctx.scale(el.flipX ? -1 : 1, el.flipY ? -1 : 1)
+  cover(ctx, filtered(img, el), 0, 0, el.w, el.h, el.crop)
+}
+
+function drawNote({ ctx, theme, sans, serif, ink }: Paint, el: Of<'note'>) {
+  const [size, lineH] = noteText(el)
+  const base = el.font === 'serif' ? serif : sans
+  const family = el.family && FAMILY.test(el.family) ? `"${el.family}", ${base}` : base
+  ctx.fillStyle = noteInk(el, ink) ?? theme.fg
+  ctx.font = `${el.italic ? 'italic ' : ''}${el.bold ? '700 ' : ''}${size}px ${family}`
+  const maxLines = Math.floor((el.h - CARD_PAD * 2) / lineH)
+  lines(ctx, el.text, CARD_PAD, CARD_PAD + (lineH - size) / 2, el.w - CARD_PAD * 2, lineH, maxLines, el.align)
+}
+
+function drawSwatchLabel({ ctx, theme }: Paint, el: Of<'color'>) {
+  ctx.font = `12px ui-monospace, monospace`
+  const top = el.h - HEX_PILL.fromBottom
+  ctx.fillStyle = theme.card
+  ctx.beginPath()
+  ctx.roundRect(HEX_PILL.left, top, ctx.measureText(el.hex).width + HEX_PILL.padX * 2, HEX_PILL.h, HEX_PILL.h / 2)
+  ctx.fill()
+  ctx.fillStyle = theme.fg
+  ctx.fillText(el.hex, HEX_PILL.left + HEX_PILL.padX, top + 5)
+}
+
+function drawLink({ ctx, theme, sans, serif }: Paint, el: Of<'link'>, img: HTMLImageElement | undefined) {
+  const { w, h } = el
+  const textH = Math.min(h, LINK_TEXT_MAX_H)
+  if (img) cover(ctx, img, 0, 0, w, h - textH)
+  const top = img ? h - textH + CARD_PAD : CARD_PAD
+  ctx.fillStyle = theme.muted
+  ctx.font = `12px ${sans}`
+  ctx.fillText(new URL(el.url).hostname.replace(/^www\./, ''), 16, top)
+  ctx.fillStyle = theme.fg
+  ctx.font = `18px ${serif}`
+  lines(ctx, el.title ?? el.url, CARD_PAD, top + 22, w - CARD_PAD * 2, 24, 2)
+  el.colors.forEach((hex, i) => {
+    ctx.fillStyle = hex
+    ctx.beginPath()
+    ctx.arc(CARD_PAD + LINK_DOT / 2 + i * (LINK_DOT + LINK_DOT_GAP), h - LINK_DOT_CENTER_FROM_BOTTOM, LINK_DOT / 2, 0, Math.PI * 2)
+    ctx.fill()
+  })
+}
+
+/** A card: its back, then its content clipped to the rounded shape, then its tape or pin over the edge. */
+function drawCard(p: Paint, el: BoardElement, radius: number, img: HTMLImageElement | undefined) {
+  const { ctx } = p
+  drawCardBack(p, el, radius)
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(0, 0, el.w, el.h, radius)
+  ctx.clip()
+  ctx.textBaseline = 'top'
+  if (el.type === 'image' && img) drawPicture(p, el, img)
+  if (el.type === 'note') drawNote(p, el)
+  if (el.type === 'color') drawSwatchLabel(p, el)
+  if (el.type === 'link') drawLink(p, el, img)
+  ctx.restore()
+  drawDeco(ctx, el.deco, el.w)
+}
+
+/** Renders the whole board (not just the viewport) to a PNG with the current theme. Selection and handles are left out. */
+export async function boardPng(elements: BoardElement[], scale = 2, board: BoardStyle = {}): Promise<Blob> {
+  const css = getComputedStyle(document.documentElement)
+  const v = (name: string) => css.getPropertyValue(name).trim()
+  await loadNoteFonts(elements)
+
+  const b = boundsOf(elements)
+  const width = b.w + PAD * 2
+  const height = b.h + PAD * 2
+  const k = Math.min(scale, MAX_SIDE / width, MAX_SIDE / height)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.ceil(width * k)
+  canvas.height = Math.ceil(height * k)
+  const ctx = canvas.getContext('2d')!
+  ctx.scale(k, k)
+  ctx.fillStyle = board.bg ?? v('--background')
+  ctx.fillRect(0, 0, width, height)
+  ctx.translate(PAD - b.x, PAD - b.y)
+
+  const images = await loadPictures(elements)
+  const paint: Paint = {
+    ctx,
+    theme: { card: v('--card'), fg: v('--card-foreground'), muted: v('--muted-foreground') },
+    sans: v('--font-sans'),
+    serif: v('--font-heading'),
+    ink: (board.bg && textOn(board.bg)) || v('--foreground'),
+  }
   // frames first: they sit behind everything else
   for (const el of [...elements.filter((e) => e.type === 'frame'), ...elements.filter((e) => e.type !== 'frame')]) {
-    const { w, h } = el
     ctx.save()
-    ctx.translate(el.x + w / 2, el.y + h / 2)
+    ctx.translate(el.x + el.w / 2, el.y + el.h / 2)
     ctx.rotate((el.rotation * Math.PI) / 180)
-    ctx.translate(-w / 2, -h / 2)
+    ctx.translate(-el.w / 2, -el.h / 2)
     ctx.globalAlpha = el.opacity ?? 1
-    const radius = Math.min(RADIUS[el.corner ?? 'soft'], w / 2, h / 2)
-    const noteBg = el.type === 'note' ? el.bg : undefined
-    const bare = isBare(el)
-
-    if (el.type === 'frame') {
-      ctx.fillStyle = ink
-      ctx.strokeStyle = ink
-      ctx.beginPath()
-      ctx.roundRect(0, 0, w, h, radius)
-      ctx.globalAlpha *= 0.06
-      ctx.fill()
-      ctx.globalAlpha = (el.opacity ?? 1) * 0.25
-      ctx.stroke()
-      ctx.globalAlpha = el.opacity ?? 1
-      ctx.font = `500 14px ${sans}`
-      ctx.textBaseline = 'bottom'
-      ctx.fillText(el.title, 4, -6)
-      ctx.restore()
-      continue
-    }
-
-    // soft shadow, then clip to the rounded card
-    ctx.save()
-    if (el.shadow !== false && !bare) {
-      ctx.shadowColor = 'rgb(0 0 0 / 0.08)'
-      ctx.shadowBlur = 24
-      ctx.shadowOffsetY = 6
-    }
-    ctx.fillStyle = el.type === 'color' ? el.hex : (noteBg ?? theme.card)
-    ctx.beginPath()
-    ctx.roundRect(0, 0, w, h, radius)
-    if (!bare) ctx.fill()
-    ctx.restore()
-    ctx.save()
-    ctx.beginPath()
-    ctx.roundRect(0, 0, w, h, radius)
-    ctx.clip()
-    ctx.textBaseline = 'top'
-    const img = images.get(el.id)
-
-    if (el.type === 'image' && img) {
-      // flips mirror the cropped picture about the box centre, like the CSS transform on screen
-      ctx.translate(el.flipX ? w : 0, el.flipY ? h : 0)
-      ctx.scale(el.flipX ? -1 : 1, el.flipY ? -1 : 1)
-      cover(ctx, filtered(img, el), 0, 0, w, h, el.crop)
-    }
-
-    if (el.type === 'note') {
-      const [size, lineH] = noteText(el)
-      ctx.fillStyle = noteInk(el, ink) ?? theme.fg
-      const base = el.font === 'serif' ? serif : sans
-      ctx.font = `${el.italic ? 'italic ' : ''}${el.bold ? '700 ' : ''}${size}px ${el.family && FAMILY.test(el.family) ? `"${el.family}", ${base}` : base}`
-      lines(ctx, el.text, CARD_PAD, CARD_PAD + (lineH - size) / 2, w - CARD_PAD * 2, lineH, Math.floor((h - CARD_PAD * 2) / lineH), el.align)
-    }
-
-    if (el.type === 'color') {
-      ctx.font = `12px ui-monospace, monospace`
-      const tw = ctx.measureText(el.hex).width + 16
-      ctx.fillStyle = theme.card
-      ctx.beginPath()
-      ctx.roundRect(8, h - 30, tw, 22, 11)
-      ctx.fill()
-      ctx.fillStyle = theme.fg
-      ctx.fillText(el.hex, 16, h - 25)
-    }
-
-    if (el.type === 'link') {
-      const textH = Math.min(h, LINK_TEXT_MAX_H)
-      if (img) cover(ctx, img, 0, 0, w, h - textH)
-      const top = img ? h - textH + CARD_PAD : CARD_PAD
-      ctx.fillStyle = theme.muted
-      ctx.font = `12px ${sans}`
-      ctx.fillText(new URL(el.url).hostname.replace(/^www\./, ''), 16, top)
-      ctx.fillStyle = theme.fg
-      ctx.font = `18px ${serif}`
-      lines(ctx, el.title ?? el.url, CARD_PAD, top + 22, w - CARD_PAD * 2, 24, 2)
-      el.colors.forEach((hex, i) => {
-        ctx.fillStyle = hex
-        ctx.beginPath()
-        ctx.arc(CARD_PAD + LINK_DOT / 2 + i * (LINK_DOT + LINK_DOT_GAP), h - LINK_DOT_CENTER_FROM_BOTTOM, LINK_DOT / 2, 0, Math.PI * 2)
-        ctx.fill()
-      })
-    }
-    ctx.restore() // end of the card clip; decorations sit on top of the edge
-    drawDeco(ctx, el.deco, w)
+    const radius = Math.min(RADIUS[el.corner ?? 'soft'], el.w / 2, el.h / 2)
+    if (el.type === 'frame') drawFrame(paint, el, radius)
+    else drawCard(paint, el, radius, images.get(el.id))
     ctx.restore()
   }
 
