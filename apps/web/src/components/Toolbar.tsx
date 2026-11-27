@@ -135,6 +135,9 @@ function LinkTool() {
   )
 }
 
+/** Look shared by the main bar and the selection bar floating over it. */
+const BAR = 'flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-[1.75rem] border bg-card/90 p-1.5 shadow-soft backdrop-blur'
+
 // hidden on a phone: the bar wraps there, and a divider at the end of a row reads as a stray mark
 const Divider = () => <Separator orientation="vertical" className="mx-1 h-5 self-center max-sm:hidden" />
 
@@ -151,20 +154,23 @@ function AddMenu() {
         <TooltipContent>More to add</TooltipContent>
       </Tooltip>
       <PopoverContent side="top" sideOffset={12} className="w-52 gap-1 p-2">
-        {items.map(([label, id]) => (
-          <Button
-            key={id}
-            variant="ghost"
-            className="justify-start gap-3 rounded-xl px-3"
-            onClick={() => {
-              setOpen(false)
-              command(id).run()
-            }}
-          >
-            <HugeiconsIcon icon={iconOf(command(id))} strokeWidth={1.8} />
-            {label}
-          </Button>
-        ))}
+        {items.map(([label, id]) => {
+          const c = command(id)
+          return (
+            <Button
+              key={id}
+              variant="ghost"
+              className="justify-start gap-3 rounded-xl px-3"
+              onClick={() => {
+                setOpen(false)
+                c.run()
+              }}
+            >
+              <HugeiconsIcon icon={iconOf(c)} strokeWidth={1.8} />
+              {label}
+            </Button>
+          )
+        })}
       </PopoverContent>
     </Popover>
   )
@@ -194,7 +200,7 @@ function SelectionBar() {
       role="toolbar"
       aria-label="Selection tools"
       onKeyDown={moveFocus}
-      className="flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-[1.75rem] border bg-card/90 p-1.5 shadow-soft backdrop-blur"
+      className={BAR}
     >
       {SELECTION_SECTIONS.map((ids) => ids.filter((id) => shown.includes(id)))
         .filter((ids) => ids.length)
@@ -218,47 +224,47 @@ export function Toolbar({ paletteOpen, onTogglePalette, onOpenCommands }: { pale
 
   return (
     <div className="fixed bottom-6 left-1/2 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-col items-center gap-2">
-    {!readOnly && <SelectionBar />}
-    <div
-      id="board-tools"
-      tabIndex={-1}
-      role="toolbar"
-      aria-label="Board tools"
-      onKeyDown={moveFocus}
-      // wraps onto more rows when the window is narrow, instead of scrolling sideways with no scrollbar: every tool stays in reach
-      className="flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-[1.75rem] border bg-card/90 p-1.5 shadow-soft backdrop-blur outline-none"
-    >
-      {!readOnly && (
-        <>
-          <CommandTool id="add-image" />
-          <LinkTool />
-          <CommandTool id="add-note" />
-          <CommandTool id="add-color" />
-          {EyeDropper && <Tool label="Pick a color from the screen" icon={PipetteIcon} onClick={pickColor} />}
-          <AddMenu />
+      {!readOnly && <SelectionBar />}
+      <div
+        id="board-tools"
+        tabIndex={-1}
+        role="toolbar"
+        aria-label="Board tools"
+        onKeyDown={moveFocus}
+        // wraps onto more rows when the window is narrow, instead of scrolling sideways with no scrollbar: every tool stays in reach
+        className={`${BAR} outline-none`}
+      >
+        {!readOnly && (
+          <>
+            <CommandTool id="add-image" />
+            <LinkTool />
+            <CommandTool id="add-note" />
+            <CommandTool id="add-color" />
+            {EyeDropper && <Tool label="Pick a color from the screen" icon={PipetteIcon} onClick={pickColor} />}
+            <AddMenu />
 
-          <Divider />
-          <CommandTool id="undo" disabled={!canUndo} />
-          <CommandTool id="redo" disabled={!canRedo} />
+            <Divider />
+            <CommandTool id="undo" disabled={!canUndo} />
+            <CommandTool id="redo" disabled={!canRedo} />
 
-          <Divider />
-        </>
-      )}
+            <Divider />
+          </>
+        )}
 
-      <CommandTool id="zoom-out" />
-      <Button variant="ghost" size="sm" aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%, double click to fit the board`} className="tabular-nums" onClick={() => zoomTo(1)} onDoubleClick={fitAll}>
-        {Math.round(zoom * 100)}%
-      </Button>
-      <CommandTool id="zoom-in" />
+        <CommandTool id="zoom-out" />
+        <Button variant="ghost" size="sm" aria-label={`Zoom ${Math.round(zoom * 100)}%. Reset to 100%, double click to fit the board`} className="tabular-nums" onClick={() => zoomTo(1)} onDoubleClick={fitAll}>
+          {Math.round(zoom * 100)}%
+        </Button>
+        <CommandTool id="zoom-in" />
 
-      <Divider />
-      {!readOnly && <ArrangeMenu />}
-      {!readOnly && <StyleMenu />}
-      <Tool label="Commands" icon={Search01Icon} shortcut="Ctrl+K" onClick={onOpenCommands} />
-      <Tool label="Palette" icon={SwatchIcon} pressed={paletteOpen} onClick={onTogglePalette} />
-      <FileMenu />
-      {!readOnly && <ShareButton />}
-    </div>
+        <Divider />
+        {!readOnly && <ArrangeMenu />}
+        {!readOnly && <StyleMenu />}
+        <Tool label="Commands" icon={Search01Icon} shortcut="Ctrl+K" onClick={onOpenCommands} />
+        <Tool label="Palette" icon={SwatchIcon} pressed={paletteOpen} onClick={onTogglePalette} />
+        <FileMenu />
+        {!readOnly && <ShareButton />}
+      </div>
     </div>
   )
 }
