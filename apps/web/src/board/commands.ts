@@ -8,10 +8,9 @@ import { exportBoardFile, importBoardFile } from '../data/boardFile.ts'
 import { LAYOUTS, type Layout } from './geometry.ts'
 import { addImages, imageColors } from '../data/image.ts'
 import { downloadPng } from '../data/png.ts'
-import { rotateStep } from './selection.ts'
 import { useSettings } from './settings.ts'
 import { switchBoard } from '../data/storage.ts'
-import { duplicate, frameSelection, group, remove, reorder, toggleLock, ungroup } from './selection.ts'
+import { duplicate, frameSelection, group, remove, reorder, rotateStep, toggleLock, ungroup } from './selection.ts'
 import { hasUndo, useBoard } from './store.ts'
 import { centerOn, fitAll, zoomTo } from './viewport.ts'
 
@@ -26,7 +25,7 @@ export type Command = {
   keywords?: string
   /** shown as a hint, written like the toolbar's ("Ctrl+Z") */
   shortcut?: string
-  /** section heading; defaults to Edit */
+  /** section heading; defaults to Edit (see groupOf) */
   group?: string
   /** hidden on a read-only board */
   edit?: boolean
@@ -56,6 +55,11 @@ export const arrowDelta = (key: string, step: number): [number, number] | undefi
 const board = () => useBoard.getState()
 const sel = (n: number) => (s: State) => s.selectedIds.length >= n
 const ids = () => board().selectedIds
+/** The first selected element, which is the only one for single-selection commands. */
+const selected = () => board().elements.find((e) => e.id === ids()[0])
+const one = (s: State) => s.selectedIds.length === 1
+/** Puts every command of a run under one section heading. */
+const inGroup = (group: string, list: Command[]): Command[] => list.map((c) => ({ ...c, group }))
 /** The element type when exactly one element is selected. */
 export const selectedKind = (s: State) => (s.selectedIds.length === 1 ? s.elements.find((e) => e.id === s.selectedIds[0])?.type : undefined)
 const isFrame = (s: State) => selectedKind(s) === 'frame'
@@ -89,19 +93,21 @@ const ALIGN = {
 } as const
 
 export const commands: Command[] = [
-  { id: 'add-note', label: 'Add note', keywords: 'sticky text create new', edit: true, run: (at) => board().add({ type: 'note', text: '', ...SIZE.note }, at) },
-  { id: 'add-heading', label: 'Add heading', keywords: 'title text create new', edit: true, run: (at) => board().add({ type: 'note', text: '', ...SIZE.heading, heading: true, bold: true }, at) },
-  { id: 'add-frame', label: 'Add frame', keywords: 'artboard section create new', edit: true, run: (at) => board().add({ type: 'frame', title: '', ...SIZE.frame }, at) },
-  { id: 'add-color', label: 'Add color', keywords: 'swatch create new', edit: true, run: (at) => board().add({ type: 'color', hex: DEFAULT_SWATCH, ...SIZE.color }, at) },
-  { id: 'add-image', label: 'Add image', keywords: 'upload picture photo create new', edit: true, run: () => pickFiles(false) },
-  { id: 'import-folder', label: 'Import folder', keywords: 'images directory upload', edit: true, run: () => pickFiles(true) },
+  ...inGroup('Add', [
+    { id: 'add-note', label: 'Add note', keywords: 'sticky text create new', edit: true, run: (at) => board().add({ type: 'note', text: '', ...SIZE.note }, at) },
+    { id: 'add-heading', label: 'Add heading', keywords: 'title text create new', edit: true, run: (at) => board().add({ type: 'note', text: '', ...SIZE.heading, heading: true, bold: true }, at) },
+    { id: 'add-frame', label: 'Add frame', keywords: 'artboard section create new', edit: true, run: (at) => board().add({ type: 'frame', title: '', ...SIZE.frame }, at) },
+    { id: 'add-color', label: 'Add color', keywords: 'swatch create new', edit: true, run: (at) => board().add({ type: 'color', hex: DEFAULT_SWATCH, ...SIZE.color }, at) },
+    { id: 'add-image', label: 'Add image', keywords: 'upload picture photo create new', edit: true, run: () => pickFiles(false) },
+    { id: 'import-folder', label: 'Import folder', keywords: 'images directory upload', edit: true, run: () => pickFiles(true) },
+  ]),
   { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', edit: true, when: hasUndo, run: () => board().undo() },
   { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Shift+Z', edit: true, when: (s) => s.future.length > 0, run: () => board().redo() },
   { id: 'select-all', label: 'Select all', shortcut: 'Ctrl+A', edit: true, when: (s) => s.elements.length > 0, run: () => board().selectMany(board().elements.map((e) => e.id)) },
   { id: 'duplicate', label: 'Duplicate', shortcut: 'Ctrl+D', edit: true, when: sel(1), run: () => duplicate(ids()) },
   { id: 'delete', label: 'Delete', shortcut: 'Delete', keywords: 'remove', edit: true, when: sel(1), run: () => remove(ids()) },
-  { id: 'forward', label: 'Bring forward', shortcut: ']', keywords: 'layer order', edit: true, when: (s) => s.selectedIds.length === 1, run: () => reorder(ids()[0], 'forward') },
-  { id: 'backward', label: 'Send backward', shortcut: '[', keywords: 'layer order', edit: true, when: (s) => s.selectedIds.length === 1, run: () => reorder(ids()[0], 'backward') },
+  { id: 'forward', label: 'Bring forward', shortcut: ']', keywords: 'layer order', edit: true, when: one, run: () => reorder(ids()[0], 'forward') },
+  { id: 'backward', label: 'Send backward', shortcut: '[', keywords: 'layer order', edit: true, when: one, run: () => reorder(ids()[0], 'backward') },
   { id: 'frame-selection', label: 'Frame selection', shortcut: 'Ctrl+Alt+F', keywords: 'wrap', edit: true, when: sel(1), run: () => frameSelection(ids()) },
   { id: 'group', label: 'Group', shortcut: 'Ctrl+G', edit: true, when: sel(2), run: () => group(ids()) },
   { id: 'ungroup', label: 'Ungroup', shortcut: 'Ctrl+Shift+G', edit: true, when: (s) => s.elements.some((e) => e.groupId && s.selectedIds.includes(e.id)), run: () => ungroup(ids()) },
@@ -112,7 +118,7 @@ export const commands: Command[] = [
     edit: true,
     when: isImage,
     run: () => {
-      const el = board().elements.find((e) => e.id === ids()[0])
+      const el = selected()
       if (el?.type !== 'image') return
       imageColors(el.src).then(
         (hexes) => board().swatchRow(el.id, hexes),
@@ -121,15 +127,17 @@ export const commands: Command[] = [
     },
   },
   { id: 'lock', label: 'Lock or unlock', keywords: 'freeze', edit: true, when: sel(1), run: () => toggleLock(ids()) },
-  ...(Object.keys(ALIGN) as (keyof typeof ALIGN)[]).map((mode) => ({
-    id: `align-${mode}`,
-    label: ALIGN[mode],
-    edit: true,
-    when: sel(2),
-    run: () => board().align(ids(), mode),
-  })),
-  { id: 'distribute-x', label: 'Distribute horizontally', keywords: 'space', edit: true, when: sel(3), run: () => board().distribute(ids(), 'x') },
-  { id: 'distribute-y', label: 'Distribute vertically', keywords: 'space', edit: true, when: sel(3), run: () => board().distribute(ids(), 'y') },
+  ...inGroup('Arrange', [
+    ...(Object.keys(ALIGN) as (keyof typeof ALIGN)[]).map((mode) => ({
+      id: `align-${mode}`,
+      label: ALIGN[mode],
+      edit: true,
+      when: sel(2),
+      run: () => board().align(ids(), mode),
+    })),
+    { id: 'distribute-x', label: 'Distribute horizontally', keywords: 'space', edit: true, when: sel(3), run: () => board().distribute(ids(), 'x') },
+    { id: 'distribute-y', label: 'Distribute vertically', keywords: 'space', edit: true, when: sel(3), run: () => board().distribute(ids(), 'y') },
+  ]),
   { id: 'rotate-cw', label: 'Rotate 15° clockwise', shortcut: 'R', edit: true, when: sel(1), run: () => rotateStep(ids(), 1) },
   { id: 'rotate-ccw', label: 'Rotate 15° counter-clockwise', shortcut: 'Shift+R', edit: true, when: sel(1), run: () => rotateStep(ids(), -1) },
   {
@@ -149,7 +157,7 @@ export const commands: Command[] = [
     edit: true,
     when: isImage,
     run: () => {
-      const el = board().elements.find((e) => e.id === ids()[0])
+      const el = selected()
       if (el?.type === 'image') board().step(() => board().update(el.id, { [key]: el[key] ? undefined : true }))
     },
   })),
@@ -172,10 +180,12 @@ export const commands: Command[] = [
   { id: 'import', label: 'Import board…', group: 'File', keywords: 'open json', edit: true, run: () => pickJson() },
   { id: 'png', label: 'Download PNG', group: 'File', keywords: 'image export', when: (s) => s.elements.length > 0, run: downloadPng },
   { id: 'settings', label: 'Settings', group: 'File', keywords: 'preferences theme dark light', run: () => useSettings.setState({ open: true }) },
-  { id: 'zoom-in', label: 'Zoom in', run: () => zoomTo(board().view.zoom * 1.25) },
-  { id: 'zoom-out', label: 'Zoom out', run: () => zoomTo(board().view.zoom / 1.25) },
-  { id: 'zoom-reset', label: 'Zoom to 100%', run: () => zoomTo(1) },
-  { id: 'fit', label: 'Fit board in view', shortcut: '1', keywords: 'zoom all', when: (s) => s.elements.length > 0, run: fitAll },
+  ...inGroup('View', [
+    { id: 'zoom-in', label: 'Zoom in', run: () => zoomTo(board().view.zoom * 1.25) },
+    { id: 'zoom-out', label: 'Zoom out', run: () => zoomTo(board().view.zoom / 1.25) },
+    { id: 'zoom-reset', label: 'Zoom to 100%', run: () => zoomTo(1) },
+    { id: 'fit', label: 'Fit board in view', shortcut: '1', keywords: 'zoom all', when: (s) => s.elements.length > 0, run: fitAll },
+  ]),
 ]
 
 /** Whether a command makes sense on the board as it is now. */
@@ -211,7 +221,7 @@ export function search(list: Command[], query: string) {
 }
 
 /** Section a command is listed under, shown as a heading while the search is empty. */
-export const groupOf = (c: Command) => c.group ?? (/^(add|import)/.test(c.id) ? 'Add' : /^(align|distribute)/.test(c.id) ? 'Arrange' : /^(zoom|fit)/.test(c.id) ? 'View' : 'Edit')
+export const groupOf = (c: Command) => c.group ?? 'Edit'
 
 const ICONS: Record<string, IconSvgElement> = {
   'add-note': StickyNote01Icon, 'add-heading': Heading01Icon, 'add-frame': FrameIcon, 'add-color': PaintBoardIcon, 'add-image': Image01Icon, 'import-folder': FolderUploadIcon,

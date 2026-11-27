@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-import { available, commands, search } from './commands.ts'
+import { available, command, commands, groupOf, search } from './commands.ts'
 import { useBoard } from './store.ts'
 
 const board = () => useBoard.getState()
@@ -67,4 +67,20 @@ test('layouts need two elements, or a selection of two', () => {
   board().add({ type: 'note', text: 'a', w: 10, h: 10 })
   board().add({ type: 'note', text: 'b', w: 10, h: 10 })
   expect(ids()).toContain('layout-grid')
+})
+
+test('every command is listed under its section', () => {
+  expect(Object.fromEntries(commands.map((c) => [c.id, groupOf(c)]))).toMatchSnapshot()
+})
+
+test('flip toggles the selected image and does nothing for a note', () => {
+  board().add({ type: 'image', src: 'x.png', w: 10, h: 10 })
+  const id = board().selectedIds[0]
+  command('flip-flipX').run()
+  expect(board().elements[0]).toMatchObject({ id, flipX: true })
+  command('flip-flipX').run()
+  expect(board().elements[0]).not.toHaveProperty('flipX', true)
+  board().add({ type: 'note', text: 'a', w: 10, h: 10 })
+  command('flip-flipY').run()
+  expect(board().elements[1]).not.toHaveProperty('flipY')
 })
