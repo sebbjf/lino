@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
-import { arrowDelta } from '../board/commands.ts'
 import { drag, touches } from '../board/drag.ts'
+import { elementKey } from '../board/keys.ts'
 import { movingSet } from '../board/frames.ts'
 import { useSettings } from '../board/settings.ts'
 import { panIntoView } from '../board/viewport.ts'
@@ -27,9 +27,6 @@ const ROTATE_OFFSET_PX = 28
 /** Border width of the handles, and thickness of the selection ring, in screen px. */
 const HANDLE_BORDER_PX = 1.5
 const SELECT_RING_PX = 2
-/** Arrow-key distance in board px, with and without Shift. */
-const NUDGE = 1
-const NUDGE_BIG = 10
 
 const LABELS = { image: 'Image', note: 'Note', color: 'Color', link: 'Link', frame: 'Frame' }
 
@@ -149,8 +146,6 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget || (readOnly && e.key !== 'Enter' && e.key !== 'Escape')) return
-    const mod = e.metaKey || e.ctrlKey
-    const step = e.shiftKey ? NUDGE_BIG : NUDGE
     if (cropping) {
       if (e.key !== 'Enter' && e.key !== 'Escape') return
       crop.finish(e.key === 'Enter')
@@ -158,81 +153,43 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       e.preventDefault()
       return
     }
-    // Alt+arrows resize from the bottom-right corner, the keyboard twin of the resize handle
-    if (e.altKey && e.key.startsWith('Arrow')) {
-      if (el.locked) return
-      checkpoint()
-      const d = arrowDelta(e.key, step)
-      if (!d) return
-      const world = rotateVec(d[0], d[1], el.rotation)
-      update(el.id, resize(el, world.x, world.y, el.type === 'image'))
-      e.preventDefault()
-      return
-    }
-    // Ctrl+Alt+C / Ctrl+Alt+V copy and paste the look (by key position: Alt changes e.key on some layouts)
-    if (mod && e.altKey && (e.code === 'KeyC' || e.code === 'KeyV')) {
-      const { copyStyle, pasteStyle } = useBoard.getState()
-      if (e.code === 'KeyC') copyStyle(el.id)
-      else pasteStyle(targetOf(el.id))
-      e.preventDefault()
-      return
-    }
-    if (mod && e.altKey && e.code === 'KeyF') {
-      frameSelection(targetOf(el.id))
-      e.preventDefault()
-      return
-    }
-    switch (e.key) {
-      case 'g':
-      case 'G':
-        if (!mod) return
-        // Ctrl+G groups the selection, Ctrl+Shift+G takes it apart
-        if (e.shiftKey) ungroup(targetOf(el.id))
-        else group(targetOf(el.id))
-        break
-      case 'Delete':
-      case 'Backspace':
-        remove(targetOf(el.id))
-        break
-      case 'ArrowLeft':
-      case 'ArrowRight':
-      case 'ArrowUp':
-      case 'ArrowDown': {
-        nudge(targetOf(el.id), ...arrowDelta(e.key, step)!)
-        break
-      }
-      case 'r':
-      case 'R': {
-        if (mod) return // Ctrl+R stays reload
-        // R rotates 15° clockwise, Shift+R counter-clockwise
-        rotateStep(targetOf(el.id), e.shiftKey ? -1 : 1)
-        break
-      }
-      case ']':
-        reorder(el.id, mod ? 'front' : 'forward')
-        break
-      case '[':
-        reorder(el.id, mod ? 'back' : 'backward')
-        break
-      case 'Enter':
-        open()
-        break
-      case 'Escape':
-        if (pickerOpen) {
-          setPickerOpen(false)
-          break
-        }
-        select(null)
-        e.currentTarget.blur()
-        break
-      case 'd':
-        if (!mod) return
-        duplicate(targetOf(el.id))
-        break
-      default:
-        return
-    }
+    const action = elementKey(e)
+    if (!action || (action.do === 'resize' && el.locked)) return
     e.preventDefault()
+    const ids = () => targetOf(el.id)
+    switch (action.do) {
+      case 'resize': {
+        checkpoint()
+        const world = rotateVec(action.dx, action.dy, el.rotation)
+        return update(el.id, resize(el, world.x, world.y, el.type === 'image'))
+      }
+      case 'nudge':
+        return nudge(ids(), action.dx, action.dy)
+      case 'copy-style':
+        return useBoard.getState().copyStyle(el.id)
+      case 'paste-style':
+        return useBoard.getState().pasteStyle(ids())
+      case 'frame':
+        return frameSelection(ids())
+      case 'group':
+        return group(ids())
+      case 'ungroup':
+        return ungroup(ids())
+      case 'remove':
+        return remove(ids())
+      case 'duplicate':
+        return duplicate(ids())
+      case 'rotate':
+        return rotateStep(ids(), action.dir)
+      case 'reorder':
+        return reorder(el.id, action.to)
+      case 'open':
+        return open()
+      case 'escape':
+        if (pickerOpen) return setPickerOpen(false)
+        select(null)
+        return e.currentTarget.blur()
+    }
   }
 
   // bigger grab targets for fingers
