@@ -14,6 +14,10 @@ const EMPTY: Snapshot = { elements: [], colorMeta: {}, board: {} }
 const DEFAULT_VIEW: View = { x: 0, y: 0, zoom: 1 }
 const run = <T,>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>) => idb('boards', mode, fn)
 const read = <T,>(key: string) => run<T | undefined>('readonly', (s) => s.get(key))
+const put = (key: string, value: unknown) => run('readwrite', (s) => s.put(value, key))
+const del = (key: string) => run('readwrite', (s) => s.delete(key))
+const viewKey = (id: string) => `${id}:view`
+const saveFailed = () => useBoard.getState().notify('Could not save the board in this browser.')
 
 // What is saved, and when. Keys in the 'boards' store: INDEX (names + current board), `<id>` (snapshot + export prefs), `<id>:view` (pan and zoom).
 // - on every board change, debounced (and when the tab is hidden): `save` writes all three; a pan or zoom alone writes only the view
@@ -30,10 +34,10 @@ const readIndex = () => read<Index>(INDEX)
  */
 async function readBoard(id: string) {
   const saved = await read<Saved>(id)
-  let view = await read<View>(`${id}:view`)
+  let view = await read<View>(viewKey(id))
   if (!view && saved?.view) {
     view = saved.view
-    await run('readwrite', (s) => s.put(view, `${id}:view`)).catch(() => {})
+    await put(viewKey(id), view).catch(() => {})
   }
   return { saved, view }
 }
@@ -48,7 +52,7 @@ async function show(id: string, saved: Saved | undefined, savedView?: View) {
   const moved = await externalize(snap).catch(() => snap)
   if (saved && moved !== snap) {
     snap = moved
-    await run('readwrite', (s) => s.put({ ...saved, elements: snap.elements }, id)).catch(() => {})
+    await put(id, { ...saved, elements: snap.elements }).catch(() => {})
   }
   const view = savedView ?? DEFAULT_VIEW
   await openSnapshot(snap, 'new', { id, view: fitsOnPhone(view, snap.elements.length) ? undefined : view })
@@ -60,7 +64,7 @@ async function show(id: string, saved: Saved | undefined, savedView?: View) {
 
 const saveView = () => {
   const { view, boardId } = useBoard.getState()
-  return run('readwrite', (s) => s.put(view, `${boardId}:view`)).catch(() => useBoard.getState().notify('Could not save the board in this browser.'))
+  return put(viewKey(boardId), view).catch(saveFailed)
 }
 
 async function showStored(id: string) {
@@ -84,9 +88,9 @@ function save() {
   const { exportPrefs, boards, boardId } = useBoard.getState()
   return Promise.all([
     saveView(),
-    run('readwrite', (s) => s.put({ ...captureSnapshot(), exportPrefs } satisfies Saved, boardId)),
-    run('readwrite', (s) => s.put({ current: boardId, boards } satisfies Index, INDEX)),
-  ]).catch(() => useBoard.getState().notify('Could not save the board in this browser.'))
+    put(boardId, { ...captureSnapshot(), exportPrefs } satisfies Saved),
+    put(INDEX, { current: boardId, boards } satisfies Index),
+  ]).catch(saveFailed)
 }
 
 /** Saves the board on screen now, then shows another one. */
@@ -110,8 +114,8 @@ export async function saveAsLocalBoard(snap: Snapshot, name: string) {
   const index = (await readIndex()) ?? { current: 'local', boards: [{ id: 'local', name: 'My board' }] }
   const id = crypto.randomUUID()
   const external = await externalize(snap)
-  await run('readwrite', (s) => s.put({ ...external } satisfies Saved, id))
-  await run('readwrite', (s) => s.put({ current: id, boards: [...index.boards, { id, name }] } satisfies Index, INDEX))
+  await put(id, { ...external } satisfies Saved)
+  await put(INDEX, { current: id, boards: [...index.boards, { id, name }] } satisfies Index)
 }
 
 /** Only changes the `boards` list in memory: the autosave subscription sees it change and `save` writes the index. */
@@ -124,8 +128,8 @@ export function renameBoard(id: string, name: string) {
 export async function deleteBoard(id: string) {
   const { boards, boardId } = useBoard.getState()
   const rest = boards.filter((b) => b.id !== id)
-  await run('readwrite', (s) => s.delete(id)).catch(() => {})
-  await run('readwrite', (s) => s.delete(`${id}:view`)).catch(() => {})
+  await del(id).catch(() => {})
+  await del(viewKey(id)).catch(() => {})
   if (!rest.length) {
     // never leave the app without a board
     const fresh = { id: crypto.randomUUID(), name: 'My board' }
@@ -150,17 +154,25 @@ export async function sweepStoredImages() {
   void locks.request('lino-sweep', { mode: 'shared' }, () => new Promise(() => {}))
 }
 
+/** Stored-image ids that the elements of a record point at; records are untrusted, so anything else is skipped. */
+function imageIdsIn(els: unknown): string[] {
+  if (!Array.isArray(els)) return []
+  return (els as { src?: unknown; image?: unknown }[]).flatMap((e) => [e?.src, e?.image]).filter((v): v is string => typeof v === 'string' && IMAGE_ID.test(v))
+}
+
 async function sweepNow() {
-  const used = new Set<string>()
-  const scan = (els: unknown) => {
-    if (Array.isArray(els)) for (const e of els as { src?: unknown; image?: unknown }[]) for (const v of [e?.src, e?.image]) if (typeof v === 'string' && IMAGE_ID.test(v)) used.add(v)
-  }
-  for (const rec of await run<unknown[]>('readonly', (s) => s.getAll())) scan((rec as Partial<Saved> | undefined)?.elements)
-  scan(useBoard.getState().elements) // the open board, in case its record could not be rewritten
+  const records = await run<unknown[]>('readonly', (s) => s.getAll())
+  const used = new Set(records.flatMap((rec) => imageIdsIn((rec as Partial<Saved> | undefined)?.elements)))
+  // the open board too, in case its record could not be rewritten
+  for (const id of imageIdsIn(useBoard.getState().elements)) used.add(id)
   await sweepImages(used)
 }
 
 // ---- Autosave ----
+
+const SAVE_DELAY_MS = 300
+/** What autosave watches; a change to any of them is saved. */
+const SAVED_KEYS = ['elements', 'view', 'colorMeta', 'board', 'exportPrefs', 'boards', 'boardId'] as const
 
 /** Debounced save on every board change, plus an immediate save when the tab is hidden. */
 export function startAutosave() {
@@ -172,12 +184,11 @@ export function startAutosave() {
     return all ? save() : saveView()
   }
   useBoard.subscribe((s, prev) => {
-    const keys = ['elements', 'view', 'colorMeta', 'board', 'exportPrefs', 'boards', 'boardId'] as const
-    if (keys.every((k) => s[k] === prev[k])) return
+    if (SAVED_KEYS.every((k) => s[k] === prev[k])) return
     // a pan or zoom alone only rewrites the small view record
-    full ||= keys.some((k) => k !== 'view' && s[k] !== prev[k])
+    full ||= SAVED_KEYS.some((k) => k !== 'view' && s[k] !== prev[k])
     clearTimeout(timer)
-    timer = setTimeout(flush, 300)
+    timer = setTimeout(flush, SAVE_DELAY_MS)
   })
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && timer) {
