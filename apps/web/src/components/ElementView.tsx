@@ -1,11 +1,10 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { drag, touches } from '../board/drag.ts'
 import { elementKey } from '../board/keys.ts'
-import { movingSet } from '../board/frames.ts'
+import { moveTo, planMove } from '../board/move.ts'
 import { useSettings } from '../board/settings.ts'
 import { panIntoView } from '../board/viewport.ts'
-import { angleTo, boundsOf, resize, rotateVec, snapMove } from '../board/geometry.ts'
-import type { Guide } from '../board/geometry.ts'
+import { angleTo, resize, rotateVec } from '../board/geometry.ts'
 import { ColorBody } from '../kinds/ColorBody.tsx'
 import { ElementDeco } from '../kinds/ElementDeco.tsx'
 import { FrameBody } from '../kinds/FrameBody.tsx'
@@ -89,40 +88,28 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     if (!useBoard.getState().selectedIds.includes(el.id)) select(el.id)
     if (editing) return
     e.currentTarget.focus()
-    const ids = targetOf(el.id)
-    const els = useBoard.getState().elements
-    // a dragged frame takes what lies inside it (at drag start) along; locked elements, and groups holding one, stay
-    const moving = movingSet(ids, els)
-    const carried = new Set([...ids, ...moving.map((o) => o.id)])
-    if (!moving.length) return
-    // snap the visible (rotated) outline of what moves to the other elements' edges and centers; Alt moves freely
-    const own = boundsOf(moving)
-    const others = els.flatMap((o) => (carried.has(o.id) ? [] : [boundsOf([o])]))
-    const setGuides = (guides: Guide[]) => useBoard.setState({ guides })
+    const plan = planMove(targetOf(el.id), useBoard.getState().elements)
+    if (!plan.moving.length) return
+    const show = ({ pos, guides }: ReturnType<typeof moveTo>) => {
+      useBoard.setState({ guides })
+      moveMany(pos)
+    }
     checkpoint()
     let pinched = false
     drag(
       e,
       (dx, dy, ev) => {
-        // a second finger turns the gesture into a pinch-zoom: put things back and stop dragging
-        if (!pinched && touches.size > 1) {
-          pinched = true
-          setGuides([])
-          moveMany(Object.fromEntries(moving.map((o) => [o.id, { x: o.x, y: o.y }])))
-        }
         if (pinched) return
-        let mx = dx / zoom
-        let my = dy / zoom
-        if (ev.altKey || !useSettings.getState().snap) setGuides([])
-        else {
-          const s = snapMove({ ...own, x: own.x + mx, y: own.y + my }, others, SNAP_PX / zoom)
-          mx += s.dx
-          my += s.dy
-          setGuides(s.guides)
+        // a second finger turns the gesture into a pinch-zoom: put things back and stop dragging
+        if (touches.size > 1) {
+          pinched = true
+          return show(moveTo(plan, 0, 0, 0))
         }
-        moveMany(Object.fromEntries(moving.map((o) => [o.id, { x: o.x + mx, y: o.y + my }])))
+        // Alt moves freely
+        const snap = ev.altKey || !useSettings.getState().snap ? 0 : SNAP_PX / zoom
+        show(moveTo(plan, dx / zoom, dy / zoom, snap))
       },
-      () => setGuides([]),
+      () => useBoard.setState({ guides: [] }),
     )
   }
 
