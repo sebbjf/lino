@@ -166,3 +166,15 @@ test('mosaic overlaps flat pieces in staggered rows and is the same every time',
   const placed = a.map((p, i) => ({ ...boxes[i], ...p }))
   expect(placed.some((p, i) => placed.some((q, j) => i < j && overlaps(p, q)))).toBe(true)
 })
+
+test('layoutPositions output stays the same for every mode', () => {
+  const boxes: Box[] = [
+    { x: 10, y: 0, w: 120, h: 80, rotation: 0 }, { x: 200, y: 30, w: 60, h: 140, rotation: 0 }, { x: 0, y: 220, w: 90, h: 90, rotation: 0 },
+    { x: 300, y: 210, w: 200, h: 50, rotation: 0 }, { x: 150, y: 400, w: 70, h: 110, rotation: 0 },
+  ]
+  const round = (n: number) => Math.round(n * 1000) / 1000
+  const all = Object.fromEntries(LAYOUTS.map((m) => [m, layoutPositions(boxes, m).map((p) => [round(p.x), round(p.y), p.rotation])]))
+  expect(all).toMatchSnapshot()
+  expect(layoutPositions([], 'grid')).toEqual([])
+  expect(layoutPositions([boxes[0]], 'circle')).toMatchSnapshot()
+})

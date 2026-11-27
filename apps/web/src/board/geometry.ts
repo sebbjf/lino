@@ -165,6 +165,193 @@ const noise = (k: number) => {
   return (v - Math.floor(v)) * 2 - 1
 }
 
+/** What every layout needs: the boxes, their reading order, the gap, and the shared measures of the set. */
+type Frame = { boxes: Box[]; order: number[]; gap: number; b: Rect; cx: number; cy: number; maxW: number; cols: number }
+
+/** Row height used to read boxes left to right even when their tops are slightly uneven. */
+const READING_BAND = 40
+
+function readingOrder(boxes: Box[]) {
+  const band = (i: number) => Math.round(boxes[i].y / READING_BAND)
+  return boxes.map((_, i) => i).sort((i, j) => band(i) - band(j) || boxes[i].x - boxes[j].x)
+}
+
+/** Boxes side by side along one line, each centered on it. */
+function line(f: Frame, mode: 'row' | 'column'): Placed[] {
+  const { boxes, order, gap, b } = f
+  const along = mode === 'row' ? 'w' : 'h'
+  const cross = mode === 'row' ? 'h' : 'w'
+  const size = Math.max(...boxes.map((o) => o[cross]))
+  const out: Placed[] = []
+  let at = 0
+  for (const i of order) {
+    const off = (size - boxes[i][cross]) / 2
+    out[i] = mode === 'row' ? { x: b.x + at, y: b.y + off, rotation: 0 } : { x: b.x + off, y: b.y + at, rotation: 0 }
+    at += boxes[i][along] + gap
+  }
+  return out
+}
+
+/** Cells as wide as the widest box; each row as tall as its tallest box. */
+function grid({ boxes, order, gap, b, maxW, cols }: Frame): Placed[] {
+  const out: Placed[] = []
+  let y = b.y
+  for (let r = 0; r * cols < order.length; r++) {
+    const row = order.slice(r * cols, (r + 1) * cols)
+    const rowH = Math.max(...row.map((i) => boxes[i].h))
+    row.forEach((i, c) => {
+      out[i] = { x: b.x + c * (maxW + gap) + (maxW - boxes[i].w) / 2, y: y + (rowH - boxes[i].h) / 2, rotation: 0 }
+    })
+    y += rowH + gap
+  }
+  return out
+}
+
+/** Each box goes to the shortest column. */
+function masonry({ boxes, order, gap, b, maxW, cols }: Frame): Placed[] {
+  const out: Placed[] = []
+  const heights: number[] = new Array(cols).fill(0)
+  for (const i of order) {
+    const c = heights.indexOf(Math.min(...heights))
+    out[i] = { x: b.x + c * (maxW + gap) + (maxW - boxes[i].w) / 2, y: b.y + heights[c], rotation: 0 }
+    heights[c] += boxes[i].h + gap
+  }
+  return out
+}
+
+/** Around a circle: the straight distance (chord) between neighbours must clear both boxes' diagonals. */
+function circle({ boxes, order, gap, cx, cy }: Frame): Placed[] {
+  const n = order.length
+  const span = order.map((i) => Math.hypot(boxes[i].w, boxes[i].h))
+  const chord = 2 * Math.sin(Math.PI / n)
+  const r = n === 1 ? 0 : Math.max(...span.map((v, k) => ((v + span[(k + 1) % n]) / 2 + gap) / chord))
+  const out: Placed[] = []
+  order.forEach((i, k) => {
+    const a = (k / n) * Math.PI * 2 - Math.PI / 2
+    out[i] = { x: cx + r * Math.cos(a) - boxes[i].w / 2, y: cy + r * Math.sin(a) - boxes[i].h / 2, rotation: 0 }
+  })
+  return out
+}
+
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5))
+const SPIRAL_STEP = 0.2
+
+/**
+ * Phyllotaxis: seeds along a golden-angle spiral, the biggest in the middle. Each box walks out
+ * along the spiral from where the last one stopped until it touches nothing, so it packs tight.
+ */
+function sunflower({ boxes, order, gap, cx, cy }: Frame): Placed[] {
+  const bySize = [...order].sort((i, j) => boxes[j].w * boxes[j].h - boxes[i].w * boxes[i].h)
+  const unit = Math.min(...boxes.map((o) => Math.min(o.w, o.h))) / 2
+  const placed: Rect[] = []
+  const free = (r: Rect) =>
+    placed.every((q) => r.x >= q.x + q.w + gap || q.x >= r.x + r.w + gap || r.y >= q.y + q.h + gap || q.y >= r.y + r.h + gap)
+  // ponytail: O(n²) checks per step, fine for a board of a few hundred elements
+  const out: Placed[] = []
+  let t = 0
+  for (const i of bySize) {
+    const { w, h } = boxes[i]
+    let r = { x: cx - w / 2, y: cy - h / 2, w, h }
+    while (!free(r)) {
+      t += SPIRAL_STEP
+      const d = unit * Math.sqrt(t)
+      r = { x: cx + d * Math.cos(t * GOLDEN_ANGLE) - w / 2, y: cy + d * Math.sin(t * GOLDEN_ANGLE) - h / 2, w, h }
+    }
+    placed.push(r)
+    out[i] = { x: r.x, y: r.y, rotation: 0 }
+  }
+  return out
+}
+
+const FAN_MAX_OPEN = (110 * Math.PI) / 180
+
+/**
+ * A hand of cards turned around a pivot below the middle. Each card covers the previous one but
+ * leaves 60% of its width showing (visible = d - w_k/2 + w_{k-1}/2, so d = w_k/2 + 0.1 w_{k-1});
+ * the radius grows if the hand would open past ~110°.
+ */
+function fan({ boxes, order, cx, cy, maxW }: Frame): Placed[] {
+  const n = order.length
+  const w = order.map((i) => boxes[i].w)
+  const angles = (radius: number) => {
+    const a = [0]
+    for (let k = 1; k < n; k++) a.push(a[k - 1] + 2 * Math.asin(Math.min(1, (w[k] / 2 + 0.1 * w[k - 1]) / (2 * radius))))
+    return a
+  }
+  let radius = Math.max(Math.max(...boxes.map((o) => o.h)) * 1.6, maxW)
+  let a = angles(radius)
+  while (a[n - 1] > FAN_MAX_OPEN) a = angles((radius *= 1.15))
+  const pivotY = cy + radius
+  const out: Placed[] = []
+  order.forEach((i, k) => {
+    const t = a[k] - a[n - 1] / 2
+    out[i] = { x: cx + radius * Math.sin(t) - boxes[i].w / 2, y: pivotY - radius * Math.cos(t) - boxes[i].h / 2, rotation: Math.round((t * 1800) / Math.PI) / 10 }
+  })
+  return out
+}
+
+/** Share of a piece's width after which the next piece in a mosaic row starts. */
+const MOSAIC_STEP = 0.8
+
+/** A few wide rows of about the same length, so the last one is not left short. */
+function mosaicRows(boxes: Box[], order: number[]) {
+  const target = boxes.reduce((s, o) => s + o.w * MOSAIC_STEP, 0) / Math.max(1, Math.round(Math.sqrt(order.length / 2)))
+  const rows: number[][] = [[]]
+  let used = 0
+  for (const i of order) {
+    if (rows.at(-1)!.length && used + boxes[i].w * 0.4 > target) {
+      rows.push([])
+      used = 0
+    }
+    rows.at(-1)!.push(i)
+    used += boxes[i].w * MOSAIC_STEP
+  }
+  return rows
+}
+
+/** Staggered rows of flat pieces, each overlapping its neighbours and the row above, like prints pinned to a wall. */
+function mosaic({ boxes, order, b }: Frame): Placed[] {
+  const avgW = boxes.reduce((s, o) => s + o.w, 0) / boxes.length
+  const out: Placed[] = []
+  let top = 0
+  let k = 0
+  mosaicRows(boxes, order).forEach((row, r) => {
+    const rowH = Math.max(...row.map((i) => boxes[i].h))
+    let x = b.x + (r % 2 ? avgW * 0.3 : 0)
+    for (const i of row) {
+      const o = boxes[i]
+      out[i] = { x, y: b.y + top + (rowH - o.h) / 2 + noise(k++) * o.h * 0.12, rotation: 0 }
+      x += o.w * MOSAIC_STEP
+    }
+    top += rowH * 0.75
+  })
+  return out
+}
+
+/** A masonry that overlaps a little, each piece nudged and tilted like photos on a table. */
+function collage(f: Frame): Placed[] {
+  const { boxes, order } = f
+  const tight = masonry({ ...f, gap: -Math.min(...boxes.map((o) => Math.min(o.w, o.h))) * 0.12 })
+  const out: Placed[] = []
+  order.forEach((i, k) => {
+    const t = tight[i]
+    out[i] = { x: t.x + noise(k) * 14, y: t.y + noise(k + 100) * 14, rotation: Math.round(noise(k + 200) * 60) / 10 }
+  })
+  return out
+}
+
+const ARRANGE: Record<Layout, (f: Frame) => Placed[]> = {
+  row: (f) => line(f, 'row'),
+  column: (f) => line(f, 'column'),
+  grid,
+  masonry,
+  circle,
+  sunflower,
+  fan,
+  mosaic,
+  collage,
+}
+
 /**
  * New top-left positions (and rotation) that arrange boxes into a template, keeping their sizes.
  * Boxes are taken in reading order (top to bottom, then left to right) and the layout starts at
@@ -172,131 +359,16 @@ const noise = (k: number) => {
  * Only fan and collage tilt things; the rest set rotation to 0.
  */
 export function layoutPositions(boxes: Box[], mode: Layout, gap = 24): Placed[] {
-  const n = boxes.length
-  if (!n) return []
+  if (!boxes.length) return []
   const b = boundsOf(boxes)
-  // rows are bands of 40px so slightly uneven tops still read left to right
-  const order = boxes.map((_, i) => i).sort((i, j) => Math.round(boxes[i].y / 40) - Math.round(boxes[j].y / 40) || boxes[i].x - boxes[j].x)
-  const out: Placed[] = new Array(n)
-  const cx = b.x + b.w / 2
-  const cy = b.y + b.h / 2
-  const maxW = Math.max(...boxes.map((o) => o.w))
-  const cols = Math.ceil(Math.sqrt(n))
-
-  if (mode === 'row' || mode === 'column') {
-    const along = mode === 'row' ? 'w' : 'h'
-    const cross = mode === 'row' ? 'h' : 'w'
-    const size = Math.max(...boxes.map((o) => o[cross]))
-    let at = 0
-    for (const i of order) {
-      const o = boxes[i]
-      const off = (size - o[cross]) / 2 // centered on the line
-      out[i] = mode === 'row' ? { x: b.x + at, y: b.y + off, rotation: 0 } : { x: b.x + off, y: b.y + at, rotation: 0 }
-      at += o[along] + gap
-    }
-  } else if (mode === 'grid') {
-    // cells as wide as the widest box; each row as tall as its tallest box
-    let y = b.y
-    for (let r = 0; r * cols < n; r++) {
-      const row = order.slice(r * cols, (r + 1) * cols)
-      const rowH = Math.max(...row.map((i) => boxes[i].h))
-      row.forEach((i, c) => {
-        out[i] = { x: b.x + c * (maxW + gap) + (maxW - boxes[i].w) / 2, y: y + (rowH - boxes[i].h) / 2, rotation: 0 }
-      })
-      y += rowH + gap
-    }
-  } else if (mode === 'masonry') {
-    // each box goes to the shortest column
-    const heights = new Array(cols).fill(0)
-    for (const i of order) {
-      const c = heights.indexOf(Math.min(...heights))
-      out[i] = { x: b.x + c * (maxW + gap) + (maxW - boxes[i].w) / 2, y: b.y + heights[c], rotation: 0 }
-      heights[c] += boxes[i].h + gap
-    }
-  } else if (mode === 'circle') {
-    // around a circle: the straight distance (chord) between neighbours must clear both boxes' diagonals
-    const span = order.map((i) => Math.hypot(boxes[i].w, boxes[i].h))
-    const chord = 2 * Math.sin(Math.PI / n)
-    const r = n === 1 ? 0 : Math.max(...span.map((v, k) => ((v + span[(k + 1) % n]) / 2 + gap) / chord))
-    order.forEach((i, k) => {
-      const a = (k / n) * Math.PI * 2 - Math.PI / 2
-      out[i] = { x: cx + r * Math.cos(a) - boxes[i].w / 2, y: cy + r * Math.sin(a) - boxes[i].h / 2, rotation: 0 }
-    })
-  } else if (mode === 'sunflower') {
-    // phyllotaxis: seeds along a golden-angle spiral, the biggest in the middle. Each box walks out
-    // along the spiral from where the last one stopped until it touches nothing, so it packs tight.
-    const bySize = [...order].sort((i, j) => boxes[j].w * boxes[j].h - boxes[i].w * boxes[i].h)
-    const golden = Math.PI * (3 - Math.sqrt(5))
-    const unit = Math.min(...boxes.map((o) => Math.min(o.w, o.h))) / 2
-    const placed: { x: number; y: number; w: number; h: number }[] = []
-    const free = (r: { x: number; y: number; w: number; h: number }) =>
-      placed.every((q) => r.x >= q.x + q.w + gap || q.x >= r.x + r.w + gap || r.y >= q.y + q.h + gap || q.y >= r.y + r.h + gap)
-    // ponytail: O(n²) checks per step, fine for a board of a few hundred elements
-    let t = 0
-    for (const i of bySize) {
-      const { w, h } = boxes[i]
-      let r = { x: cx - w / 2, y: cy - h / 2, w, h }
-      while (!free(r)) {
-        t += 0.2
-        const d = unit * Math.sqrt(t)
-        r = { x: cx + d * Math.cos(t * golden) - w / 2, y: cy + d * Math.sin(t * golden) - h / 2, w, h }
-      }
-      placed.push(r)
-      out[i] = { x: r.x, y: r.y, rotation: 0 }
-    }
-  } else if (mode === 'fan') {
-    // a hand of cards turned around a pivot below the middle. Each card covers the previous one but
-    // leaves 60% of its width showing (visible = d - w_k/2 + w_{k-1}/2, so d = w_k/2 + 0.1 w_{k-1});
-    // the radius grows if the hand would open past ~110°
-    const maxH = Math.max(...boxes.map((o) => o.h))
-    const w = order.map((i) => boxes[i].w)
-    const angles = (radius: number) => {
-      const out = [0]
-      for (let k = 1; k < n; k++) out.push(out[k - 1] + 2 * Math.asin(Math.min(1, (w[k] / 2 + 0.1 * w[k - 1]) / (2 * radius))))
-      return out
-    }
-    let radius = Math.max(maxH * 1.6, maxW)
-    let a = angles(radius)
-    while (a[n - 1] > (110 * Math.PI) / 180) a = angles((radius *= 1.15))
-    const pivotY = cy + radius
-    order.forEach((i, k) => {
-      const t = a[k] - a[n - 1] / 2
-      out[i] = { x: cx + radius * Math.sin(t) - boxes[i].w / 2, y: pivotY - radius * Math.cos(t) - boxes[i].h / 2, rotation: Math.round((t * 1800) / Math.PI) / 10 }
-    })
-  } else if (mode === 'mosaic') {
-    // staggered rows of flat pieces, each overlapping its neighbours and the row above, like prints pinned to a wall
-    // a few wide rows of about the same length, so the last one is not left short
-    const avgW = boxes.reduce((s, o) => s + o.w, 0) / n
-    const target = (boxes.reduce((s, o) => s + o.w * 0.8, 0) / Math.max(1, Math.round(Math.sqrt(n / 2))))
-    const rows: number[][] = [[]]
-    let used = 0
-    for (const i of order) {
-      if (rows.at(-1)!.length && used + boxes[i].w * 0.4 > target) {
-        rows.push([])
-        used = 0
-      }
-      rows.at(-1)!.push(i)
-      used += boxes[i].w * 0.8
-    }
-    let top = 0
-    let k = 0
-    rows.forEach((row, r) => {
-      const rowH = Math.max(...row.map((i) => boxes[i].h))
-      let x = b.x + (r % 2 ? avgW * 0.3 : 0)
-      for (const i of row) {
-        const o = boxes[i]
-        out[i] = { x, y: b.y + top + (rowH - o.h) / 2 + noise(k++) * o.h * 0.12, rotation: 0 }
-        x += o.w * 0.8
-      }
-      top += rowH * 0.75
-    })
-  } else {
-    // collage: a masonry that overlaps a little, each piece nudged and tilted like photos on a table
-    const tight = layoutPositions(boxes, 'masonry', -Math.min(...boxes.map((o) => Math.min(o.w, o.h))) * 0.12)
-    order.forEach((i, k) => {
-      const t = tight[i]
-      out[i] = { x: t.x + noise(k) * 14, y: t.y + noise(k + 100) * 14, rotation: Math.round(noise(k + 200) * 60) / 10 }
-    })
-  }
-  return out
+  return ARRANGE[mode]({
+    boxes,
+    order: readingOrder(boxes),
+    gap,
+    b,
+    cx: b.x + b.w / 2,
+    cy: b.y + b.h / 2,
+    maxW: Math.max(...boxes.map((o) => o.w)),
+    cols: Math.ceil(Math.sqrt(boxes.length)),
+  })
 }
