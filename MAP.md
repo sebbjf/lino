@@ -32,7 +32,7 @@ Where each thing lives. Paths are relative to the repo root. Keep this file upda
 | Adding links (URL detection, call to API) | [apps/web/src/board/link.ts](apps/web/src/board/link.ts) |
 | Link card look | [apps/web/src/kinds/LinkBody.tsx](apps/web/src/kinds/LinkBody.tsx); shared look values (note colours, padding, tape, pin) in [kinds/look.ts](apps/web/src/kinds/look.ts), also read by png.ts |
 | Color picker fields | [apps/web/src/components/ColorFields.tsx](apps/web/src/components/ColorFields.tsx) |
-| Landing page | [apps/web/src/landing.tsx](apps/web/src/landing.tsx) |
+| Landing page | [apps/web/src/landing.tsx](apps/web/src/landing.tsx) assembles it from [apps/web/src/landing/](apps/web/src/landing/) |
 | Theme tokens, fonts, global CSS | [apps/web/src/index.css](apps/web/src/index.css) |
 | shadcn UI primitives | [apps/web/src/components/ui/](apps/web/src/components/ui/) |
 | API routes, CORS, rate limit | [apps/api/src/routes.ts](apps/api/src/routes.ts) |
@@ -85,7 +85,8 @@ Layout of `apps/web/src/` (tests sit next to the code they test):
 | `src/data/share.ts` | `shareBoard()` (POST snapshot, returns link), `loadShared(id)` (read-only, fitted view). |
 | `src/components/ShareButton.tsx` | Toolbar Share popover: confirm, create link, copy. |
 | `src/board/link.ts` | `asUrl`, `addLink`: calls `GET /read`, samples the cover's colors, adds a link card. |
-| `src/landing.tsx` | Marketing landing page with the animated demo board. |
+| `src/landing.tsx` | Marketing landing page: header, hero and page order. |
+| `src/landing/` | Its parts: `ui.tsx` (demo palette, shared styles and small pieces), `HeroStage.tsx` (draggable hero photos), `stage.ts` (pure stage sizing and layout placement), `DemoSection.tsx` (animated demo board), `sections.tsx` (statement, privacy, FAQ, call to action, footer). |
 | `src/index.css` | Tailwind import, theme tokens, fonts. |
 | `src/lib/utils.ts` | `cn()` class helper (shadcn). |
 | `src/components/ui/*` | shadcn components: button, empty, field, input, kbd, label, popover, separator, tooltip. |
