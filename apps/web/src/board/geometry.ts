@@ -141,6 +141,8 @@ export function alignOffsets(boxes: Box[], mode: AlignMode) {
 
 /** Offsets that space boxes evenly along an axis, keeping the first and last in place. */
 export function distributeOffsets(boxes: Box[], axis: 'x' | 'y') {
+  // the outer two never move, so with fewer than three there is nothing to space out
+  if (boxes.length < 3) return boxes.map(() => ({ dx: 0, dy: 0 }))
   const size = axis === 'x' ? 'w' : 'h'
   const rects = boxes.map((b, i) => ({ i, r: boundsOf([b]) })).sort((a, b) => a.r[axis] - b.r[axis])
   const first = rects[0].r

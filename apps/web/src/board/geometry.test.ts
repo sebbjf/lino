@@ -178,3 +178,10 @@ test('layoutPositions output stays the same for every mode', () => {
   expect(layoutPositions([], 'grid')).toEqual([])
   expect(layoutPositions([boxes[0]], 'circle')).toMatchSnapshot()
 })
+
+test('distributeOffsets leaves fewer than three boxes where they are', () => {
+  const a = { x: 0, y: 0, w: 100, h: 10, rotation: 0 }
+  const inside = { x: 10, y: 0, w: 20, h: 10, rotation: 0 }
+  expect(distributeOffsets([a], 'x')).toEqual([{ dx: 0, dy: 0 }])
+  expect(distributeOffsets([a, inside], 'x')).toEqual([{ dx: 0, dy: 0 }, { dx: 0, dy: 0 }])
+})

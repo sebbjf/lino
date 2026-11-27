@@ -16,13 +16,21 @@ export type BoardElement =
   | (Base & { type: 'color'; hex: string })
   | (Base & { type: 'link' } & LinkInfo)
 
-/** How the palette is written out. `prefix` goes after `--` in CSS variables (Tailwind needs its own namespaces). */
+/** Every style field any element type can have; restyle drops the ones a type does not own. */
 export type StylePatch = ElementStyle & NoteStyle & ImageStyle
 const STYLE_KEYS: (keyof StylePatch)[] = ['corner', 'shadow', 'opacity', 'deco', ...TYPED_KEYS]
+
+/** The part of a style patch an element of this type may take: shared fields always, typed ones only if it owns them. */
+function styleFor(type: BoardElement['type'], patch: StylePatch): StylePatch {
+  const own = ownStyleKeys(type)
+  const fits = (k: keyof StylePatch) => !TYPED_KEYS.includes(k) || own.includes(k)
+  return Object.fromEntries(Object.entries(patch).filter(([k]) => fits(k as keyof StylePatch)))
+}
 
 /** Ids added in messy mode, so their view plays the drop-in once. */
 export const justDropped = new Set<string>()
 
+/** How the palette is written out. `prefix` goes after `--` in CSS variables (Tailwind needs its own namespaces). */
 export type ExportPrefs = { prefix: string; format: 'hex' | 'oklch'; scales?: boolean }
 
 export type LinkInfo = {
@@ -74,7 +82,7 @@ type State = {
   future: HistoryEntry[]
   /**
    * Call once at the start of a continuous gesture (drag, typing) so it undoes as one step.
-   * With a `key`, a checkpoint less than 600 ms after one with the same key adds no step (a held arrow key).
+   * With a `key`, a checkpoint less than COALESCE_MS after one with the same key adds no step (a held arrow key).
    */
   checkpoint: (key?: string) => void
   /** Runs several store operations as one undo step. Synchronous. */
@@ -135,9 +143,10 @@ function pushHistory(s: State, key?: string) {
   const now = Date.now()
   const burst = !!key && lastKey?.key === key && lastKey.board === s.boardId && now - lastKey.at < COALESCE_MS // a burst never spans two boards
   lastKey = key ? { key, at: now, board: s.boardId } : null
-  if (burst) return { future: [] as HistoryEntry[] }
   const last = s.past.at(-1)
-  return last && same(last, s) ? { future: [] as HistoryEntry[] } : { past: [...s.past, entryOf(s)].slice(-HISTORY_LIMIT), future: [] as HistoryEntry[] }
+  const future: HistoryEntry[] = [] // any new edit drops what Redo had
+  if (burst || (last && same(last, s))) return { future }
+  return { past: [...s.past, entryOf(s)].slice(-HISTORY_LIMIT), future }
 }
 
 /** The elements among `ids` (all when omitted) that are not locked: the only ones a command may move, restyle, edit or delete. */
@@ -240,13 +249,7 @@ export const useBoard = create<State>()((set, get) => ({
     set((s) => {
       const editable = new Set(unlocked(s.elements, ids).map((e) => e.id))
       return {
-        elements: s.elements.map((e) => {
-          if (!editable.has(e.id)) return e
-          // type-specific fields (note color, image filter...) never land on other element types
-          const own = ownStyleKeys(e.type)
-          const keep = Object.fromEntries(Object.entries(patch).filter(([k]) => !TYPED_KEYS.includes(k as keyof StylePatch) || own.includes(k as keyof StylePatch)))
-          return { ...e, ...keep } as BoardElement
-        }),
+        elements: s.elements.map((e) => (editable.has(e.id) ? ({ ...e, ...styleFor(e.type, patch) } as BoardElement) : e)),
       }
     }),
 
@@ -281,7 +284,7 @@ export const useBoard = create<State>()((set, get) => ({
     set((s) => ({ ...pushHistory(s), elements, selectedIds: [], colorMeta: { ...s.colorMeta, ...colorMeta }, ...(board && { board }) })),
 
   align: (ids, mode) => set((s) => shift(s, ids, (els) => alignOffsets(els, mode))),
-  distribute: (ids, axis) => set((s) => shift(s, ids, (els) => (els.length < 3 ? els.map(() => ({ dx: 0, dy: 0 })) : distributeOffsets(els, axis)))),
+  distribute: (ids, axis) => set((s) => shift(s, ids, (els) => distributeOffsets(els, axis))),
 
   arrange: (ids, mode) =>
     set((s) => {
@@ -320,7 +323,7 @@ export const useBoard = create<State>()((set, get) => ({
   // typing a name makes one step per burst; the other palette edits are single clicks
   setColorMeta: (hex, patch) => set((s) => ({ ...pushHistory(s, 'name' in patch ? `name:${hex}` : undefined), colorMeta: { ...s.colorMeta, [hex]: { ...s.colorMeta[hex], ...patch } } })),
 
-  // a color picker scrubbed within 600 ms is one step; changing a different field is another
+  // a color picker scrubbed within COALESCE_MS is one step; changing a different field is another
   setBoard: (patch) => set((s) => ({ ...pushHistory(s, `board:${Object.keys(patch).sort().join()}`), board: { ...s.board, ...patch } })),
   setExportPrefs: (patch) => set((s) => ({ exportPrefs: { ...s.exportPrefs, ...patch } })),
 
