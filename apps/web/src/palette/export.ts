@@ -49,7 +49,8 @@ function lines(colors: PaletteColor[], fonts: string[], pre: string, oklch: bool
   ]
 }
 
-export type ExportFormat = 'css' | 'tailwind' | 'tokens'
+export const EXPORT_FORMATS = ['css', 'tailwind', 'tokens'] as const
+export type ExportFormat = (typeof EXPORT_FORMATS)[number]
 
 /** Design Tokens (W3C format) JSON, read by Style Dictionary and Figma token plugins. Colours stay hex. */
 function tokens(colors: PaletteColor[], fonts: string[], scales: boolean) {

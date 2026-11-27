@@ -8,10 +8,12 @@ import { download } from '../data/boardFile.ts'
 import { toAse } from '../palette/ase.ts'
 import { contrastPairs } from '../palette/contrast.ts'
 import { boardFonts, buildPalette, shuffledOrder } from '../palette/colors.ts'
-import { exportTheme, slug, type ExportFormat } from '../palette/export.ts'
+import { EXPORT_FORMATS, exportTheme, slug, type ExportFormat } from '../palette/export.ts'
 import { useBoard } from '../board/store.ts'
 
 const LABEL: Record<ExportFormat, string> = { css: 'CSS', tailwind: 'Tailwind', tokens: 'Tokens' }
+/** Contrast pairs listed before "Show all". */
+const PAIRS_SHOWN = 8
 
 export function PalettePanel({ onClose }: { onClose: () => void }) {
   const elements = useBoard((s) => s.elements)
@@ -25,7 +27,7 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
   const [format, setFormat] = useState<ExportFormat>('css')
   const [allPairs, setAllPairs] = useState(false)
   const pairs = useMemo(() => contrastPairs(colors), [colors])
-  const shownPairs = allPairs ? pairs : pairs.slice(0, 8)
+  const shownPairs = allPairs ? pairs : pairs.slice(0, PAIRS_SHOWN)
   const boardName = useBoard((s) => s.boards.find((b) => b.id === s.boardId)?.name ?? '')
   const downloadAse = () => {
     download(new Blob([toAse(colors) as BlobPart], { type: 'application/octet-stream' }), `${slug(boardName, 'palette')}.ase`)
@@ -148,7 +150,7 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
                   </li>
                 ))}
               </ul>
-              {pairs.length > 8 && (
+              {pairs.length > PAIRS_SHOWN && (
                 <Button variant="link" size="sm" className="self-start px-0" aria-expanded={allPairs} onClick={() => setAllPairs(!allPairs)}>
                   {allPairs ? 'Show fewer' : `Show all ${pairs.length}`}
                 </Button>
@@ -218,7 +220,7 @@ export function PalettePanel({ onClose }: { onClose: () => void }) {
             Tone scales
           </Button>
           <div role="group" aria-label="Export as" className="flex gap-1">
-            {(['css', 'tailwind', 'tokens'] as const).map((f) => (
+            {EXPORT_FORMATS.map((f) => (
               <Button
                 key={f}
                 variant={format === f ? 'secondary' : 'ghost'}
