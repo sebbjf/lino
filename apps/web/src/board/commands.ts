@@ -1,6 +1,6 @@
 import {
   AlignEndHorizontalIcon, AlignEndVerticalIcon, AlignHorizontalCenterIcon, AlignHorizontalSpaceBetweenIcon, AlignStartHorizontalIcon, AlignStartVerticalIcon, AlignVerticalCenterIcon,
-  AlignVerticalSpaceBetweenIcon, ArtboardToolIcon, ColorsIcon, Copy01Icon, Delete02Icon, FolderUploadIcon, FrameIcon, GroupItemsIcon, Heading01Icon, Image01Icon,
+  AlignVerticalSpaceBetweenIcon, ArtboardToolIcon, ColorsIcon, Copy01Icon, Delete02Icon, FitToScreenIcon, FolderUploadIcon, FrameIcon, GroupItemsIcon, Heading01Icon, Image01Icon,
   Layers01Icon, LayerBringForwardIcon, LockIcon, Maximize01Icon, LayerSendBackwardIcon, MinusSignIcon, PaintBoardIcon, PlusSignIcon, RedoIcon, StickyNote01Icon, UndoIcon,
 } from '@hugeicons/core-free-icons'
 import type { IconSvgElement } from '@hugeicons/react'
@@ -226,7 +226,7 @@ export const groupOf = (c: Command) => c.group ?? 'Edit'
 const ICONS: Record<string, IconSvgElement> = {
   'add-note': StickyNote01Icon, 'add-heading': Heading01Icon, 'add-frame': FrameIcon, 'add-color': PaintBoardIcon, 'add-image': Image01Icon, 'import-folder': FolderUploadIcon,
   undo: UndoIcon, redo: RedoIcon, duplicate: Copy01Icon, delete: Delete02Icon, forward: LayerBringForwardIcon, backward: LayerSendBackwardIcon,
-  'frame-selection': ArtboardToolIcon, swatches: ColorsIcon, group: GroupItemsIcon, ungroup: Layers01Icon, lock: LockIcon, 'select-all': Maximize01Icon, 'zoom-in': PlusSignIcon, 'zoom-out': MinusSignIcon, fit: ColorsIcon,
+  'frame-selection': ArtboardToolIcon, swatches: ColorsIcon, group: GroupItemsIcon, ungroup: Layers01Icon, lock: LockIcon, 'select-all': Maximize01Icon, 'zoom-in': PlusSignIcon, 'zoom-out': MinusSignIcon, fit: FitToScreenIcon,
   'align-left': AlignStartVerticalIcon, 'align-hcenter': AlignHorizontalCenterIcon, 'align-right': AlignEndVerticalIcon, 'align-top': AlignStartHorizontalIcon,
   'align-vcenter': AlignVerticalCenterIcon, 'align-bottom': AlignEndHorizontalIcon, 'distribute-x': AlignHorizontalSpaceBetweenIcon, 'distribute-y': AlignVerticalSpaceBetweenIcon,
 }
