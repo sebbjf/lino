@@ -49,16 +49,9 @@ function Choice<T extends string>({ label, options, value, onChange }: { label: 
     <Group label={label}>
       <div className="flex gap-1">
         {options.map((o) => (
-          <Button
-            key={o}
-            variant={value === o ? 'secondary' : 'ghost'}
-            size="sm"
-            aria-pressed={value === o}
-            className={`flex-1 ${value === o ? 'ring-1 ring-ring' : ''}`}
-            onClick={() => onChange(o)}
-          >
+          <Toggle key={o} on={value === o} onClick={() => onChange(o)}>
             {NAMES[o]}
-          </Button>
+          </Toggle>
         ))}
       </div>
     </Group>
@@ -151,11 +144,24 @@ function FontPicker({ value, onPick }: { value: string | undefined; onPick: (fam
   )
 }
 
-function Toggle({ label, on, onClick, children }: { label: string; on: boolean; onClick: () => void; children: ReactNode }) {
+/** A pressed-or-not button; `label` names it when its content is only an icon. */
+function Toggle({ label, on, onClick, children }: { label?: string; on: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <Button variant={on ? 'secondary' : 'ghost'} size="sm" aria-label={label} aria-pressed={on} className={`flex-1 ${on ? 'ring-1 ring-ring' : ''}`} onClick={onClick}>
       {children}
     </Button>
+  )
+}
+
+/** A setting that is on or off: its description on the left, a button showing the state on the right. */
+function SwitchRow({ text, label, on, onClick, states = ['On', 'Off'] }: { text: string; label: string; on: boolean; onClick: () => void; states?: [string, string] }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-xs font-medium text-muted-foreground">{text}</span>
+      <Button variant="outline" size="sm" aria-label={label} aria-pressed={on} onClick={onClick}>
+        {on ? states[0] : states[1]}
+      </Button>
+    </div>
   )
 }
 
@@ -198,19 +204,9 @@ function ElementPanel({ ids, wide }: { ids: string[]; wide: boolean }) {
           Paste style
         </Button>
       </div>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">Lock</span>
-        <Button variant="outline" size="sm" aria-label="Lock" aria-pressed={allLocked} onClick={() => toggleLock(ids)}>
-          {allLocked ? 'Locked' : 'Unlocked'}
-        </Button>
-      </div>
+      <SwitchRow text="Lock" label="Lock" on={allLocked} states={['Locked', 'Unlocked']} onClick={() => toggleLock(ids)} />
       <Choice label="Corners" options={CORNERS} value={cur.corner ?? 'soft'} onChange={(corner) => apply({ corner })} />
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">Shadow</span>
-        <Button variant="outline" size="sm" aria-label="Shadow" aria-pressed={cur.shadow !== false} onClick={() => apply({ shadow: cur.shadow === false })}>
-          {cur.shadow === false ? 'Off' : 'On'}
-        </Button>
-      </div>
+      <SwitchRow text="Shadow" label="Shadow" on={cur.shadow !== false} onClick={() => apply({ shadow: cur.shadow === false })} />
       <Choice label="Decoration" options={['none', ...DECOS] as const} value={cur.deco ?? 'none'} onChange={(d) => apply({ deco: d === 'none' ? undefined : d })} />
       <Group label={`Opacity ${opacity}%`}>
         <input
@@ -356,12 +352,7 @@ function BoardPanel() {
       </Group>
       <Swatches label="Background" value={board.bg} onChange={(bg) => setBoard({ bg })} />
       <Choice label="Pattern" options={PATTERNS} value={board.pattern ?? 'dots'} onChange={(pattern) => setBoard({ pattern })} />
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-xs font-medium text-muted-foreground">Messy mode: new things land slightly tilted</span>
-        <Button variant="outline" size="sm" aria-label="Messy mode" aria-pressed={!!board.messy} onClick={() => setBoard({ messy: !board.messy })}>
-          {board.messy ? 'On' : 'Off'}
-        </Button>
-      </div>
+      <SwitchRow text="Messy mode: new things land slightly tilted" label="Messy mode" on={!!board.messy} onClick={() => setBoard({ messy: !board.messy })} />
     </>
   )
 }
