@@ -1,7 +1,7 @@
 // shared-board schema: the element and board shapes a POST /boards body must match
 // What a shared board may contain. Strict on purpose: another person's browser renders it.
 const dataImage = { type: 'string', pattern: '^data:image/(png|jpeg|webp|gif);base64,' }
-const hex = { type: 'string', pattern: '^#[0-9a-fA-F]{3,8}$' }
+const hex = { type: 'string', pattern: '^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$' }
 const strings = (maxItems: number, maxLength: number) => ({ type: 'array', maxItems, items: { type: 'string', maxLength } })
 const requires = (type: string, fields: string[]) => ({ if: { properties: { type: { const: type } } }, then: { required: fields } })
 export const elementSchema = {

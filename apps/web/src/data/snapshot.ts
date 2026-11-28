@@ -50,6 +50,7 @@ function toElement(raw: unknown, local: boolean): BoardElement | null {
   const isPicture = (v: unknown): v is string => isStr(v, Infinity) && (DATA_IMAGE.test(v) || (local && IMAGE_ID.test(v)))
   if (!raw || typeof raw !== 'object') return null
   const e = raw as Record<string, unknown>
+  if (typeof e.type !== 'string' || !Object.hasOwn(KINDS, e.type)) return null
   if (!isNum(e.x) || !isNum(e.y) || !isNum(e.w) || !isNum(e.h) || e.w <= 0 || e.h <= 0) return null
   const box = {
     id: crypto.randomUUID(),
@@ -60,8 +61,8 @@ function toElement(raw: unknown, local: boolean): BoardElement | null {
     rotation: isNum(e.rotation) ? e.rotation % 360 : 0,
     ...styleOf(e),
   }
-  const kind = KINDS[e.type as BoardElement['type']] as Kind<BoardElement['type']> | undefined
-  return kind?.parse(e, box, { isPicture }) ?? null
+  const kind = KINDS[e.type as BoardElement['type']] as Kind<BoardElement['type']>
+  return kind.parse(e, box, { isPicture })
 }
 
 function colorMetaOf(raw: unknown): Record<string, ColorMeta> {

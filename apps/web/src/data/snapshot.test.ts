@@ -36,6 +36,44 @@ test('parseSnapshotText rejects files that are not boards', () => {
   expect(() => parseSnapshotText('null')).toThrow('not a Lino board')
 })
 
+test.each([{ type: 'constructor' }, { type: '__proto__' }, { type: ['note'] }, { type: 1 }])(
+  'skips invalid kind $type and opens the remaining board',
+  async ({ type }) => {
+    const { skipped, ...snap } = parseSnapshotText(JSON.stringify({
+      elements: [{ ...box, type, text: 'skip me' }, { ...box, type: 'note', text: 'keep me' }],
+    }))
+    expect(skipped).toBe(1)
+    expect(snap.elements).toMatchObject([{ type: 'note', text: 'keep me' }])
+    await openSnapshot(snap, 'readonly')
+    expect(useBoard.getState().elements).toEqual(snap.elements)
+  },
+)
+
+test.each(['#12345', '#1234567'])('rejects invalid hex length in %s across board fields', (hex) => {
+  const { elements, skipped, board, colorMeta } = parseSnapshotText(JSON.stringify({
+    elements: [
+      { ...box, type: 'color', hex },
+      { ...box, type: 'color', hex: '#1234' },
+      { ...box, type: 'note', text: 'hi', bg: hex, color: '#12345678' },
+      { ...box, type: 'image', src: 'data:image/png;base64,AA==', colors: [hex, '#abc'], duo: [hex, '#fff'] },
+      { ...box, type: 'link', url: 'https://example.com/', colors: [hex, '#123456'] },
+    ],
+    board: { bg: hex },
+    colorMeta: { [hex]: { pinned: true }, '#ABCD': { pinned: true } },
+  }))
+  expect(skipped).toBe(1)
+  expect(elements).toMatchObject([
+    { type: 'color', hex: '#1234' },
+    { type: 'note', color: '#12345678' },
+    { type: 'image', colors: ['#abc'] },
+    { type: 'link', colors: ['#123456'] },
+  ])
+  expect(elements[1]).not.toHaveProperty('bg')
+  expect(elements[2]).not.toHaveProperty('duo')
+  expect(board).toEqual({})
+  expect(colorMeta).toEqual({ '#abcd': { pinned: true } })
+})
+
 test('parseSnapshotText keeps valid note text styles and drops bad ones', () => {
   const file = JSON.stringify({
     elements: [

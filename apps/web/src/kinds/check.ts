@@ -1,6 +1,6 @@
 // Small validators shared by the element kinds (and snapshot.ts) for untrusted JSON.
 export const MAX_TEXT = 10_000
-export const HEX = /^#[0-9a-f]{3,8}$/i
+export const HEX = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 
 export const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
 export const isStr = (v: unknown, max = MAX_TEXT): v is string => typeof v === 'string' && v.length <= max
