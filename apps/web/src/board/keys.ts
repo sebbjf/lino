@@ -1,5 +1,7 @@
 import { arrowDelta } from './commands.ts'
-import type { Layer } from './store.ts'
+import { resize, rotateVec } from './geometry.ts'
+import { duplicate, frameSelection, group, nudge, remove, reorder, rotateStep, targetOf, ungroup } from './selection.ts'
+import { useBoard, type BoardElement, type Layer } from './store.ts'
 
 /** Arrow-key distance in board px, with and without Shift. */
 const NUDGE = 1
@@ -49,4 +51,52 @@ export function elementKey(e: Keys): ElementKey | null {
   const byCode = mod && e.altKey ? BY_CODE[e.code] : undefined
   if (byCode) return byCode
   return (mod ? WITH_MOD : PLAIN)[e.key]?.(e.shiftKey) ?? null
+}
+
+/** Runs the board command for a key action that passed the focused element's guards. */
+export function runElementKey(action: ElementKey, el: BoardElement): boolean {
+  const ids = () => targetOf(el.id)
+  switch (action.do) {
+    case 'resize': {
+      const { checkpoint, update } = useBoard.getState()
+      checkpoint()
+      const world = rotateVec(action.dx, action.dy, el.rotation)
+      update(el.id, resize(el, world.x, world.y, el.type === 'image'))
+      break
+    }
+    case 'nudge':
+      nudge(ids(), action.dx, action.dy)
+      break
+    case 'copy-style':
+      useBoard.getState().copyStyle(el.id)
+      break
+    case 'paste-style':
+      useBoard.getState().pasteStyle(ids())
+      break
+    case 'frame':
+      frameSelection(ids())
+      break
+    case 'group':
+      group(ids())
+      break
+    case 'ungroup':
+      ungroup(ids())
+      break
+    case 'remove':
+      remove(ids())
+      break
+    case 'duplicate':
+      duplicate(ids())
+      break
+    case 'rotate':
+      rotateStep(ids(), action.dir)
+      break
+    case 'reorder':
+      reorder(el.id, action.to)
+      break
+    case 'open':
+    case 'escape':
+      return false
+  }
+  return true
 }

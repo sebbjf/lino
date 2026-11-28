@@ -1,11 +1,11 @@
-import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { memo, useEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent, type RefObject } from 'react'
 import { drag, touches } from '../board/drag.ts'
-import { elementKey } from '../board/keys.ts'
+import { elementKey, runElementKey, type ElementKey } from '../board/keys.ts'
 import { moveTo, planMove } from '../board/move.ts'
 import { openAction } from '../board/open.ts'
 import { useSettings } from '../board/settings.ts'
 import { panIntoView } from '../board/viewport.ts'
-import { angleTo, resize, rotateVec } from '../board/geometry.ts'
+import { angleTo, resize } from '../board/geometry.ts'
 import { ColorBody } from '../kinds/ColorBody.tsx'
 import { ElementDeco } from '../kinds/ElementDeco.tsx'
 import { FrameBody } from '../kinds/FrameBody.tsx'
@@ -13,7 +13,7 @@ import { ImageBody } from '../kinds/ImageBody.tsx'
 import { LinkBody } from '../kinds/LinkBody.tsx'
 import { NoteBody } from '../kinds/NoteBody.tsx'
 import { useCrop } from '../kinds/useCrop.ts'
-import { duplicate, frameSelection, group, nudge, remove, reorder, rotateStep, targetOf, ungroup } from '../board/selection.ts'
+import { targetOf } from '../board/selection.ts'
 import { justDropped, useBoard, type BoardElement } from '../board/store.ts'
 import { surface, textOn } from '../board/style.ts'
 
@@ -87,19 +87,81 @@ function Handles({ el, zoom }: { el: BoardElement; zoom: number }) {
   )
 }
 
+function startMove(e: PointerEvent<HTMLDivElement>, el: BoardElement, zoom: number) {
+  const { checkpoint, moveMany } = useBoard.getState()
+  const plan = planMove(targetOf(el.id), useBoard.getState().elements)
+  if (!plan.moving.length) return
+  const show = ({ pos, guides }: ReturnType<typeof moveTo>) => {
+    useBoard.setState({ guides })
+    moveMany(pos)
+  }
+  checkpoint()
+  let pinched = false
+  drag(
+    e,
+    (dx, dy, ev) => {
+      if (pinched) return
+      // a second finger turns the gesture into a pinch-zoom: put things back and stop dragging
+      if (touches.size > 1) {
+        pinched = true
+        return show(moveTo(plan, 0, 0, 0))
+      }
+      // Alt moves freely
+      const snap = ev.altKey || !useSettings.getState().snap ? 0 : SNAP_PX / zoom
+      show(moveTo(plan, dx / zoom, dy / zoom, snap))
+    },
+    () => useBoard.setState({ guides: [] }),
+  )
+}
+
+function readElementKey(e: KeyboardEvent<HTMLDivElement>, el: BoardElement, readOnly: boolean, crop: ReturnType<typeof useCrop>): ElementKey | null {
+  const { cropping } = crop
+  if (e.target !== e.currentTarget || (readOnly && e.key !== 'Enter' && e.key !== 'Escape')) return null
+  if (cropping) {
+    if (e.key !== 'Enter' && e.key !== 'Escape') return null
+    crop.finish(e.key === 'Enter')
+    e.stopPropagation()
+    e.preventDefault()
+    return null
+  }
+  const action = elementKey(e)
+  if (!action || (action.do === 'resize' && el.locked)) return null
+  e.preventDefault()
+  return action
+}
+
+function useElementFocus(root: RefObject<HTMLDivElement | null>, el: BoardElement, solo: boolean, editing: boolean, cropping: boolean) {
+  const { select } = useBoard.getState()
+  // keep keyboard focus on the selected element (e.g. after duplicate or add)
+  useEffect(() => {
+    if ((solo || cropping) && !editing && !root.current!.contains(document.activeElement)) root.current!.focus({ preventScroll: true })
+  }, [solo, editing, cropping])
+
+  return (e: FocusEvent<HTMLDivElement>) => {
+    // keyboard focus only (Tab): clicks select in onPointerDown, and must not jump the view
+    if (e.target !== e.currentTarget || !e.currentTarget.matches(':focus-visible')) return
+    if (!useBoard.getState().selectedIds.includes(el.id)) select(el.id)
+    panIntoView(el)
+  }
+}
+
+/** A freshly added empty note or untitled frame opens straight into editing. */
+function startsEditing(el: BoardElement, selected: boolean) {
+  return selected && ((el.type === 'note' && !el.text) || (el.type === 'frame' && !el.title))
+}
+
 /** `solo`: the only selected element, which gets handles and keyboard focus. */
 type Props = { el: BoardElement; selected: boolean; solo: boolean; zoom: number }
 
 /** One element on the board: position, selection, drag, resize/rotate, keys and focus. What it shows is its kind's body (kinds/*Body.tsx). */
 export const ElementView = memo(function ElementView({ el, selected, solo, zoom }: Props) {
-  const { update, moveMany, select, checkpoint, setCropId } = useBoard.getState()
+  const { select, checkpoint, setCropId } = useBoard.getState()
   const readOnly = useBoard((s) => s.readOnly)
   // the selection outline follows the board background's contrast color, so it shows on dark boards too
   const outline = useBoard((s) => (s.board.bg && textOn(s.board.bg)) || 'var(--color-primary)')
   // the ink of the board (frames and headings draw in it, not on a card)
   const ink = useBoard((s) => (s.board.bg && textOn(s.board.bg)) || 'var(--foreground)')
-  // a freshly added empty note or untitled frame opens straight into editing
-  const [editing, setEditing] = useState(() => selected && ((el.type === 'note' && !el.text) || (el.type === 'frame' && !el.title)))
+  const [editing, setEditing] = useState(() => startsEditing(el, selected))
   const [pickerOpen, setPickerOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const crop = useCrop(el, root)
@@ -107,10 +169,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   // plays once, for an element just added in messy mode
   const [drop] = useState(() => justDropped.delete(el.id))
 
-  // keep keyboard focus on the selected element (e.g. after duplicate or add)
-  useEffect(() => {
-    if ((solo || cropping) && !editing && !root.current!.contains(document.activeElement)) root.current!.focus({ preventScroll: true })
-  }, [solo, editing, cropping])
+  const onFocus = useElementFocus(root, el, solo, editing, cropping)
 
   const open = () => {
     const action = openAction(el, readOnly)
@@ -145,70 +204,13 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     if (!useBoard.getState().selectedIds.includes(el.id)) select(el.id)
     if (editing) return
     e.currentTarget.focus()
-    const plan = planMove(targetOf(el.id), useBoard.getState().elements)
-    if (!plan.moving.length) return
-    const show = ({ pos, guides }: ReturnType<typeof moveTo>) => {
-      useBoard.setState({ guides })
-      moveMany(pos)
-    }
-    checkpoint()
-    let pinched = false
-    drag(
-      e,
-      (dx, dy, ev) => {
-        if (pinched) return
-        // a second finger turns the gesture into a pinch-zoom: put things back and stop dragging
-        if (touches.size > 1) {
-          pinched = true
-          return show(moveTo(plan, 0, 0, 0))
-        }
-        // Alt moves freely
-        const snap = ev.altKey || !useSettings.getState().snap ? 0 : SNAP_PX / zoom
-        show(moveTo(plan, dx / zoom, dy / zoom, snap))
-      },
-      () => useBoard.setState({ guides: [] }),
-    )
+    startMove(e, el, zoom)
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget || (readOnly && e.key !== 'Enter' && e.key !== 'Escape')) return
-    if (cropping) {
-      if (e.key !== 'Enter' && e.key !== 'Escape') return
-      crop.finish(e.key === 'Enter')
-      e.stopPropagation()
-      e.preventDefault()
-      return
-    }
-    const action = elementKey(e)
-    if (!action || (action.do === 'resize' && el.locked)) return
-    e.preventDefault()
-    const ids = () => targetOf(el.id)
+    const action = readElementKey(e, el, readOnly, crop)
+    if (!action || runElementKey(action, el)) return
     switch (action.do) {
-      case 'resize': {
-        checkpoint()
-        const world = rotateVec(action.dx, action.dy, el.rotation)
-        return update(el.id, resize(el, world.x, world.y, el.type === 'image'))
-      }
-      case 'nudge':
-        return nudge(ids(), action.dx, action.dy)
-      case 'copy-style':
-        return useBoard.getState().copyStyle(el.id)
-      case 'paste-style':
-        return useBoard.getState().pasteStyle(ids())
-      case 'frame':
-        return frameSelection(ids())
-      case 'group':
-        return group(ids())
-      case 'ungroup':
-        return ungroup(ids())
-      case 'remove':
-        return remove(ids())
-      case 'duplicate':
-        return duplicate(ids())
-      case 'rotate':
-        return rotateStep(ids(), action.dir)
-      case 'reorder':
-        return reorder(el.id, action.to)
       case 'open':
         return open()
       case 'escape':
@@ -240,12 +242,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       onPointerDown={onPointerDown}
       onDoubleClick={(e) => e.currentTarget.contains(e.target as Node) && open()}
       onKeyDown={onKeyDown}
-      onFocus={(e) => {
-        // keyboard focus only (Tab): clicks select in onPointerDown, and must not jump the view
-        if (e.target !== e.currentTarget || !e.currentTarget.matches(':focus-visible')) return
-        if (!useBoard.getState().selectedIds.includes(el.id)) select(el.id)
-        panIntoView(el)
-      }}
+      onFocus={onFocus}
     >
       {el.type === 'frame' && <FrameBody el={el} zoom={zoom} ink={ink} editing={editing} setEditing={setEditing} />}
       {el.type === 'image' && <ImageBody el={el} zoom={zoom} crop={crop} />}
