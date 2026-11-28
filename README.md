@@ -5,7 +5,7 @@
 **Turn inspiration into a design starting point.**
 
 Drop images, links, notes and colors on a board. Lino pulls a palette and fonts out of them and exports CSS variables or a Tailwind v4 `@theme`.
-No account: the board lives in your browser.
+No account: the board lives in your browser, can be saved as a file on your disk, and works offline once installed.
 
 [**Try it live**](https://lino-nine.vercel.app) · [Code map](MAP.md) · [API health](https://lino-api-seven.vercel.app/health)
 
@@ -43,7 +43,8 @@ Lino does that step. Paste a link and it reads the page's cover, fonts and color
 - **Arrange**: grid, masonry, row, column, circle, plus the playful **sunflower**, **fan**, **collage** and **mosaic** layouts. Snapping guides, align and distribute.
 - **Style**: corners, shadow, opacity, tape or pin decorations, mono/duotone image filters, note fonts (including the ones found on your links), and board themes (Paper, Kraft, Night, Blueprint).
 - **Many boards**: create as many as you like, rename and delete them from the name menu at the top left.
-- **Save and share**: autosave to IndexedDB, `.lino.json` export/import, **PNG download** of the whole board, and a read-only **share link**.
+- **Save and share**: autosave to IndexedDB, **Open / Save / Save as** a `.lino.json` file on disk (Chrome and Edge; export/import elsewhere), **PNG download** of the whole board, and a read-only **share link**. The file format is an [open spec](docs/file-format.md).
+- **Offline**: install the board as an app; it opens and works without a connection, and opens double-clicked `.lino.json` files.
 
 <details>
 <summary>More detail on palette, style and file features</summary>
@@ -57,7 +58,12 @@ Lino does that step. Paste a link and it reads the page's cover, fonts and color
 
 With nothing selected, it styles the board: themes, background color, dots/grid/plain, and **messy mode**, where new things drop in slightly tilted. Styles travel with exports, shares and the PNG.
 
-**File menu** (folder icon): **Export board** saves a `.lino.json` with every element (images inline) and the palette edits. **Import board** (or dropping a `.lino.json` on the canvas) opens the file as a new board, so the one you had stays in your boards (an empty board is filled in place). Imported files are checked like shared boards: only http(s) links and `data:image` images, unknown fields dropped, unreadable items skipped and counted.
+**File menu** (folder icon). A `.lino.json` holds every element (images inline) and the palette edits; [docs/file-format.md](docs/file-format.md) describes it.
+- In Chrome and Edge: **Open…** opens a file and links the board to it; **Save** (`Ctrl+S`) writes back to that file and **Save as…** (`Ctrl+Shift+S`) picks a new one. The browser copy stays the source and keeps autosaving; a dot next to the board name means changes not yet saved to the file. Save asks before overwriting a file that changed elsewhere. The link survives reloads (the first Save after one asks the browser for permission). Renaming or deleting a board never touches the file.
+- In other browsers: **Export board** downloads the file (`Ctrl+S` does the same) and **Import board** reads one.
+- Opening a file (or dropping one on the canvas) fills an empty board in place, otherwise it becomes a new board so the one you had stays. Files are checked like shared boards: only http(s) links and `data:image` images, unknown fields dropped, unreadable items skipped and counted.
+
+**Offline app.** The board (`/board/`) installs as an app and is cached for offline use; a new version takes over on the next launch. Offline, a pasted link becomes a card with just its address, and sharing waits for a connection. Installed in Chrome or Edge, Lino opens a double-clicked `.lino.json` already linked to the file.
 
 **Download PNG** renders the whole board (not just what is on screen) at 2× with the current theme. It is drawn on a canvas, not screenshotted, so selection outlines never show up.
 
@@ -142,7 +148,7 @@ lino/
 
 ### Design decisions
 
-- **No accounts.** The board autosaves to IndexedDB and never leaves the browser unless you share it. Sharing uploads an anonymous, fixed copy: no sign-up friction and no personal data to protect.
+- **No accounts.** The board autosaves to IndexedDB and never leaves the browser unless you save it to a file or share it. Sharing uploads an anonymous, fixed copy: no sign-up friction and no personal data to protect.
 - **A hand-written API** (Fastify) instead of a managed backend, so every part can be explained. It has two jobs: reading links and storing shared boards.
 - **Elements are DOM nodes with CSS transforms, not a `<canvas>`.** They are easier to style and get focus, keyboard and screen reader support for free. PNG export draws the board onto a canvas separately, so it doesn't depend on screenshots.
 - **Reading links is a security boundary.** The server fetches URLs that users type, so it blocks private addresses, rechecks every redirect, pins the DNS answer (against rebinding) and caps time, size and rate. If extraction fails, the card is still created with whatever was found, and says what is missing.
@@ -156,6 +162,7 @@ lino/
 | Action | Keys |
 | --- | --- |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y` |
+| Save / save as | `Ctrl+S` / `Ctrl+Shift+S` (export where the browser can't save files) |
 | Select several | `Shift`+click, `Shift`+drag on the background (selection box), `Ctrl+A` for all; `Esc` clears |
 | Arrange (layout templates) | Wand button, for the selection (2+) or the whole board when nothing is selected. Sizes stay, `Ctrl+Z` undoes. Templates: **grid**, **masonry**, **row**, **column**, **circle**, **sunflower** (golden-angle spiral around the biggest piece), **fan** (a hand of cards, each showing at least 60%) **collage** (overlapping, slightly tilted, the same every time) and **mosaic** (flat, staggered rows that overlap like prints on a wall) |
 | Align / distribute | Toolbar buttons with 2+ selected (distribute needs 3+); aligns visible outlines, rotation included |

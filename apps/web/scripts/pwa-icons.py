@@ -1,4 +1,5 @@
 # Render the PWA icons from favicon.svg's four circles (viewBox 32, circles span 3..29) on the light board background.
+# Run from the repo root after changing the logo (needs Pillow): python apps/web/scripts/pwa-icons.py apps/web/public
 import sys
 from pathlib import Path
 from PIL import Image, ImageDraw

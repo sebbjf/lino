@@ -17,8 +17,12 @@ The portable content of a board: its elements, palette edits and board style. It
 _Avoid_: Board data, board state, save
 
 **Board file**:
-A board snapshot written out as a `.lino.json` file that can be imported again.
+A board snapshot written out as a `.lino.json` file that can be opened again. Its format is specified in `docs/file-format.md`.
 _Avoid_: Export, backup
+
+**Linked file**:
+The board file a board saves to with Save (Chrome and Edge). The board in the browser stays the source of truth and keeps autosaving; the linked file only changes on Save, and a dot marks changes not yet in it. Lino never renames or deletes a linked file.
+_Avoid_: Synced file, source file
 
 **Shared board**:
 A read-only copy of a board snapshot reachable by a link, which stops working after 90 days.

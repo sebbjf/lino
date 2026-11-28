@@ -130,8 +130,11 @@ function Docs() {
           <strong>Autosave:</strong> the board saves in your browser as you work. You can keep several boards.
         </li>
         <li>
-          <strong>Export / import:</strong> a <code>.lino.json</code> file keeps everything and can be imported again. <strong>Download PNG</strong> gives an image of the whole board.
-          Read the <A href="https://github.com/sebbjf/lino/blob/main/docs/file-format.md">board file format</A> on GitHub.
+          <strong>Save to a file:</strong> a <code>.lino.json</code> file keeps everything. In Chrome and Edge, <strong>Open…</strong>, <strong>Save</strong> (<code>Ctrl+S</code>) and <strong>Save as…</strong> work on a file on your disk, and a dot next to the board name means changes not yet saved to it. In other browsers, <strong>Export</strong> downloads the file and <strong>Import</strong> reads it back.{' '}
+          <strong>Download PNG</strong> gives an image of the whole board. Read the <A href="https://github.com/sebbjf/lino/blob/main/docs/file-format.md">board file format</A> on GitHub.
+        </li>
+        <li>
+          <strong>Offline:</strong> install the board from your browser's menu and it opens without a connection. Offline, a pasted link is added without a preview, and sharing waits until you are back online. The installed app opens <code>.lino.json</code> files you double-click.
         </li>
         <li>
           <strong>Share:</strong> creates a read-only link to a copy of the board as it is now. It lasts 90 days. See <A href="/privacy/">Privacy</A>.

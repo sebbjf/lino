@@ -123,8 +123,9 @@ export function PrivacySection() {
 // ---------------------------------------------------------------- faq, cta
 export const faqs = [
   ['Where are my boards saved?', "In your browser's storage on this device. Images and notes never leave it unless you share the board. A pasted link is the exception: its address goes to Lino's server, which reads the page for you."],
-  ['What happens if I clear my browser data?', 'Your board is deleted with it. Export it first as a .lino.json file to keep a copy you can import later, or download it as a PNG.'],
-  ['Can I open a board on another device?', 'Export the board as a .lino.json file and import it there. Or share a read-only link: it is a fixed copy that lasts 90 days.'],
+  ['What happens if I clear my browser data?', 'The copy in your browser is deleted with it. Save the board as a .lino.json file first to keep a copy on your disk you can open later, or download it as a PNG.'],
+  ['Can I open a board on another device?', 'Save the board as a .lino.json file and open it there. Or share a read-only link: it is a fixed copy that lasts 90 days.'],
+  ['Does Lino work offline?', 'Yes, once you install the board from your browser. Everything works without a connection except reading pasted links and sharing.'],
   ['How do I use the palette in my project?', 'Open the palette and copy it as CSS variables or a Tailwind v4 theme, in hex or OKLCH. Fonts read from your links come along.'],
   ['Do I need an account?', 'No. Open the board and start pinning.'],
 ]
