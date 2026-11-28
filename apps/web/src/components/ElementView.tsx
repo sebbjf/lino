@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEven
 import { drag, touches } from '../board/drag.ts'
 import { elementKey } from '../board/keys.ts'
 import { moveTo, planMove } from '../board/move.ts'
+import { openAction } from '../board/open.ts'
 import { useSettings } from '../board/settings.ts'
 import { panIntoView } from '../board/viewport.ts'
 import { angleTo, resize, rotateVec } from '../board/geometry.ts'
@@ -37,6 +38,55 @@ function label(el: BoardElement) {
   return LABELS[el.type]
 }
 
+function handleDrag(el: BoardElement, zoom: number) {
+  const { update, checkpoint } = useBoard.getState()
+
+  const onResize = (e: PointerEvent) => {
+    e.stopPropagation()
+    const box = { ...el }
+    checkpoint()
+    // images keep their aspect ratio; Shift toggles it
+    drag(e, (dx, dy, ev) => update(el.id, resize(box, dx / zoom, dy / zoom, (el.type === 'image') !== ev.shiftKey)))
+  }
+
+  const onRotate = (e: PointerEvent) => {
+    e.stopPropagation()
+    const box = { ...el }
+    const v = useBoard.getState().view
+    checkpoint()
+    drag(e, (_dx, _dy, ev) =>
+      update(el.id, { rotation: angleTo(box, (ev.clientX - v.x) / v.zoom, (ev.clientY - v.y) / v.zoom, ev.shiftKey, ev.altKey) }),
+    )
+  }
+
+  return { onResize, onRotate }
+}
+
+function Handles({ el, zoom }: { el: BoardElement; zoom: number }) {
+  const { onResize, onRotate } = handleDrag(el, zoom)
+  // bigger grab targets for fingers
+  const handle = (matchMedia('(pointer: coarse)').matches ? HANDLE_PX_COARSE : HANDLE_PX) / zoom
+
+  return (
+    <>
+      {el.type !== 'frame' && (
+        <div
+          aria-hidden
+          className="absolute left-1/2 rounded-full border-ring bg-card"
+          style={{ width: handle, height: handle, top: -ROTATE_OFFSET_PX / zoom, marginLeft: -handle / 2, borderWidth: HANDLE_BORDER_PX / zoom, cursor: 'grab' }}
+          onPointerDown={onRotate}
+        />
+      )}
+      <div
+        aria-hidden
+        className="pointer-events-auto absolute rounded-full border-ring bg-card"
+        style={{ width: handle, height: handle, right: -handle / 2, bottom: -handle / 2, borderWidth: HANDLE_BORDER_PX / zoom, cursor: 'nwse-resize' }}
+        onPointerDown={onResize}
+      />
+    </>
+  )
+}
+
 /** `solo`: the only selected element, which gets handles and keyboard focus. */
 type Props = { el: BoardElement; selected: boolean; solo: boolean; zoom: number }
 
@@ -63,12 +113,19 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
   }, [solo, editing, cropping])
 
   const open = () => {
-    if ((readOnly || el.locked) && el.type !== 'link') return
-    if (el.type === 'image') return setCropId(el.id)
-    if (el.type !== 'link') checkpoint()
-    if (el.type === 'note' || el.type === 'frame') setEditing(true)
-    if (el.type === 'color') setPickerOpen(true)
-    if (el.type === 'link') window.open(el.url, '_blank', 'noopener,noreferrer')
+    const action = openAction(el, readOnly)
+    switch (action.kind) {
+      case 'crop':
+        return setCropId(el.id)
+      case 'edit':
+        checkpoint()
+        return setEditing(true)
+      case 'picker':
+        checkpoint()
+        return setPickerOpen(true)
+      case 'url':
+        window.open(action.url, '_blank', 'noopener,noreferrer')
+    }
   }
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -110,24 +167,6 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
         show(moveTo(plan, dx / zoom, dy / zoom, snap))
       },
       () => useBoard.setState({ guides: [] }),
-    )
-  }
-
-  const onResize = (e: PointerEvent) => {
-    e.stopPropagation()
-    const box = { ...el }
-    checkpoint()
-    // images keep their aspect ratio; Shift toggles it
-    drag(e, (dx, dy, ev) => update(el.id, resize(box, dx / zoom, dy / zoom, (el.type === 'image') !== ev.shiftKey)))
-  }
-
-  const onRotate = (e: PointerEvent) => {
-    e.stopPropagation()
-    const box = { ...el }
-    const v = useBoard.getState().view
-    checkpoint()
-    drag(e, (_dx, _dy, ev) =>
-      update(el.id, { rotation: angleTo(box, (ev.clientX - v.x) / v.zoom, (ev.clientY - v.y) / v.zoom, ev.shiftKey, ev.altKey) }),
     )
   }
 
@@ -179,9 +218,6 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
     }
   }
 
-  // bigger grab targets for fingers
-  const handle = (matchMedia('(pointer: coarse)').matches ? HANDLE_PX_COARSE : HANDLE_PX) / zoom
-
   return (
     <div
       ref={root}
@@ -220,22 +256,7 @@ export const ElementView = memo(function ElementView({ el, selected, solo, zoom 
       <ElementDeco el={el} zoom={zoom} />
 
       {solo && !editing && !readOnly && !el.locked && !cropping && (
-        <>
-          {el.type !== 'frame' && (
-            <div
-              aria-hidden
-              className="absolute left-1/2 rounded-full border-ring bg-card"
-              style={{ width: handle, height: handle, top: -ROTATE_OFFSET_PX / zoom, marginLeft: -handle / 2, borderWidth: HANDLE_BORDER_PX / zoom, cursor: 'grab' }}
-              onPointerDown={onRotate}
-            />
-          )}
-          <div
-            aria-hidden
-            className="pointer-events-auto absolute rounded-full border-ring bg-card"
-            style={{ width: handle, height: handle, right: -handle / 2, bottom: -handle / 2, borderWidth: HANDLE_BORDER_PX / zoom, cursor: 'nwse-resize' }}
-            onPointerDown={onResize}
-          />
-        </>
+        <Handles el={el} zoom={zoom} />
       )}
     </div>
   )
