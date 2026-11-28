@@ -12,7 +12,7 @@ export type Keys = Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'altKey' | 
 type BoardKey =
   | { id: 'fit' | 'delete' | 'clear-selection'; preventDefault: false }
   | { id: 'nudge'; delta: [number, number]; preventDefault: true }
-  | { id: 'rotate-ccw' | 'rotate-cw' | 'select-all' | 'duplicate' | 'group' | 'ungroup' | 'frame-selection' | 'undo' | 'redo'; preventDefault: true }
+  | { id: 'rotate-ccw' | 'rotate-cw' | 'select-all' | 'duplicate' | 'group' | 'ungroup' | 'frame-selection' | 'undo' | 'redo' | 'save' | 'save-as'; preventDefault: true }
 
 /** Reads a window key press outside text fields as a board action. */
 export function boardKey(e: Keys, onBody: boolean, hasSelection: boolean): BoardKey | null {
@@ -30,6 +30,7 @@ export function boardKey(e: Keys, onBody: boolean, hasSelection: boolean): Board
     return null
   }
 
+  if (key === 's') return { id: e.shiftKey ? 'save-as' : 'save', preventDefault: true }
   if (key === 'a') return { id: 'select-all', preventDefault: true }
   if (onBody) {
     // a focused element duplicates by itself (ElementView); this covers a selection with no focus

@@ -97,8 +97,7 @@ export function parseSnapshotText(text: string) {
 }
 
 /** The board on screen with its pictures inline, for what leaves this browser (board file, share). */
-export async function capturePortable() {
-  const snap = captureSnapshot()
+export async function capturePortable(snap = captureSnapshot()) {
   const out = await inline(snap)
   const lost = snap.elements.length - out.elements.length
   if (lost) useBoard.getState().notify(`${lost} image${lost === 1 ? ' was' : 's were'} missing from this browser and left out.`)
@@ -127,8 +126,10 @@ export async function openSnapshot(opened: Snapshot, mode: 'replace' | 'new' | '
   const { elements, colorMeta, board } = snap
   const view = opts.view ?? (elements.length ? fitView(elements, innerWidth, innerHeight) : { x: 0, y: 0, zoom: 1 })
   if (mode === 'replace') {
+    const { boardId } = useBoard.getState()
     useBoard.getState().replaceBoard(elements, colorMeta, board)
-    return useBoard.getState().setView(view)
+    useBoard.getState().setView(view)
+    return boardId
   }
   const clean = { elements, view, colorMeta, board, selectedIds: [], past: [], future: [], guides: [] }
   if (mode === 'readonly') return useBoard.setState({ ...clean, readOnly: true })
@@ -139,4 +140,5 @@ export async function openSnapshot(opened: Snapshot, mode: 'replace' | 'new' | '
     useBoard.setState((s) => ({ boards: [...s.boards, { id: id!, name: `Board ${s.boards.length + 1}` }] }))
   }
   useBoard.setState({ ...clean, boardId: id })
+  return id
 }

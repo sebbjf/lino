@@ -4,6 +4,7 @@ import { externalize, IMAGE_ID, sweepImages } from './images.ts'
 import { useSettings } from '../board/settings.ts'
 import { captureSnapshot, onLeaveBoard, openSnapshot, parseSnapshot, type Snapshot } from './snapshot.ts'
 import { useBoard, type BoardMeta, type ExportPrefs, type View } from '../board/store.ts'
+import { canUseFiles, contentChanged, type FileLink } from './fileLink.ts'
 
 // Many local boards: each is stored under its own id ('local' is the original single board), plus an index of names.
 const INDEX = 'index'
@@ -17,10 +18,12 @@ const read = <T,>(key: string) => run<T | undefined>('readonly', (s) => s.get(ke
 const put = (key: string, value: unknown) => run('readwrite', (s) => s.put(value, key))
 const del = (key: string) => run('readwrite', (s) => s.delete(key))
 const viewKey = (id: string) => `${id}:view`
+const fileKey = (id: string) => `${id}:file`
 const saveFailed = () => useBoard.getState().notify('Could not save the board in this browser.')
 
 // What is saved, and when. Keys in the 'boards' store: INDEX (names + current board), `<id>` (snapshot + export prefs), `<id>:view` (pan and zoom).
 // - on every board change, debounced (and when the tab is hidden): `save` writes all three; a pan or zoom alone writes only the view
+// - `<id>:file` keeps a linked file and its dirty status alongside the snapshot
 // - when switching away from a board, or creating one: `save` first
 // - on opening a board: its images move to the image store once, and the record is rewritten without inline pictures
 
@@ -82,15 +85,33 @@ export async function loadBoard() {
     // first run, or a board saved before there were several
     await showStored('local')
   }
+  if (typeof window !== 'undefined' && canUseFiles(window)) {
+    const { boards } = useBoard.getState()
+    const links = await Promise.all(boards.map(async ({ id }) => [id, await read<FileLink>(fileKey(id))] as const))
+    useBoard.setState({ fileLinks: Object.fromEntries(links) })
+  }
 }
 
 function save() {
-  const { exportPrefs, boards, boardId } = useBoard.getState()
+  const { exportPrefs, boards, boardId, fileLinks } = useBoard.getState()
+  const saved = { ...captureSnapshot(), exportPrefs } satisfies Saved
+  const link = fileLinks[boardId]
   return Promise.all([
     saveView(),
-    put(boardId, { ...captureSnapshot(), exportPrefs } satisfies Saved),
+    run('readwrite', (s) => {
+      if (link) s.put(link, fileKey(boardId))
+      return s.put(saved, boardId)
+    }),
     put(INDEX, { current: boardId, boards } satisfies Index),
   ]).catch(saveFailed)
+}
+
+export async function setFileLink(id: string, link: FileLink) {
+  const { boards, boardId, fileLinks } = useBoard.getState()
+  if (!boards.some((b) => b.id === id)) return
+  useBoard.setState({ fileLinks: { ...fileLinks, [id]: link } })
+  if (boardId === id) await save()
+  else await put(fileKey(id), link).catch(saveFailed)
 }
 
 /** Saves the board on screen now, then shows another one. */
@@ -130,14 +151,13 @@ export async function deleteBoard(id: string) {
   const rest = boards.filter((b) => b.id !== id)
   await del(id).catch(() => {})
   await del(viewKey(id)).catch(() => {})
-  if (!rest.length) {
-    // never leave the app without a board
-    const fresh = { id: crypto.randomUUID(), name: 'My board' }
-    useBoard.setState({ boards: [fresh] })
-    return await show(fresh.id, undefined)
-  }
-  useBoard.setState({ boards: rest })
-  if (id === boardId) await showStored(rest[0].id)
+  const fileLinks = { ...useBoard.getState().fileLinks }
+  delete fileLinks[id]
+  // Never leave the app without a board.
+  const remaining = rest.length ? rest : [{ id: crypto.randomUUID(), name: 'My board' }]
+  useBoard.setState({ boards: remaining, fileLinks })
+  await del(fileKey(id)).catch(saveFailed)
+  if (id === boardId) await showStored(remaining[0].id)
 }
 
 // ---- Image sweep ----
@@ -185,6 +205,10 @@ export function startAutosave() {
   }
   useBoard.subscribe((s, prev) => {
     if (SAVED_KEYS.every((k) => s[k] === prev[k])) return
+    const link = s.fileLinks[s.boardId]
+    if (link && !link.dirty && contentChanged(s, prev)) {
+      useBoard.setState({ fileLinks: { ...s.fileLinks, [s.boardId]: { ...link, dirty: true } } })
+    }
     // a pan or zoom alone only rewrites the small view record
     full ||= SAVED_KEYS.some((k) => k !== 'view' && s[k] !== prev[k])
     clearTimeout(timer)

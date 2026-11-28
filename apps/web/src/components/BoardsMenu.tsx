@@ -27,15 +27,19 @@ import {
   switchBoard,
 } from "../data/storage.ts";
 import { useBoard } from "../board/store.ts";
+import { supportsDiskFiles } from '../data/boardDisk.ts'
+import { showUnsavedDot } from '../data/fileLink.ts'
 
 /** Name of the board on screen; opens the list of boards to switch, rename, delete or add one. */
 export function BoardsMenu() {
   const boards = useBoard((s) => s.boards);
   const boardId = useBoard((s) => s.boardId);
+  const fileLinks = useBoard((s) => s.fileLinks)
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const current = boards.find((b) => b.id === boardId);
+  const currentUnsaved = showUnsavedDot(supportsDiskFiles, fileLinks[boardId])
   const doomed = boards.find((b) => b.id === deleting);
 
   const finish = (id: string, value: string) => {
@@ -59,12 +63,13 @@ export function BoardsMenu() {
           render={
             <button
               type="button"
-              aria-label={`Boards. Current: ${current?.name ?? 'Board'}`}
+              aria-label={`Boards. Current: ${current?.name ?? 'Board'}${currentUnsaved ? ', unsaved changes' : ''}`}
               className="flex max-w-[45vw] items-center gap-1.5 rounded-full border bg-card/90 py-1.5 pr-2.5 pl-3.5 text-sm shadow-soft backdrop-blur outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:max-w-64"
             />
           }
         >
           <span className="truncate">{current?.name ?? "Board"}</span>
+          {currentUnsaved && <UnsavedDot />}
           <HugeiconsIcon
             icon={ArrowDown01Icon}
             size={14}
@@ -130,6 +135,7 @@ export function BoardsMenu() {
                       >
                         {b.name}
                       </span>
+                      {(b.id === boardId ? currentUnsaved : showUnsavedDot(supportsDiskFiles, fileLinks[b.id])) && <UnsavedDot />}
                     </Button>
                     <Button
                       variant="ghost"
@@ -195,4 +201,12 @@ export function BoardsMenu() {
       </Dialog>
     </>
   );
+}
+
+function UnsavedDot() {
+  return (
+    <span className="size-1.5 shrink-0 rounded-full bg-current" title="Unsaved changes">
+      <span className="sr-only">Unsaved changes</span>
+    </span>
+  )
 }

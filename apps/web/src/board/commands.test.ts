@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-import { available, command, commands, groupOf, search } from './commands.ts'
+import { available, command, commands, groupOf, runCommand, search } from './commands.ts'
 import { useBoard } from './store.ts'
 
 const board = () => useBoard.getState()
@@ -40,6 +40,23 @@ test('search matches label words and keywords, best match first, empty query kee
 test('run does the action', () => {
   commands.find((c) => c.id === 'add-note')!.run()
   expect(board().elements).toHaveLength(1)
+})
+
+test('without disk pickers, the save shortcuts only download a nonempty board', async () => {
+  const click = vi.fn()
+  vi.stubGlobal('document', { createElement: () => ({ click }) })
+  try {
+    await runCommand('save')
+    await runCommand('save-as')
+    expect(click).not.toHaveBeenCalled()
+
+    board().add({ type: 'note', text: 'A note', w: 10, h: 10 })
+    await runCommand('save')
+    await runCommand('save-as')
+    expect(click).toHaveBeenCalledTimes(2)
+  } finally {
+    vi.unstubAllGlobals()
+  }
 })
 
 test('go-to commands list notes by their text, and running one selects it and centers the view', async () => {

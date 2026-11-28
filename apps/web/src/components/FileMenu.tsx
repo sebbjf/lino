@@ -1,10 +1,11 @@
 import { FileExportIcon, FileImportIcon, Folder01Icon, Image02Icon } from '@hugeicons/core-free-icons'
 import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { exportBoardFile, importBoardFile } from '../data/boardFile.ts'
+import { command, runCommand } from '../board/commands.ts'
+import { supportsDiskFiles } from '../data/boardDisk.ts'
 import { downloadPng } from '../data/png.ts'
 import { useBoard } from '../board/store.ts'
 
@@ -25,38 +26,38 @@ export function FileMenu() {
   const empty = useBoard((s) => s.elements.length === 0)
   const readOnly = useBoard((s) => s.readOnly)
   const [open, setOpen] = useState(false)
-  const input = useRef<HTMLInputElement>(null)
+  const diskFiles = supportsDiskFiles && !readOnly
   const run = (fn: () => void) => () => {
     setOpen(false)
     fn()
   }
+  const fileItem = (id: string, icon: IconSvgElement, hint: string, disabled?: boolean) => (
+    <Item icon={icon} label={command(id).label} hint={hint} disabled={disabled} onClick={run(() => runCommand(id))} />
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Tooltip>
-        <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="File: import and export" />} />}>
+        <TooltipTrigger render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="File" />} />}>
           <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.8} />
         </TooltipTrigger>
-        <TooltipContent>Import and export</TooltipContent>
+        <TooltipContent>File</TooltipContent>
       </Tooltip>
       <PopoverContent side="top" sideOffset={12} className="w-72 gap-1 p-2">
-        <Item icon={FileExportIcon} label="Export board" hint="A .lino.json file with everything on it" disabled={empty} onClick={run(exportBoardFile)} />
-        {!readOnly && (
-          <Item icon={FileImportIcon} label="Import board…" hint="Opens a .lino.json as a new board" onClick={run(() => input.current?.click())} />
+        {diskFiles ? (
+          <>
+            {fileItem('open', FileImportIcon, 'Open a .lino.json file')}
+            {fileItem('save', FileExportIcon, 'Ctrl+S', empty)}
+            {fileItem('save-as', FileExportIcon, 'Ctrl+Shift+S', empty)}
+          </>
+        ) : (
+          <>
+            {fileItem('export', FileExportIcon, 'A .lino.json file with everything on it', empty)}
+            {!readOnly && fileItem('import', FileImportIcon, 'Open a .lino.json file')}
+          </>
         )}
         <Item icon={Image02Icon} label="Download PNG" hint="An image of the whole board" disabled={empty} onClick={run(downloadPng)} />
       </PopoverContent>
-      <input
-        ref={input}
-        type="file"
-        accept=".json,application/json"
-        hidden
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) importBoardFile(file)
-          e.target.value = ''
-        }}
-      />
     </Popover>
   )
 }

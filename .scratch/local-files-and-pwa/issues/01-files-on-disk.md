@@ -1,6 +1,6 @@
 # 01: Open and save .lino.json files on disk
 
-Status: ready-for-agent
+Status: done (native pickers not exercised by automation)
 
 See `../spec.md`, section "Files on disk", for every decision.
 

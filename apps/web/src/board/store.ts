@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { FileLink } from '../data/fileLink.ts'
 import type { ColorMeta } from '../palette/colors.ts'
 import type { Crop } from './crop.ts'
 import { expandGroups, frameContents } from './frames.ts'
@@ -56,6 +57,7 @@ type State = {
   /** Every local board (name and id) and the one on screen. The content lives in storage.ts. */
   boards: BoardMeta[]
   boardId: string
+  fileLinks: Partial<Record<string, FileLink>>
   elements: BoardElement[] // array order = z-order, last is on top
   /** Selected element ids; the last one is the most recently picked. */
   selectedIds: string[]
@@ -173,6 +175,7 @@ function shift(s: State, ids: string[], offsets: (els: BoardElement[]) => { dx: 
 export const useBoard = create<State>()((set, get) => ({
   boards: [{ id: 'local', name: 'My board' }],
   boardId: 'local',
+  fileLinks: {},
   elements: [],
   selectedIds: [],
   view: { x: 0, y: 0, zoom: 1 },

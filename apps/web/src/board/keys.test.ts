@@ -40,6 +40,12 @@ describe('boardKey', () => {
     expect(key('z')).toBeNull()
   })
 
+  test.each(['ctrlKey', 'metaKey'] as const)('%s saves even when focus is away from the board', (mod) => {
+    expect(key('s', { [mod]: true }, false)).toEqual({ id: 'save', preventDefault: true })
+    expect(key('S', { [mod]: true, shiftKey: true }, false)).toEqual({ id: 'save-as', preventDefault: true })
+    expect(key('s')).toBeNull()
+  })
+
   test('duplicate, group, ungroup and frame leave focused elements to handle their own keys', () => {
     const ctrl = { ctrlKey: true }
     const frame = { metaKey: true, altKey: true, code: 'KeyF' }

@@ -1,10 +1,11 @@
 import {
   AlignEndHorizontalIcon, AlignEndVerticalIcon, AlignHorizontalCenterIcon, AlignHorizontalSpaceBetweenIcon, AlignStartHorizontalIcon, AlignStartVerticalIcon, AlignVerticalCenterIcon,
-  AlignVerticalSpaceBetweenIcon, ArtboardToolIcon, ColorsIcon, Copy01Icon, Delete02Icon, FitToScreenIcon, FolderUploadIcon, FrameIcon, GroupItemsIcon, Heading01Icon, Image01Icon,
+  AlignVerticalSpaceBetweenIcon, ArtboardToolIcon, ColorsIcon, Copy01Icon, Delete02Icon, FileExportIcon, FileImportIcon, FitToScreenIcon, FolderUploadIcon, FrameIcon, GroupItemsIcon, Heading01Icon, Image01Icon,
   Layers01Icon, LayerBringForwardIcon, LockIcon, Maximize01Icon, LayerSendBackwardIcon, MinusSignIcon, PaintBoardIcon, PlusSignIcon, RedoIcon, StickyNote01Icon, UndoIcon,
 } from '@hugeicons/core-free-icons'
 import type { IconSvgElement } from '@hugeicons/react'
-import { exportBoardFile, importBoardFile } from '../data/boardFile.ts'
+import { importBoardFile } from '../data/boardFile.ts'
+import { openBoardFromDisk, saveBoardFile, supportsDiskFiles } from '../data/boardDisk.ts'
 import { LAYOUTS, type Layout } from './geometry.ts'
 import { addImages, imageColors } from '../data/image.ts'
 import { downloadPng } from '../data/png.ts'
@@ -176,8 +177,11 @@ export const commands: Command[] = [
       if (whole) fitAll()
     },
   })),
-  { id: 'export', label: 'Export board', group: 'File', keywords: 'save download json', when: (s) => s.elements.length > 0, run: exportBoardFile },
-  { id: 'import', label: 'Import board…', group: 'File', keywords: 'open json', edit: true, run: () => pickJson() },
+  { id: 'open', label: 'Open…', group: 'File', keywords: 'import json', edit: true, when: () => supportsDiskFiles, run: openBoardFromDisk },
+  { id: 'save', label: 'Save', group: 'File', shortcut: 'Ctrl+S', edit: true, when: (s) => supportsDiskFiles && s.elements.length > 0, run: () => saveBoardFile() },
+  { id: 'save-as', label: 'Save as…', group: 'File', shortcut: 'Ctrl+Shift+S', edit: true, when: (s) => supportsDiskFiles && s.elements.length > 0, run: () => saveBoardFile(true) },
+  { id: 'export', label: 'Export board', group: 'File', keywords: 'save download json', when: (s) => s.elements.length > 0 && (!supportsDiskFiles || s.readOnly), run: () => saveBoardFile() },
+  { id: 'import', label: 'Import board…', group: 'File', keywords: 'open json', edit: true, when: () => !supportsDiskFiles, run: () => pickJson() },
   { id: 'png', label: 'Download PNG', group: 'File', keywords: 'image export', when: (s) => s.elements.length > 0, run: downloadPng },
   { id: 'settings', label: 'Settings', group: 'File', keywords: 'preferences theme dark light', run: () => useSettings.setState({ open: true }) },
   ...inGroup('View', [
@@ -199,6 +203,7 @@ export const command = (id: string) => commands.find((c) => c.id === id)!
 
 /** Runs a command by id if it applies right now (what a key does). */
 export function runCommand(id: string) {
+  if (id === 'save' || id === 'save-as') return saveBoardFile(id === 'save-as')
   const c = command(id)
   if (enabled(c, board())) c.run()
 }
@@ -224,6 +229,7 @@ export function search(list: Command[], query: string) {
 export const groupOf = (c: Command) => c.group ?? 'Edit'
 
 const ICONS: Record<string, IconSvgElement> = {
+  open: FileImportIcon, import: FileImportIcon, save: FileExportIcon, 'save-as': FileExportIcon, export: FileExportIcon,
   'add-note': StickyNote01Icon, 'add-heading': Heading01Icon, 'add-frame': FrameIcon, 'add-color': PaintBoardIcon, 'add-image': Image01Icon, 'import-folder': FolderUploadIcon,
   undo: UndoIcon, redo: RedoIcon, duplicate: Copy01Icon, delete: Delete02Icon, forward: LayerBringForwardIcon, backward: LayerSendBackwardIcon,
   'frame-selection': ArtboardToolIcon, swatches: ColorsIcon, group: GroupItemsIcon, ungroup: Layers01Icon, lock: LockIcon, 'select-all': Maximize01Icon, 'zoom-in': PlusSignIcon, 'zoom-out': MinusSignIcon, fit: FitToScreenIcon,

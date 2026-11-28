@@ -16,6 +16,7 @@ import { saveAsLocalBoard } from './data/storage.ts'
 import { useBoard } from './board/store.ts'
 import { textOn } from './board/style.ts'
 import { Toolbar } from './components/Toolbar.tsx'
+import { OverwriteDialog } from './components/OverwriteDialog.tsx'
 
 export function App() {
   const empty = useBoard((s) => s.elements.length === 0)
@@ -51,18 +52,18 @@ export function App() {
     return () => window.removeEventListener('paste', onPaste)
   }, [])
 
-  // Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo, Ctrl/Cmd+A select all; text fields keep their native keys
+  // Text fields keep their native shortcuts except for saving the board.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
-      if (t.closest('input, textarea, [contenteditable]')) return
       const { selectedIds, select } = useBoard.getState()
       const action = boardKey(e, t === document.body, selectedIds.length > 0)
       if (!action) return
+      if (action.id !== 'save' && action.id !== 'save-as' && t.closest('input, textarea, [contenteditable]')) return
+      if (action.preventDefault) e.preventDefault()
       if (action.id === 'nudge') nudge(selectedIds, ...action.delta)
       else if (action.id === 'clear-selection') select(null)
       else runCommand(action.id)
-      if (action.preventDefault) e.preventDefault()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -109,6 +110,7 @@ export function App() {
           {notice && <p className="max-w-md rounded-2xl bg-foreground px-4 py-2 text-center text-sm text-background shadow-lg">{notice}</p>}
         </div>
         <CommandMenu open={commandsOpen} setOpen={setCommandsOpen} />
+        <OverwriteDialog />
         {paletteOpen && <PalettePanel onClose={() => setPaletteOpen(false)} />}
         <Toolbar onOpenCommands={() => setCommandsOpen(true)} paletteOpen={paletteOpen} onTogglePalette={() => setPaletteOpen((o) => !o)} />
       </main>
