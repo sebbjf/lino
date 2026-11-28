@@ -5,10 +5,11 @@ import { CommandMenu } from './components/CommandMenu.tsx'
 import { Canvas } from './components/Canvas.tsx'
 import { SettingsMenu } from './components/SettingsMenu.tsx'
 import { PalettePanel } from './components/PalettePanel.tsx'
-import { normalizeHex } from './palette/colors.ts'
-import { arrowDelta, runCommand, SIZE } from './board/commands.ts'
+import { runCommand, SIZE } from './board/commands.ts'
 import { addImages } from './data/image.ts'
-import { addLink, asUrl } from './board/link.ts'
+import { boardKey } from './board/keys.ts'
+import { addLink } from './board/link.ts'
+import { pasteAction } from './board/paste.ts'
 import { captureSnapshot } from './data/snapshot.ts'
 import { nudge } from './board/selection.ts'
 import { saveAsLocalBoard } from './data/storage.ts'
@@ -22,24 +23,28 @@ export function App() {
   const readOnly = useBoard((s) => s.readOnly)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [commandsOpen, setCommandsOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  // on a custom background the empty-state text follows its contrast color, like the dots
-  const ink = useBoard((s) => (s.board.bg && textOn(s.board.bg)) || undefined)
 
   // paste images onto the board, a URL as a link card, or plain text as a note
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       const t = e.target as HTMLElement
       if (t.closest('input, textarea, [contenteditable]') || useBoard.getState().readOnly) return
-      const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'))
-      const text = e.clipboardData?.getData('text/plain').trim()
-      const url = text && asUrl(text)
-      const hex = text && /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.test(text) ? normalizeHex(text) : null
-      if (files.length) addImages(files)
-      else if (hex) useBoard.getState().add({ type: 'color', hex, ...SIZE.color })
-      else if (url) addLink(url)
-      else if (text) useBoard.getState().add({ type: 'note', text, ...SIZE.pastedText })
-      else return
+      const action = pasteAction(e.clipboardData?.getData('text/plain'), e.clipboardData?.files ?? [])
+      if (!action) return
+      switch (action.type) {
+        case 'images':
+          addImages(action.files)
+          break
+        case 'color':
+          useBoard.getState().add({ ...action, ...SIZE.color })
+          break
+        case 'link':
+          addLink(action.url)
+          break
+        case 'note':
+          useBoard.getState().add({ ...action, ...SIZE.pastedText })
+          break
+      }
       e.preventDefault()
     }
     window.addEventListener('paste', onPaste)
@@ -51,34 +56,13 @@ export function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
       if (t.closest('input, textarea, [contenteditable]')) return
-      // after Ctrl+A or a selection box nothing has focus; Delete, Escape and the arrows still act on the selection
-      if (t === document.body && !e.ctrlKey && !e.metaKey) {
-        const { selectedIds, select } = useBoard.getState()
-        const arrow = arrowDelta(e.key, e.shiftKey ? 10 : 1)
-        if (e.key === '1') runCommand('fit')
-        else if (e.key === 'Delete' || e.key === 'Backspace') runCommand('delete')
-        else if (e.key === 'Escape') select(null)
-        else if (arrow && !e.altKey && selectedIds.length) {
-          nudge(selectedIds, ...arrow)
-          e.preventDefault()
-        } else if (e.key.toLowerCase() === 'r' && !e.altKey && selectedIds.length) {
-          runCommand(e.shiftKey ? 'rotate-ccw' : 'rotate-cw')
-          e.preventDefault()
-        }
-        return
-      }
-      if (!(e.ctrlKey || e.metaKey)) return
-      const key = e.key.toLowerCase()
-      if (key === 'a') runCommand('select-all')
-      // a focused element duplicates by itself (ElementView); this covers a selection with no focus
-      else if (key === 'd' && t === document.body) runCommand('duplicate')
-      // a focused element handles these itself (ElementView)
-      else if (key === 'g' && t === document.body) runCommand(e.shiftKey ? 'ungroup' : 'group')
-      else if (e.altKey && e.code === 'KeyF' && t === document.body) runCommand('frame-selection')
-      else if (key === 'z' && !e.shiftKey) runCommand('undo')
-      else if ((key === 'z' && e.shiftKey) || key === 'y') runCommand('redo')
-      else return
-      e.preventDefault()
+      const { selectedIds, select } = useBoard.getState()
+      const action = boardKey(e, t === document.body, selectedIds.length > 0)
+      if (!action) return
+      if (action.id === 'nudge') nudge(selectedIds, ...action.delta)
+      else if (action.id === 'clear-selection') select(null)
+      else runCommand(action.id)
+      if (action.preventDefault) e.preventDefault()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -118,51 +102,8 @@ export function App() {
           {!readOnly && <BoardsMenu />}
           <SettingsMenu />
         </div>
-        {readOnly && (
-          <p className="fixed left-1/2 top-16 flex sm:top-4 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border bg-card/90 px-4 py-1.5 text-sm shadow-soft backdrop-blur">
-            <span className="text-muted-foreground">Shared board · read-only</span>
-            {empty ? (
-              <a href="/board/" className="font-medium underline-offset-4 hover:underline">
-                Open your board
-              </a>
-            ) : (
-              <button
-                type="button"
-                disabled={saving}
-                className="rounded-full bg-foreground px-3 py-2 font-medium text-background transition-transform outline-none focus-visible:ring-[3px] focus-visible:ring-ring active:scale-[0.97] disabled:opacity-60"
-                onClick={() => {
-                  // one copy per press: a second click while saving would store the board twice
-                  setSaving(true)
-                  saveAsLocalBoard(captureSnapshot(), 'Shared board').then(
-                    () => location.assign('/board/'),
-                    () => {
-                      setSaving(false)
-                      useBoard.getState().notify('Could not save it in this browser.')
-                    },
-                  )
-                }}
-              >
-                {saving ? 'Saving…' : 'Save to my boards'}
-              </button>
-            )}
-          </p>
-        )}
-        {empty && readOnly && (
-          <div className="pointer-events-none fixed inset-0 grid place-items-center px-4 text-center">
-            <div>
-              <p className="text-4xl font-semibold tracking-[-0.04em] text-foreground">This board could not be opened</p>
-              <p className="mt-2 text-sm text-muted-foreground">Shared links stop working after 90 days. Check the link, or try again in a moment.</p>
-            </div>
-          </div>
-        )}
-        {empty && !readOnly && (
-          <div className="pointer-events-none fixed inset-0 grid place-items-center px-4 text-center">
-            <div style={{ color: ink }}>
-              <p className={`text-4xl font-semibold tracking-[-0.04em] ${ink ? '' : 'text-foreground'}`}>Start with a reference</p>
-              <p className={`mt-2 text-sm ${ink ? 'opacity-75' : 'text-muted-foreground'}`}>Drop or paste images or links, or add a note or a color.</p>
-            </div>
-          </div>
-        )}
+        <ReadOnlyBanner readOnly={readOnly} empty={empty} />
+        {empty && <EmptyBoard readOnly={readOnly} />}
         {/* above the popovers (z-50): some notices come from inside one */}
         <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-4 bottom-32 z-[60] flex justify-center">
           {notice && <p className="max-w-md rounded-2xl bg-foreground px-4 py-2 text-center text-sm text-background shadow-lg">{notice}</p>}
@@ -172,5 +113,59 @@ export function App() {
         <Toolbar onOpenCommands={() => setCommandsOpen(true)} paletteOpen={paletteOpen} onTogglePalette={() => setPaletteOpen((o) => !o)} />
       </main>
     </TooltipProvider>
+  )
+}
+
+function ReadOnlyBanner({ readOnly, empty }: { readOnly: boolean; empty: boolean }) {
+  const [saving, setSaving] = useState(false)
+  if (!readOnly) return null
+  return (
+    <p className="fixed left-1/2 top-16 flex sm:top-4 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full border bg-card/90 px-4 py-1.5 text-sm shadow-soft backdrop-blur">
+      <span className="text-muted-foreground">Shared board · read-only</span>
+      {empty ? (
+        <a href="/board/" className="font-medium underline-offset-4 hover:underline">
+          Open your board
+        </a>
+      ) : (
+        <button
+          type="button"
+          disabled={saving}
+          className="rounded-full bg-foreground px-3 py-2 font-medium text-background transition-transform outline-none focus-visible:ring-[3px] focus-visible:ring-ring active:scale-[0.97] disabled:opacity-60"
+          onClick={() => {
+            // one copy per press: a second click while saving would store the board twice
+            setSaving(true)
+            saveAsLocalBoard(captureSnapshot(), 'Shared board').then(
+              () => location.assign('/board/'),
+              () => {
+                setSaving(false)
+                useBoard.getState().notify('Could not save it in this browser.')
+              },
+            )
+          }}
+        >
+          {saving ? 'Saving…' : 'Save to my boards'}
+        </button>
+      )}
+    </p>
+  )
+}
+
+function EmptyBoard({ readOnly }: { readOnly: boolean }) {
+  // on a custom background the empty-state text follows its contrast color, like the dots
+  const ink = useBoard((s) => (s.board.bg && textOn(s.board.bg)) || undefined)
+  return readOnly ? (
+    <div className="pointer-events-none fixed inset-0 grid place-items-center px-4 text-center">
+      <div>
+        <p className="text-4xl font-semibold tracking-[-0.04em] text-foreground">This board could not be opened</p>
+        <p className="mt-2 text-sm text-muted-foreground">Shared links stop working after 90 days. Check the link, or try again in a moment.</p>
+      </div>
+    </div>
+  ) : (
+    <div className="pointer-events-none fixed inset-0 grid place-items-center px-4 text-center">
+      <div style={{ color: ink }}>
+        <p className={`text-4xl font-semibold tracking-[-0.04em] ${ink ? '' : 'text-foreground'}`}>Start with a reference</p>
+        <p className={`mt-2 text-sm ${ink ? 'opacity-75' : 'text-muted-foreground'}`}>Drop or paste images or links, or add a note or a color.</p>
+      </div>
+    </div>
   )
 }

@@ -1,8 +1,60 @@
 import { beforeEach, describe, expect, test } from 'vitest'
-import { elementKey, runElementKey, type ElementKey, type Keys } from './keys.ts'
+import { boardKey, elementKey, runElementKey, type ElementKey, type Keys } from './keys.ts'
 import { useBoard } from './store.ts'
 
 const press = (key: string, more: Partial<Keys> = {}) => elementKey({ key, code: '', shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, ...more })
+
+describe('boardKey', () => {
+  const key = (key: string, more: Partial<Keys> = {}, onBody = true, hasSelection = true) =>
+    boardKey({ key, code: '', shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, ...more }, onBody, hasSelection)
+
+  test.each([
+    ['1', 'fit'],
+    ['Delete', 'delete'],
+    ['Backspace', 'delete'],
+    ['Escape', 'clear-selection'],
+  ])('%s acts on the board without consuming the event', (pressed, id) => {
+    expect(key(pressed, { altKey: true }, true, false)).toEqual({ id, preventDefault: false })
+    expect(key(pressed, {}, false)).toBeNull()
+  })
+
+  test('arrows and R require an unfocused selection and leave Alt combinations alone', () => {
+    expect(key('ArrowLeft')).toEqual({ id: 'nudge', delta: [-1, 0], preventDefault: true })
+    expect(key('ArrowDown', { shiftKey: true })).toEqual({ id: 'nudge', delta: [0, 10], preventDefault: true })
+    expect(key('r')).toEqual({ id: 'rotate-cw', preventDefault: true })
+    expect(key('R', { shiftKey: true })).toEqual({ id: 'rotate-ccw', preventDefault: true })
+    for (const pressed of ['ArrowLeft', 'r']) {
+      expect(key(pressed, { altKey: true })).toBeNull()
+      expect(key(pressed, {}, true, false)).toBeNull()
+      expect(key(pressed, {}, false)).toBeNull()
+      expect(key(pressed, { ctrlKey: true })).toBeNull()
+    }
+    expect(key('x')).toBeNull()
+  })
+
+  test('select all, undo and redo work away from the body and consume the event', () => {
+    expect(key('A', { metaKey: true }, false)).toEqual({ id: 'select-all', preventDefault: true })
+    expect(key('Z', { ctrlKey: true }, false)).toEqual({ id: 'undo', preventDefault: true })
+    expect(key('Z', { metaKey: true, shiftKey: true }, false)).toEqual({ id: 'redo', preventDefault: true })
+    expect(key('y', { ctrlKey: true }, false)).toEqual({ id: 'redo', preventDefault: true })
+    expect(key('z')).toBeNull()
+  })
+
+  test('duplicate, group, ungroup and frame leave focused elements to handle their own keys', () => {
+    const ctrl = { ctrlKey: true }
+    const frame = { metaKey: true, altKey: true, code: 'KeyF' }
+    expect(key('D', ctrl, true, false)).toEqual({ id: 'duplicate', preventDefault: true })
+    expect(key('g', ctrl)).toEqual({ id: 'group', preventDefault: true })
+    expect(key('G', { ...ctrl, shiftKey: true })).toEqual({ id: 'ungroup', preventDefault: true })
+    expect(key('ƒ', frame)).toEqual({ id: 'frame-selection', preventDefault: true })
+    expect(key('D', ctrl, false)).toBeNull()
+    expect(key('g', ctrl, false)).toBeNull()
+    expect(key('ƒ', frame, false)).toBeNull()
+    expect(key('f', { ...frame, altKey: false })).toBeNull()
+    expect(key('f', { ...frame, code: '' })).toBeNull()
+    expect(key('a', frame)).toEqual({ id: 'select-all', preventDefault: true })
+  })
+})
 
 test('arrows nudge by 1, or 10 with Shift; Alt+arrows resize instead', () => {
   expect(press('ArrowLeft')).toEqual({ do: 'nudge', dx: -1, dy: 0 })

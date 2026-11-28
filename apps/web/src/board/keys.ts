@@ -9,6 +9,40 @@ const NUDGE_BIG = 10
 
 export type Keys = Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'altKey' | 'ctrlKey' | 'metaKey'>
 
+type BoardKey =
+  | { id: 'fit' | 'delete' | 'clear-selection'; preventDefault: false }
+  | { id: 'nudge'; delta: [number, number]; preventDefault: true }
+  | { id: 'rotate-ccw' | 'rotate-cw' | 'select-all' | 'duplicate' | 'group' | 'ungroup' | 'frame-selection' | 'undo' | 'redo'; preventDefault: true }
+
+/** Reads a window key press outside text fields as a board action. */
+export function boardKey(e: Keys, onBody: boolean, hasSelection: boolean): BoardKey | null {
+  const key = e.key.toLowerCase()
+  if (!(e.ctrlKey || e.metaKey)) {
+    // after Ctrl+A or a selection box nothing has focus; Delete, Escape and the arrows still act on the selection
+    if (!onBody) return null
+    if (e.key === '1') return { id: 'fit', preventDefault: false }
+    if (e.key === 'Delete' || e.key === 'Backspace') return { id: 'delete', preventDefault: false }
+    if (e.key === 'Escape') return { id: 'clear-selection', preventDefault: false }
+    if (e.altKey || !hasSelection) return null
+    const delta = arrowDelta(e.key, e.shiftKey ? NUDGE_BIG : NUDGE)
+    if (delta) return { id: 'nudge', delta, preventDefault: true }
+    if (key === 'r') return { id: e.shiftKey ? 'rotate-ccw' : 'rotate-cw', preventDefault: true }
+    return null
+  }
+
+  if (key === 'a') return { id: 'select-all', preventDefault: true }
+  if (onBody) {
+    // a focused element duplicates by itself (ElementView); this covers a selection with no focus
+    if (key === 'd') return { id: 'duplicate', preventDefault: true }
+    // a focused element handles these itself (ElementView)
+    if (key === 'g') return { id: e.shiftKey ? 'ungroup' : 'group', preventDefault: true }
+    if (e.altKey && e.code === 'KeyF') return { id: 'frame-selection', preventDefault: true }
+  }
+  if (key === 'z') return { id: e.shiftKey ? 'redo' : 'undo', preventDefault: true }
+  if (key === 'y') return { id: 'redo', preventDefault: true }
+  return null
+}
+
 /** What a key pressed on a focused board element asks for. */
 export type ElementKey =
   | { do: 'nudge' | 'resize'; dx: number; dy: number }
