@@ -131,6 +131,7 @@ function Docs() {
         </li>
         <li>
           <strong>Export / import:</strong> a <code>.lino.json</code> file keeps everything and can be imported again. <strong>Download PNG</strong> gives an image of the whole board.
+          Read the <A href="https://github.com/sebbjf/lino/blob/main/docs/file-format.md">board file format</A> on GitHub.
         </li>
         <li>
           <strong>Share:</strong> creates a read-only link to a copy of the board as it is now. It lasts 90 days. See <A href="/privacy/">Privacy</A>.
