@@ -177,7 +177,7 @@ export const commands: Command[] = [
       if (whole) fitAll()
     },
   })),
-  { id: 'open', label: 'Open…', group: 'File', keywords: 'import json', edit: true, when: () => supportsDiskFiles, run: openBoardFromDisk },
+  { id: 'open', label: 'Open…', group: 'File', keywords: 'import json', edit: true, when: () => supportsDiskFiles, run: () => openBoardFromDisk() },
   { id: 'save', label: 'Save', group: 'File', shortcut: 'Ctrl+S', edit: true, when: (s) => supportsDiskFiles && s.elements.length > 0, run: () => saveBoardFile() },
   { id: 'save-as', label: 'Save as…', group: 'File', shortcut: 'Ctrl+Shift+S', edit: true, when: (s) => supportsDiskFiles && s.elements.length > 0, run: () => saveBoardFile(true) },
   { id: 'export', label: 'Export board', group: 'File', keywords: 'save download json', when: (s) => s.elements.length > 0 && (!supportsDiskFiles || s.readOnly), run: () => saveBoardFile() },

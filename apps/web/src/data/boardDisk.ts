@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { useBoard } from '../board/store.ts'
 import { boardFileBody, boardFileName, exportBoardFile, importBoardFile } from './boardFile.ts'
 import { pickDiskFile, pickDiskTarget, requestWrite, writeDiskFile } from './diskFile.ts'
-import { canUseFiles, contentChanged, saveDecision, type FileLink } from './fileLink.ts'
+import { canUseFiles, contentChanged, saveDecision, type DiskHandle, type FileLink } from './fileLink.ts'
 import { captureSnapshot } from './snapshot.ts'
 import { setFileLink, switchBoard } from './storage.ts'
 
@@ -18,11 +18,17 @@ function askOverwrite(name: string) {
   }).finally(() => useOverwritePrompt.setState({ prompt: null }))
 }
 
-// A second file action cannot race the picker, prompt, or write already in progress.
-let busy = false
-async function runFileAction(action: () => Promise<void>, failure: string) {
-  if (busy) return
-  busy = true
+let pendingFileAction: Promise<void> | undefined
+async function runFileAction(action: () => Promise<void>, failure: string, wait = false) {
+  const previous = pendingFileAction
+  if (previous && !wait) return
+
+  // Reserve a place before waiting so file launches run in arrival order.
+  let finish!: () => void
+  const pending = new Promise<void>((resolve) => { finish = resolve })
+  pendingFileAction = pending
+  if (previous) await previous
+
   try {
     await action()
   } catch (e) {
@@ -30,13 +36,14 @@ async function runFileAction(action: () => Promise<void>, failure: string) {
     const denied = e instanceof DOMException && e.name === 'NotAllowedError'
     useBoard.getState().notify(denied ? 'Lino needs permission to save to that file.' : failure)
   } finally {
-    busy = false
+    if (pendingFileAction === pending) pendingFileAction = undefined
+    finish()
   }
 }
 
-export function openBoardFromDisk() {
+export function openBoardFromDisk(launched?: DiskHandle) {
   return runFileAction(async () => {
-    const handle = await pickDiskFile()
+    const handle = launched ?? await pickDiskFile()
     const { boards, fileLinks } = useBoard.getState()
     for (const { id } of boards) {
       const link = fileLinks[id]
@@ -48,7 +55,7 @@ export function openBoardFromDisk() {
     const file = await handle.getFile()
     const id = await importBoardFile(file)
     if (id) await setFileLink(id, { handle, lastModified: file.lastModified, dirty: false })
-  }, 'Could not open the board file.')
+  }, 'Could not open the board file.', launched !== undefined)
 }
 
 async function confirmTarget(link: FileLink) {

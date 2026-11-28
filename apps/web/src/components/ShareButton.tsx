@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { shareBoard, TooBig } from '../data/share.ts'
+import { ConnectionNeeded } from '../data/apiConnection.ts'
 import { useBoard } from '../board/store.ts'
 
 type State = { step: 'idle' | 'busy' } | { step: 'confirm'; mb: string } | { step: 'done'; url: string; expiresAt: string } | { step: 'error'; error: string }
@@ -24,6 +25,11 @@ export function ShareButton() {
     try {
       setState({ step: 'done', ...(await shareBoard(shrink)) })
     } catch (e) {
+      if (e instanceof ConnectionNeeded) {
+        setState({ step: 'idle' })
+        useBoard.getState().notify(e.message)
+        return
+      }
       // too big: say how much, and let the user decide before any image is touched
       setState(e instanceof TooBig ? { step: 'confirm', mb: (e.bytes / 1024 / 1024).toFixed(1) } : { step: 'error', error: (e as Error).message })
     }

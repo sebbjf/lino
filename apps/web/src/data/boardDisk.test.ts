@@ -67,21 +67,22 @@ beforeEach(() => {
 
 afterAll(() => vi.unstubAllGlobals())
 
-test('Open switches to an already linked board without importing the file again', async () => {
+test.each(['picker', 'launch'])('%s switches to an already linked board without importing the file again', async (source) => {
   const stored = disk()
   const picked = disk()
   records.set('other', { elements: [{ ...note, text: 'Browser copy' }] })
   useBoard.setState({ boards: [...board().boards, { id: 'other', name: 'Other board' }] })
   const entry = link(stored.handle, 'other')
-  openPicker.mockResolvedValueOnce([picked.handle])
+  if (source === 'picker') openPicker.mockResolvedValueOnce([picked.handle])
 
-  await openBoardFromDisk()
+  await openBoardFromDisk(source === 'launch' ? picked.handle : undefined)
 
   expect(board().boardId).toBe('other')
   expect(board().boards).toHaveLength(2)
   expect(board().elements[0]).toMatchObject({ text: 'Browser copy' })
   expect(currentLink()).toBe(entry)
   expect(picked.handle.getFile).not.toHaveBeenCalled()
+  expect(openPicker).toHaveBeenCalledTimes(source === 'picker' ? 1 : 0)
 })
 
 test('Open preserves the link of an empty board by opening a new board', async () => {
@@ -96,6 +97,60 @@ test('Open preserves the link of an empty board by opening a new board', async (
   expect(board().boards).toHaveLength(2)
   expect(board().fileLinks.local).toBe(entry)
   expect(currentLink()).toEqual({ handle, lastModified: 10, dirty: false })
+})
+
+test('a launched file opens already linked without showing the picker', async () => {
+  const { handle } = disk()
+
+  await openBoardFromDisk(handle)
+
+  expect(openPicker).not.toHaveBeenCalled()
+  expect(board().elements[0]).toMatchObject({ text: 'Before' })
+  expect(currentLink()).toEqual({ handle, lastModified: 10, dirty: false })
+})
+
+test('two launched files open in arrival order', async () => {
+  const first = disk('first.lino.json')
+  const second = disk('second.lino.json')
+
+  await Promise.all([openBoardFromDisk(first.handle), openBoardFromDisk(second.handle)])
+
+  expect(first.handle.getFile).toHaveBeenCalledOnce()
+  expect(second.handle.getFile).toHaveBeenCalledOnce()
+  expect(first.handle.getFile.mock.invocationCallOrder[0]).toBeLessThan(second.handle.getFile.mock.invocationCallOrder[0])
+  expect(Object.values(board().fileLinks).map((link) => link?.handle)).toEqual([first.handle, second.handle])
+  expect(currentLink()?.handle).toBe(second.handle)
+})
+
+test('a launch waits for a running save to finish', async () => {
+  const saved = disk('saved.lino.json')
+  const launched = disk('launched.lino.json')
+  const writing = gate()
+  const finish = gate()
+  const entry = link(saved.handle)
+  const savedId = board().boardId
+  saved.stream.write.mockImplementationOnce(async () => {
+    writing.release()
+    await finish.promise
+  })
+
+  const saving = saveBoardFile()
+  await writing.promise
+  const opening = openBoardFromDisk(launched.handle)
+  try {
+    await openBoardFromDisk()
+    expect(openPicker).not.toHaveBeenCalled()
+    expect(launched.handle.getFile).not.toHaveBeenCalled()
+    expect(currentLink()).toBe(entry)
+  } finally {
+    finish.release()
+    await Promise.all([saving, opening])
+  }
+
+  expect(launched.handle.getFile).toHaveBeenCalledOnce()
+  expect(saved.stream.close.mock.invocationCallOrder[0]).toBeLessThan(launched.handle.getFile.mock.invocationCallOrder[0])
+  expect(board().fileLinks[savedId]).toMatchObject({ lastModified: 11, dirty: false })
+  expect(currentLink()?.handle).toBe(launched.handle)
 })
 
 test('a failed write leaves the link and dirty flag unchanged and shows a generic error', async () => {

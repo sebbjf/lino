@@ -1,6 +1,6 @@
 # Your files are yours: local files and PWA
 
-Status: ready-for-agent
+Status: done
 
 Grilled 2026-11-28. Three slices, built in this order, one commit series each:
 

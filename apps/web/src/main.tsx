@@ -2,6 +2,7 @@ import { Component, StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App.tsx'
 import { exportBoardFile } from './data/boardFile.ts'
+import { openBoardFromDisk } from './data/boardDisk.ts'
 import { Button } from './components/ui/button.tsx'
 import { addLink, isImageUrl, sharedUrl } from './board/link.ts'
 import { loadShared, sharedId } from './data/share.ts'
@@ -10,11 +11,18 @@ import { startTheme } from './board/settings.ts'
 import { useBoard } from './board/store.ts'
 import './index.css'
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  void navigator.serviceWorker.register('/sw.js', { scope: '/board/' }).catch(console.error)
+}
+
 startTheme()
 const shared = sharedId()
 if (shared) {
   // a shared board never touches the local one
-  await loadShared(shared).catch((e: Error) => useBoard.setState({ readOnly: true, notice: e.message }))
+  await loadShared(shared).catch((e: Error) => {
+    useBoard.setState({ readOnly: true })
+    useBoard.getState().notify(e.message)
+  })
 } else {
   // load before rendering and autosaving, so an empty first render never overwrites the saved board
   // no autosave after a failed load: it would write this empty board over the saved ones
@@ -23,6 +31,9 @@ if (shared) {
       startAutosave()
       // before anything renders, so no image added meanwhile can be swept, and with nothing to undo yet
       await sweepStoredImages().catch(() => {})
+      window.launchQueue?.setConsumer(({ files }) => {
+        for (const file of files) void openBoardFromDisk(file)
+      })
     },
     () => useBoard.getState().notify('Saved boards could not be loaded, so changes will not be kept. Reload to try again.'))
 }

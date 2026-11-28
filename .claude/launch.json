@@ -2,6 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     { "name": "web", "runtimeExecutable": "pnpm", "runtimeArgs": ["--filter", "@lino/web", "dev"], "port": 5173 },
-    { "name": "api", "runtimeExecutable": "pnpm", "runtimeArgs": ["--filter", "@lino/api", "dev"], "port": 3000 }
+    { "name": "api", "runtimeExecutable": "pnpm", "runtimeArgs": ["--filter", "@lino/api", "dev"], "port": 3000 },
+    { "name": "web-build", "runtimeExecutable": "pnpm", "runtimeArgs": ["--filter", "@lino/web", "exec", "vite", "preview", "--port", "4173", "--strictPort"], "port": 4173 }
   ]
 }
