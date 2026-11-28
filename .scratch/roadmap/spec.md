@@ -46,7 +46,7 @@ Each has its own `.scratch/<slug>/spec.md`.
 | 4 | `frames-and-groups` | Foundations | **Done** (2026-11-19): frame kind with geometric membership, groups (Ctrl+G), headings as a note style | `element-kinds` |
 | 5 | `quick-capture` | Foundations | **Done** (2026-11-19): Send to Lino bookmarklet, folder import, batch progress. Open: remote image URLs become link cards (no image proxy) | |
 | 6 | `design-token-export` | Differentiators | **Shipped** (2026-11-19): Design Tokens JSON (also covers Figma variables), tone scales 50-900, `.ase` download, WCAG contrast pairs. Open: type specimen element (with `element-kinds`) | |
-| 7 | `local-files-and-pwa` | Open source | Not started | `board-snapshot` (the file adapter) |
+| 7 | `local-files-and-pwa` | Open source | **Done** (2026-11-28: `dc786be`, `b1ee492`, `1695812`): open/save files on disk (Chrome, Edge), `docs/file-format.md`, offline installable board app | `board-snapshot` (the file adapter) |
 | 8 | `present-and-export` | Differentiators | Not started | |
 | 9 | `motion-media` | Differentiators | Not started | `image-storage` (video blobs) |
 | 10 | `templates-and-gallery` | Differentiators | Not started | `board-snapshot` (a template is a snapshot) |
@@ -63,7 +63,7 @@ Since the first draft, 2 and 6 moved from "idea" to partly shipped, and masonry 
 3. ~~`image-storage`~~, ~~`selection-commands`~~ and ~~`undo-history`~~ done (2026-11-17; ADR 0002 for the first). Next: measure an image-heavy board and decide whether thumbnails by zoom and viewport culling deserve their own specs.
 4. ~~Finish `design-token-export`~~ done 2026-11-19 (contrast, tone scales, `.ase`); type specimen waits for `element-kinds`.
 5. ~~`element-kinds` then `frames-and-groups`~~ done 2026-11-19, with every Foundations spec.
-6. **Next up.** `local-files-and-pwa` (7) and the type specimen element (now a one-module kind). Color roles and dark variant from `idea-backlog` continue the token story.
+6. ~~`local-files-and-pwa` (7)~~ done 2026-11-28. **Next up.** The type specimen element (now a one-module kind). Color roles and dark variant from `idea-backlog` continue the token story.
 
 ## Reserve
 
